@@ -221,9 +221,14 @@ public abstract class BaseACLRepositoryImpl implements ACLRepository {
   }
 
   @Override
-  public List<ACL> getByAclQueryStringInAndEnabledAndRoleAssignmentId(Collection<String> aclQueryStrings, boolean enabled, String roleAssignmentId) {
-    Query query = new Query(Criteria.where(ACLKeys.aclQueryString).in(aclQueryStrings).and(ACLKeys.enabled).is(enabled)
-            .and(ACLKeys.roleAssignmentId).is(roleAssignmentId));
+  public List<ACL> getByRoleAssignmentIdAndAclQueryStringInAndEnabled(
+      String roleAssignmentId, Collection<String> aclQueryStrings, boolean enabled) {
+    Query query = new Query(Criteria.where(ACLKeys.roleAssignmentId)
+                                .is(roleAssignmentId)
+                                .and(ACLKeys.aclQueryString)
+                                .in(aclQueryStrings)
+                                .and(ACLKeys.enabled)
+                                .is(enabled));
     query.fields().include(ACLKeys.aclQueryString).include(ACLKeys.condition).include(ACLKeys.conditional);
     return mongoTemplate.find(query, ACL.class);
   }

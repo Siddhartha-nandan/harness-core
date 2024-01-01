@@ -323,17 +323,15 @@ public class ACLGeneratorServiceImpl implements ACLGeneratorService {
     }
   }
 
-  private List<ACL> getMissingACLs(List<ACL> acls, RoleAssignmentDBO roleAssignmentDBO) {
-    Set<String> aclQueryStrings = acls.stream().map(ACL::getAclQueryString).collect(Collectors.toSet());
-    List<ACL> aclsPresentInDB = aclRepository.getByAclQueryStringInAndEnabledAndRoleAssignmentId(
-        aclQueryStrings, true, roleAssignmentDBO.getId());
-    List<ACL> missingACLs = new ArrayList<>();
-    acls.stream().filter(acl -> !aclsPresentInDB.contains(acl)).forEach(acl -> {
-      if (!aclsPresentInDB.contains(acl)) {
-        log.info("Missing ACL {} for roleAssignmentId {}", acl, roleAssignmentDBO.getId());
-        missingACLs.add(acl);
-      }
-    });
+  private List<ACL> getMissingACLs(List<ACL> expectedAcls, RoleAssignmentDBO roleAssignmentDBO) {
+    Set<String> aclQueryStrings = expectedAcls.stream().map(ACL::getAclQueryString).collect(Collectors.toSet());
+    List<ACL> aclsPresentInDB = aclRepository.getByRoleAssignmentIdAndAclQueryStringInAndEnabled(
+        roleAssignmentDBO.getId(), aclQueryStrings, true);
+    Set<String> aclQueryStringsInDB =
+        aclsPresentInDB.stream().map(acl -> acl.getAclQueryString()).collect(Collectors.toSet());
+    List<ACL> missingACLs = expectedAcls.stream()
+                                .filter(acl -> !aclQueryStringsInDB.contains(acl.getAclQueryString()))
+                                .collect(Collectors.toList());
     return missingACLs;
   }
 }

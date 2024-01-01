@@ -41,8 +41,8 @@ public interface ACLRepository {
 
   List<ACL> getByAclQueryStringInAndEnabled(Collection<String> aclQueryStrings, boolean enabled);
 
-  List<ACL> getByAclQueryStringInAndEnabledAndRoleAssignmentId(
-      Collection<String> aclQueryStrings, boolean enabled, String roleAssignmentId);
+  List<ACL> getByRoleAssignmentIdAndAclQueryStringInAndEnabled(
+      String roleAssignmentId, Collection<String> aclQueryStrings, boolean enabled);
 
   List<ACL> getByAclQueryStringIn(Collection<String> aclQueryStrings);
 
