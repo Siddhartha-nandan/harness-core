@@ -302,8 +302,8 @@ public class ACLGeneratorServiceImpl implements ACLGeneratorService {
             if (acls.size() >= batchSizeForACLCreation) {
               List<ACL> missingACLs = getMissingACLs(acls, roleAssignmentDBO);
               numberOfACLsCreated += missingACLs.size();
-              log.info("Number of missing ACLs created {} for roleAssignment {}", numberOfACLsCreated,
-                  roleAssignmentDBO.getId());
+              log.info(
+                  "Number of missing ACLs {} for roleAssignment {}", numberOfACLsCreated, roleAssignmentDBO.getId());
               // Create missing ACLs.
               acls.clear();
             }
@@ -313,8 +313,7 @@ public class ACLGeneratorServiceImpl implements ACLGeneratorService {
       if (acls.size() > 0) {
         List<ACL> missingACLs = getMissingACLs(acls, roleAssignmentDBO);
         numberOfACLsCreated += missingACLs.size();
-        log.info(
-            "Number of missing ACLs created {} for roleAssignment {}", numberOfACLsCreated, roleAssignmentDBO.getId());
+        log.info("Number of missing ACLs {} for roleAssignment {}", numberOfACLsCreated, roleAssignmentDBO.getId());
         // Create missing ACLs.
         acls.clear();
       }
