@@ -65,6 +65,7 @@ public class SscaEnforcementStep extends AbstractStepExecutable {
                         .stepExecutionId(stepExecutionId)
                         .allowListViolationCount(enforcementSummary.getAllowListViolationCount())
                         .denyListViolationCount(enforcementSummary.getDenyListViolationCount())
+                        .exemptedComponentCount(enforcementSummary.getExemptedComponentCount())
                         .imageTag(enforcementSummary.getArtifact().getTag())
                         .build())
               .build());
@@ -82,6 +83,7 @@ public class SscaEnforcementStep extends AbstractStepExecutable {
                         .stepExecutionId(stepExecutionId)
                         .allowListViolationCount(enforcementSummary.getAllowListViolationCount())
                         .denyListViolationCount(enforcementSummary.getDenyListViolationCount())
+                        .exemptedComponentCount(enforcementSummary.getExemptedComponentCount())
                         .imageTag(enforcementSummary.getArtifact().getTag())
                         .build())
               .build());
@@ -118,6 +120,7 @@ public class SscaEnforcementStep extends AbstractStepExecutable {
                                      .imageName(enforcementSummary.getArtifact().getName())
                                      .allowListViolationCount(enforcementSummary.getAllowListViolationCount())
                                      .denyListViolationCount(enforcementSummary.getDenyListViolationCount())
+                                     .exemptedComponentCount(enforcementSummary.getExemptedComponentCount())
                                      .stepExecutionId(stepExecutionId)
                                      .tag(enforcementSummary.getArtifact().getTag())
                                      .build())
@@ -143,6 +146,7 @@ public class SscaEnforcementStep extends AbstractStepExecutable {
                 .stepExecutionId(sscaArtifactMetadata.getStepExecutionId())
                 .allowListViolationCount(sscaArtifactMetadata.getAllowListViolationCount())
                 .denyListViolationCount(sscaArtifactMetadata.getDenyListViolationCount())
+                .exemptedComponentCount(sscaArtifactMetadata.getExemptedComponentCount())
                 .tag(sscaArtifactMetadata.getImageTag())
                 .build());
       }

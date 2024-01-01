@@ -35,6 +35,7 @@ public class SscaArtifactMetadata implements ArtifactMetadataSpec {
   boolean isSbomAttested;
   int allowListViolationCount;
   int denyListViolationCount;
+  Integer exemptedComponentCount;
   @NonFinal @Setter Scorecard scorecard;
   @NonFinal @Setter DriftSummary drift;
 }

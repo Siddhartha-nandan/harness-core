@@ -95,12 +95,14 @@ public class SscaEnforcementStepTest extends CIExecutionTestBase {
                 .enforcementId(SscaTestsUtility.STEP_EXECUTION_ID)
                 .allowListViolationCount(3)
                 .denyListViolationCount(5)
+                .exemptedComponentCount(1)
                 .artifact(Artifact.builder().type("image").name("library/nginx").tag("latest").id("someId").build())
                 .build());
 
     PublishedSbomArtifact publishedSbomArtifact = PublishedSbomArtifact.builder()
                                                       .allowListViolationCount(3)
                                                       .denyListViolationCount(5)
+                                                      .exemptedComponentCount(1)
                                                       .stepExecutionId(SscaTestsUtility.STEP_EXECUTION_ID)
                                                       .imageName("library/nginx")
                                                       .id("someId")
@@ -154,12 +156,14 @@ public class SscaEnforcementStepTest extends CIExecutionTestBase {
                 .enforcementId(SscaTestsUtility.STEP_EXECUTION_ID)
                 .allowListViolationCount(3)
                 .denyListViolationCount(5)
+                .exemptedComponentCount(1)
                 .artifact(Artifact.builder().type("image").name("library/nginx").tag("latest").id("someId").build())
                 .build());
 
     PublishedSbomArtifact publishedSbomArtifact = PublishedSbomArtifact.builder()
                                                       .allowListViolationCount(3)
                                                       .denyListViolationCount(5)
+                                                      .exemptedComponentCount(1)
                                                       .stepExecutionId(SscaTestsUtility.STEP_EXECUTION_ID)
                                                       .imageName("library/nginx")
                                                       .id("someId")

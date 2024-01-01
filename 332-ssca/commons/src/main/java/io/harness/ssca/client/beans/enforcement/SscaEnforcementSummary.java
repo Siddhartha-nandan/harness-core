@@ -28,4 +28,5 @@ public class SscaEnforcementSummary {
   String status;
   int allowListViolationCount;
   int denyListViolationCount;
+  Integer exemptedComponentCount;
 }

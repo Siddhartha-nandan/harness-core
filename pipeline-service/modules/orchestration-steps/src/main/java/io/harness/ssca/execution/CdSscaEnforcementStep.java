@@ -78,6 +78,7 @@ public class CdSscaEnforcementStep extends AbstractContainerStep {
                                       .tag(sscaEnforcementSummary.getArtifact().getTag())
                                       .denyListViolationCount(sscaEnforcementSummary.getDenyListViolationCount())
                                       .allowListViolationCount(sscaEnforcementSummary.getAllowListViolationCount())
+                                      .exemptedComponentCount(sscaEnforcementSummary.getExemptedComponentCount())
                                       .stepExecutionId(stepExecutionId)
                                       .build());
       try {
