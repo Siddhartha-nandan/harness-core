@@ -117,6 +117,14 @@ if [[ "" != "$S3_SYNC_CONFIG_REGION" ]]; then
   export S3_SYNC_CONFIG_REGION; yq -i '.awsS3SyncConfig.region=env(S3_SYNC_CONFIG_REGION)' $CONFIG_FILE
 fi
 
+if [[ "" != "$AWS_BILLING_DATA_VERIFICATION_ENABLED" ]]; then
+  export AWS_BILLING_DATA_VERIFICATION_ENABLED; yq -i '.billingDataVerificationJobConfig.awsBillingDataVerificationEnabled=env(AWS_BILLING_DATA_VERIFICATION_ENABLED)' $CONFIG_FILE
+fi
+
+if [[ "" != "$AWS_MAXIMUM_HISTORICAL_MONTHS_FOR_VERIFICATION_JOB" ]]; then
+  export AWS_MAXIMUM_HISTORICAL_MONTHS_FOR_VERIFICATION_JOB; yq -i '.billingDataVerificationJobConfig.awsMaximumHistoricalMonthsForVerificationJob=env(AWS_MAXIMUM_HISTORICAL_MONTHS_FOR_VERIFICATION_JOB)' $CONFIG_FILE
+fi
+
 if [[ "" != "$DATA_PIPELINE_CONFIG_GCP_PROJECT_ID" ]]; then
   export DATA_PIPELINE_CONFIG_GCP_PROJECT_ID; yq -i '.billingDataPipelineConfig.gcpProjectId=env(DATA_PIPELINE_CONFIG_GCP_PROJECT_ID)' $CONFIG_FILE
 fi
@@ -233,8 +241,16 @@ if [[ "" != "$CONNECTOR_HEALTH_UPDATE_CRON" ]]; then
   export CONNECTOR_HEALTH_UPDATE_CRON; yq -i '.scheduler-jobs-config.connectorHealthUpdateJobCron=env(CONNECTOR_HEALTH_UPDATE_CRON)' $CONFIG_FILE
 fi
 
+if [[ "" != "$DELEGATE_HEALTH_UPDATE_CRON" ]]; then
+  export DELEGATE_HEALTH_UPDATE_CRON; yq -i '.scheduler-jobs-config.delegateHealthUpdateJobCron=env(DELEGATE_HEALTH_UPDATE_CRON)' $CONFIG_FILE
+fi
+
 if [[ "" != "$AWS_ACCOUNT_TAGS_COLLECTION_CRON" ]]; then
   export AWS_ACCOUNT_TAGS_COLLECTION_CRON; yq -i '.scheduler-jobs-config.awsAccountTagsCollectionJobCron=env(AWS_ACCOUNT_TAGS_COLLECTION_CRON)' $CONFIG_FILE
+fi
+
+if [[ "" != "$BILLING_DATA_VERIFICATION_JOB_CRON" ]]; then
+  export BILLING_DATA_VERIFICATION_JOB_CRON; yq -i '.scheduler-jobs-config.billingDataVerificationJobCron=env(BILLING_DATA_VERIFICATION_JOB_CRON)' $CONFIG_FILE
 fi
 
 if [[ "" != "$HARNESS_CE_AZURE_CLIENTID" ]]; then
@@ -299,6 +315,10 @@ fi
 
 if [[ "" != "$CONNECTOR_HEALTH_UPDATE_JOB_ENABLED" ]]; then
   export CONNECTOR_HEALTH_UPDATE_JOB_ENABLED; yq -i '.connectorHealthUpdateJobConfig.enabled=env(CONNECTOR_HEALTH_UPDATE_JOB_ENABLED)' $CONFIG_FILE
+fi
+
+if [[ "" != "$DELEGATE_HEALTH_UPDATE_JOB_ENABLED" ]]; then
+  export DELEGATE_HEALTH_UPDATE_JOB_ENABLED; yq -i '.delegateHealthUpdateJobConfig.enabled=env(DELEGATE_HEALTH_UPDATE_JOB_ENABLED)' $CONFIG_FILE
 fi
 
 if [[ "" != "$AWS_ACCOUNT_TAGS_COLLECTION_JOB_ENABLED" ]]; then

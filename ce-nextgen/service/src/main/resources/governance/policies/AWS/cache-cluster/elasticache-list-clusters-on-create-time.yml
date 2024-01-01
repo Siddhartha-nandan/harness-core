@@ -1,0 +1,9 @@
+policies:
+  - name: elasticache-list-clusters-on-create-time
+    resource: cache-cluster
+    filters:
+      - type: value
+        value_type: age
+        key: CacheClusterCreateTime
+        op: ge
+        value: 90

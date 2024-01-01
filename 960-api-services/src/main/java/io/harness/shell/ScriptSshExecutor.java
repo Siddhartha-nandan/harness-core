@@ -78,7 +78,7 @@ public class ScriptSshExecutor extends AbstractScriptExecutor {
         output.append(response.getOutput());
       }
       if (response.getStatus() == SUCCESS) {
-        saveExecutionLog("Command finished with status " + SUCCESS, SUCCESS);
+        saveExecutionLog("Command finished with status " + SUCCESS);
       }
       return response.getStatus();
     } catch (Exception ex) {
@@ -165,7 +165,7 @@ public class ScriptSshExecutor extends AbstractScriptExecutor {
 
       validateExportedVariables(envVariablesMap);
     }
-    saveExecutionLog("Command finished with status " + response.getStatus(), response.getStatus());
+    saveExecutionLog("Command finished with status " + response.getStatus());
     return result;
   }
 
@@ -173,6 +173,10 @@ public class ScriptSshExecutor extends AbstractScriptExecutor {
       List<String> envVariablesToCollect, List<String> secretEnvVariablesToCollect, String directoryPath) {
     if (EmptyPredicate.isEmpty(directoryPath)) {
       directoryPath = resolveEnvVarsInPath(sshSessionConfig.getWorkingDirectory() + "/");
+    }
+
+    if (isNotEmpty(directoryPath) && directoryPath.charAt(directoryPath.length() - 1) != '/') {
+      directoryPath += "/";
     }
 
     if (isNotEmpty(sshSessionConfig.getEnvVariables())) {

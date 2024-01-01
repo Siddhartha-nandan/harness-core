@@ -640,7 +640,6 @@ public class PluginSettingUtilsTest extends CIExecutionTestBase {
     Map<String, String> gitEnvVars = new HashMap<>();
     gitEnvVars.put(DRONE_REMOTE_URL, scmUrl);
     gitEnvVars.put(DRONE_NETRC_MACHINE, scmProvider);
-    when(codebaseUtils.getGitEnvVariables(connectorDetails, repoName)).thenReturn(gitEnvVars);
     when(ciCodebaseUtils.getGitEnvVariables(connectorDetails, repoName)).thenReturn(gitEnvVars);
 
     final ParameterField<Build> buildParameter = createBuildParameter(buildType, buildValue);
@@ -691,7 +690,6 @@ public class PluginSettingUtilsTest extends CIExecutionTestBase {
     Map<String, String> gitEnvVars = new HashMap<>();
     gitEnvVars.put(DRONE_REMOTE_URL, scmUrl);
     gitEnvVars.put(DRONE_NETRC_MACHINE, scmProvider);
-    when(codebaseUtils.getGitEnvVariables(connectorDetails, repoName)).thenReturn(gitEnvVars);
     when(ciCodebaseUtils.getGitEnvVariables(connectorDetails, repoName)).thenReturn(gitEnvVars);
 
     final ParameterField<Build> buildParameter = createBuildParameter(buildType, buildValue);
@@ -741,7 +739,6 @@ public class PluginSettingUtilsTest extends CIExecutionTestBase {
     Map<String, String> gitEnvVars = new HashMap<>();
     gitEnvVars.put(DRONE_REMOTE_URL, scmUrl);
     gitEnvVars.put(DRONE_NETRC_MACHINE, scmProvider);
-    when(codebaseUtils.getGitEnvVariables(connectorDetails, null)).thenReturn(gitEnvVars);
 
     when(ciCodebaseUtils.getGitEnvVariables(connectorDetails, null)).thenReturn(gitEnvVars);
 
@@ -1127,6 +1124,9 @@ public class PluginSettingUtilsTest extends CIExecutionTestBase {
     expected.put("PLUGIN_TYPE", "Enforce");
     expected.put("POLICY_FILE_IDENTIFIER", "file");
     expected.put("SSCA_MANAGER_ENABLED", "false");
+    expected.put("POLICY_SET_REF", "policySet1,policySet2");
+    expected.put("PLUGIN_BASE64_SECRET", "false");
+    expected.put("ENABLE_SSCA_AIRGAP", "false");
     Ambiance ambiance = Ambiance.newBuilder().build();
     Map<String, String> actual = pluginSettingUtils.getPluginCompatibleEnvVariables(
         sscaEnforcementStepInfo, "identifier", 100, ambiance, Type.K8, false, true);
@@ -1147,6 +1147,9 @@ public class PluginSettingUtilsTest extends CIExecutionTestBase {
     expected.put("POLICY_FILE_IDENTIFIER", "file");
     expected.put("SSCA_MANAGER_ENABLED", "false");
     expected.put("COSIGN_PUBLIC_KEY", "${ngSecretManager.obtain(\"publicKey\", 12345)}");
+    expected.put("POLICY_SET_REF", "policySet1,policySet2");
+    expected.put("PLUGIN_BASE64_SECRET", "false");
+    expected.put("ENABLE_SSCA_AIRGAP", "false");
     Map<String, String> actual = pluginSettingUtils.getPluginCompatibleEnvVariables(
         sscaEnforcementStepInfo, "identifier", 100, ambiance, Type.VM, false, true);
     assertThat(actual).isEqualTo(expected);
@@ -1182,6 +1185,7 @@ public class PluginSettingUtilsTest extends CIExecutionTestBase {
                                         .build())
                     .build())
         .policy(EnforcementPolicy.builder()
+                    .policySets(ParameterField.createValueField(List.of("policySet1", "policySet2")))
                     .store(PolicyStore.builder()
                                .type(StoreType.HARNESS)
                                .storeSpec(HarnessStore.builder().file(ParameterField.createValueField("file")).build())
@@ -1208,6 +1212,8 @@ public class PluginSettingUtilsTest extends CIExecutionTestBase {
     expected.put("PLUGIN_TYPE", "verify");
     expected.put("STEP_EXECUTION_ID", null);
     expected.put("PLUGIN_REGISTRY_TYPE", "docker");
+    expected.put("PLUGIN_BASE64_SECRET", "false");
+    expected.put("ENABLE_SSCA_AIRGAP", "false");
     Ambiance ambiance = Ambiance.newBuilder().build();
     Map<String, String> actual = pluginSettingUtils.getPluginCompatibleEnvVariables(
         slsaVerificationStepInfo, "identifier", 100, ambiance, Type.K8, false, true);
@@ -1227,6 +1233,8 @@ public class PluginSettingUtilsTest extends CIExecutionTestBase {
     expected.put("PLUGIN_TYPE", "verify");
     expected.put("PLUGIN_REGISTRY_TYPE", "gcr");
     expected.put("STEP_EXECUTION_ID", null);
+    expected.put("PLUGIN_BASE64_SECRET", "false");
+    expected.put("ENABLE_SSCA_AIRGAP", "false");
     Ambiance ambiance = Ambiance.newBuilder().build();
     Map<String, String> actual = pluginSettingUtils.getPluginCompatibleEnvVariables(
         slsaVerificationStepInfo, "identifier", 100, ambiance, Type.K8, false, true);

@@ -80,6 +80,7 @@ import io.harness.lock.PersistentLockModule;
 import io.harness.manage.ManagedScheduledExecutorService;
 import io.harness.mongo.MongoPersistence;
 import io.harness.ng.core.event.MessageListener;
+import io.harness.ngsettings.client.remote.NGSettingsClientModule;
 import io.harness.opaclient.OpaClientModule;
 import io.harness.packages.HarnessPackages;
 import io.harness.persistence.HPersistence;
@@ -101,6 +102,7 @@ import io.harness.timescaledb.TimeScaleDBConfig;
 import io.harness.timescaledb.TimeScaleDBService;
 import io.harness.timescaledb.TimeScaleDBServiceImpl;
 import io.harness.token.TokenClientModule;
+import io.harness.tunnel.TunnelResourceClientModule;
 import io.harness.user.UserClientModule;
 import io.harness.version.VersionModule;
 import io.harness.waiter.AsyncWaitEngineImpl;
@@ -258,6 +260,8 @@ public class IACMManagerServiceModule extends AbstractModule {
     bind(AzureRepoService.class).to(AzureRepoServiceImpl.class); // same?
     bind(SecretDecryptor.class).to(SecretDecryptorViaNg.class); // same?
     bind(AwsClient.class).to(AwsClientImpl.class); // same?
+    install(new TunnelResourceClientModule(iacmManagerConfiguration.getNgManagerClientConfig(),
+        iacmManagerConfiguration.getNgManagerServiceSecret(), IACM_MANAGER.getServiceId()));
     registerEventListeners();
     if (iacmManagerConfiguration.isLocal()) {
       bind(CILicenseService.class)
@@ -372,6 +376,8 @@ public class IACMManagerServiceModule extends AbstractModule {
         iacmManagerConfiguration.getCiExecutionServiceConfig().getGitnessConfig().getHttpClientConfig(),
         iacmManagerConfiguration.getCiExecutionServiceConfig().getGitnessConfig().getJwtSecret(),
         IACM_MANAGER.getServiceId(), ClientMode.PRIVILEGED));
+    install(new NGSettingsClientModule(iacmManagerConfiguration.getNgManagerClientConfig(),
+        iacmManagerConfiguration.getNgManagerServiceSecret(), IACM_MANAGER.getServiceId()));
     bind(CIBuildEnforcer.class).to(IACMBuildEnforcerImpl.class);
   }
 

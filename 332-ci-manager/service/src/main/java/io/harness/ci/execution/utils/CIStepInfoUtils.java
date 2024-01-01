@@ -19,6 +19,7 @@ import io.harness.beans.FeatureName;
 import io.harness.beans.plugin.compatible.PluginCompatibleStep;
 import io.harness.beans.steps.CIRegistry;
 import io.harness.beans.steps.CIStepInfoType;
+import io.harness.beans.steps.stepinfo.GitCloneStepInfo;
 import io.harness.beans.steps.stepinfo.IACMApprovalInfo;
 import io.harness.beans.steps.stepinfo.IACMTerraformPluginInfo;
 import io.harness.beans.steps.stepinfo.SecurityStepInfo;
@@ -77,6 +78,8 @@ public class CIStepInfoUtils {
     switch (step.getNonYamlInfo().getStepInfoType()) {
       case SECURITY:
         return ((SecurityStepInfo) step).getPrivileged();
+      case GIT_CLONE:
+        return ((GitCloneStepInfo) step).getPrivileged();
       default:
         return null;
     }

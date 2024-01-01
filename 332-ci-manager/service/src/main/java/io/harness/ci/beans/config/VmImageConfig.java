@@ -34,7 +34,10 @@ public class VmImageConfig {
   String sscaOrchestration;
   String sscaEnforcement;
   String slsaVerification;
-  String idpCookieCutter;
-  String idpCreateRepo;
-  String idpCodePush;
+  String cookieCutter;
+  String createRepo;
+  String directPush;
+  String registerCatalog;
+  String createCatalog;
+  String slackNotify;
 }

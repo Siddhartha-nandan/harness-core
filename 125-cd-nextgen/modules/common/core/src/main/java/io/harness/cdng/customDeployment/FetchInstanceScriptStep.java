@@ -72,6 +72,7 @@ import io.harness.steps.StepHelper;
 import io.harness.steps.StepUtils;
 import io.harness.steps.TaskRequestsUtils;
 import io.harness.supplier.ThrowingSupplier;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 import io.harness.yaml.utils.NGVariablesUtils;
 
 import software.wings.beans.TaskType;
@@ -82,7 +83,6 @@ import com.google.inject.name.Named;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -102,7 +102,6 @@ public class FetchInstanceScriptStep extends CdTaskExecutable<FetchInstanceScrip
                                                .setStepCategory(StepCategory.STEP)
                                                .build();
   public static final String OUTPUT_PATH_KEY = "INSTANCE_OUTPUT_PATH";
-  public static final String WORKING_DIRECTORY = "/tmp";
   public static final String INSTANCE_NAME = "instancename";
   @Inject private CDStepHelper cdStepHelper;
 
@@ -115,13 +114,12 @@ public class FetchInstanceScriptStep extends CdTaskExecutable<FetchInstanceScrip
   @Inject private ExecutionSweepingOutputService executionSweepingOutputService;
 
   static Function<InstanceMapperUtils.HostProperties, CustomDeploymentServerInstanceInfo> instanceElementMapper =
-      hostProperties -> {
-    return CustomDeploymentServerInstanceInfo.builder()
-        .instanceId(UUIDGenerator.generateUuid())
-        .instanceName(hostProperties.getHostName())
-        .properties(hostProperties.getOtherPropeties())
-        .build();
-  };
+      hostProperties
+      -> CustomDeploymentServerInstanceInfo.builder()
+             .instanceId(UUIDGenerator.generateUuid())
+             .instanceName(hostProperties.getHostName())
+             .properties(hostProperties.getOtherPropeties())
+             .build();
 
   @Override
   public void validateResources(Ambiance ambiance, StepBaseParameters stepParameters) {
@@ -214,7 +212,7 @@ public class FetchInstanceScriptStep extends CdTaskExecutable<FetchInstanceScrip
       StepResponseBuilder builder = StepResponse.builder()
                                         .unitProgressList(response.getUnitProgressData().getUnitProgresses())
                                         .status(Status.SUCCEEDED);
-      List<CustomDeploymentServerInstanceInfo> instanceElements = new ArrayList<>();
+      List<CustomDeploymentServerInstanceInfo> instanceElements;
       CustomDeploymentInfrastructureOutcome infrastructureOutcome =
           (CustomDeploymentInfrastructureOutcome) cdStepHelper.getInfrastructureOutcome(ambiance);
       instanceElements =
@@ -243,10 +241,10 @@ public class FetchInstanceScriptStep extends CdTaskExecutable<FetchInstanceScrip
       StepResponse.StepOutcome stepOutcome =
           instanceInfoService.saveDeploymentInfoOutcomeIntoSweepingOutput(ambiance, deploymentInfoOutcome);
       InstancesOutcome instancesOutcome = buildInstancesOutcome(instanceElements);
-      executionSweepingOutputService.consume(
+      executionSweepingOutputService.consumeOptional(
           ambiance, OutputExpressionConstants.INSTANCES, instancesOutcome, StepCategory.STAGE.name());
       Set<String> instances = getInstances(instanceElements);
-      executionSweepingOutputService.consume(ambiance, OutputExpressionConstants.OUTPUT,
+      executionSweepingOutputService.consumeOptional(ambiance, OutputExpressionConstants.OUTPUT,
           HostsOutput.builder().hosts(instances).build(), StepCategory.STAGE.name());
       return builder.stepOutcome(stepOutcome).build();
     } finally {
@@ -309,5 +307,11 @@ public class FetchInstanceScriptStep extends CdTaskExecutable<FetchInstanceScrip
   @Override
   public Class<StepBaseParameters> getStepParametersClass() {
     return StepBaseParameters.class;
+  }
+
+  @Override
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
   }
 }

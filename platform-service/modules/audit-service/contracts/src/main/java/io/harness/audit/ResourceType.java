@@ -34,6 +34,8 @@ public enum ResourceType {
   API_KEY(ResourceTypeConstants.API_KEY),
   TOKEN(ResourceTypeConstants.TOKEN),
   DELEGATE_TOKEN(ResourceTypeConstants.DELEGATE_TOKEN),
+  DASHBOARD(ResourceTypeConstants.DASHBOARD),
+  DASHBOARD_FOLDER(ResourceTypeConstants.DASHBOARD_FOLDER),
   GOVERNANCE_POLICY(ResourceTypeConstants.GOVERNANCE_POLICY),
   GOVERNANCE_POLICY_SET(ResourceTypeConstants.GOVERNANCE_POLICY_SET),
   VARIABLE(ResourceTypeConstants.VARIABLE),
@@ -84,7 +86,8 @@ public enum ResourceType {
   GITOPS_PROJECT_MAPPING(ResourceTypeConstants.GITOPS_PROJECT_MAPPING),
   GITOPS_APPLICATION(ResourceTypeConstants.GITOPS_APPLICATION),
   CODE_REPOSITORY(ResourceTypeConstants.CODE_REPOSITORY),
-  MODULE_LICENSE(ResourceTypeConstants.MODULE_LICENSE);
+  MODULE_LICENSE(ResourceTypeConstants.MODULE_LICENSE),
+  IDP_BACKSTAGE_CATALOG_ENTITY(ResourceTypeConstants.IDP_BACKSTAGE_CATALOG_ENTITY);
 
   ResourceType(String resourceType) {
     if (!this.name().equals(resourceType)) {

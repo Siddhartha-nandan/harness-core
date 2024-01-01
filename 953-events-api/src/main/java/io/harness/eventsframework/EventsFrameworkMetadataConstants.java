@@ -49,6 +49,7 @@ public final class EventsFrameworkMetadataConstants {
   public static final String INPUTSET_ENTITY = "inputset";
   public static final String DELEGATE_ENTITY = "delegate";
   public static final String DELEGATE_CONFIGURATION_ENTITY = "delegateconfiguration";
+  public static final String DELEGATE_TASK_RESPONSE_ENTITY = "delegateTaskResponse";
   public static final String FILE_ENTITY = "file";
   public static final String USER_SCOPE_RECONCILIATION = "userScopeReconciliation";
   public static final String CHAOS_EXPERIMENT = "chaosexperiment";
@@ -116,6 +117,7 @@ public final class EventsFrameworkMetadataConstants {
   // IDP
   public static final String ASYNC_CATALOG_IMPORT_ENTITY = "asyncCatalogImport";
   public static final String ASYNC_SCORE_COMPUTATION_ENTITY = "asyncScoreComputation";
+  public static final String BACKSTAGE_CATALOG_ENTITY = "backstageCatalog";
 
   public static final String CD_ACCOUNT_EXECUTION_METADATA = "cdAccountExecutionMetadata";
   public static final String DEPLOYMENT_SUMMARY_NG = "deploymentSummaryNG";

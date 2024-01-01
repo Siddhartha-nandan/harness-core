@@ -8,12 +8,13 @@
 package io.harness.idp.scorecard.datasources.providers.scm;
 
 import static io.harness.data.encoding.EncodingUtils.encodeBase64;
+import static io.harness.idp.common.CommonUtils.parseObjectToString;
 import static io.harness.idp.common.Constants.BITBUCKET_IDENTIFIER;
 import static io.harness.idp.scorecard.datasourcelocations.constants.DataSourceLocations.AUTHORIZATION_HEADER;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.idp.backstagebeans.BackstageCatalogEntity;
+import io.harness.idp.backstage.entities.BackstageCatalogEntity;
 import io.harness.idp.scorecard.datapoints.parser.factory.DataPointParserFactory;
 import io.harness.idp.scorecard.datapoints.service.DataPointService;
 import io.harness.idp.scorecard.datasourcelocations.locations.DataSourceLocationFactory;
@@ -59,9 +60,14 @@ public class BitbucketProvider extends ScmBaseProvider {
 
   @Override
   protected Map<String, String> getAuthHeaders(String accountIdentifier, String configs) {
-    String username = (String) configReader.getConfigValues(accountIdentifier, configs, USERNAME_EXPRESSION_KEY);
-    String password = (String) configReader.getConfigValues(accountIdentifier, configs, PASSWORD_EXPRESSION_KEY);
-    String authToken = encodeBase64(username + ":" + password);
+    String username =
+        parseObjectToString(configReader.getConfigValues(accountIdentifier, configs, USERNAME_EXPRESSION_KEY));
+    String password =
+        parseObjectToString(configReader.getConfigValues(accountIdentifier, configs, PASSWORD_EXPRESSION_KEY));
+    String authToken = null;
+    if (username != null && password != null) {
+      authToken = encodeBase64(username + ":" + password);
+    }
     return Map.of(AUTHORIZATION_HEADER, "Basic " + authToken);
   }
 }

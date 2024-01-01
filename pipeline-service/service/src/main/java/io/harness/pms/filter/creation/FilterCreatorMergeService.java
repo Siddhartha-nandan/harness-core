@@ -8,6 +8,7 @@
 package io.harness.pms.filter.creation;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
+import static io.harness.gitsync.interceptor.GitSyncConstants.DEFAULT;
 
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
@@ -66,6 +67,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -314,6 +316,9 @@ public class FilterCreatorMergeService {
     }
     GitAwareContextHelper.initDefaultScmGitMetaData();
     GitEntityInfo gitEntityInfo = GitContextHelper.getGitEntityInfo();
+    if (Objects.isNull(gitEntityInfo)) {
+      return DEFAULT;
+    }
     return gitEntityInfo.getConnectorRef();
   }
 
@@ -321,5 +326,9 @@ public class FilterCreatorMergeService {
     return StoreType.REMOTE.equals(pipelineEntity.getStoreType())
         && gitSyncSdkService.isGitSimplificationEnabled(pipelineEntity.getAccountIdentifier(),
             pipelineEntity.getOrgIdentifier(), pipelineEntity.getProjectIdentifier());
+  }
+
+  public void deleteSetupReferences(PipelineEntity pipelineEntity) {
+    pipelineSetupUsageHelper.deleteSetupUsagesForGivenPipeline(pipelineEntity);
   }
 }

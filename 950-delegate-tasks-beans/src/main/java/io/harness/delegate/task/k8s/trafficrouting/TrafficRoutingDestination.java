@@ -19,5 +19,5 @@ import lombok.Value;
 @Builder
 public class TrafficRoutingDestination {
   String host;
-  int weight;
+  Integer weight;
 }

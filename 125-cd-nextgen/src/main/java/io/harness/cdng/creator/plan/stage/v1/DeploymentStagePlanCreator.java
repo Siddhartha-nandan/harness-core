@@ -65,43 +65,37 @@ import io.harness.ng.core.environment.services.EnvironmentService;
 import io.harness.ng.core.infrastructure.services.InfrastructureEntityService;
 import io.harness.ng.core.serviceoverride.services.ServiceOverrideService;
 import io.harness.plancreator.PlanCreatorUtilsV1;
+import io.harness.plancreator.stages.v1.AbstractStagePlanCreator;
 import io.harness.plancreator.steps.common.SpecParameters;
+import io.harness.plancreator.steps.common.v1.StageElementParametersV1;
 import io.harness.plancreator.steps.common.v1.StageElementParametersV1.StageElementParametersV1Builder;
 import io.harness.plancreator.steps.v1.FailureStrategiesUtilsV1;
 import io.harness.plancreator.strategy.StrategyType;
 import io.harness.plancreator.strategy.StrategyUtils;
-import io.harness.plancreator.strategy.StrategyUtilsV1;
 import io.harness.pms.contracts.advisers.AdviserObtainment;
-import io.harness.pms.contracts.facilitators.FacilitatorObtainment;
-import io.harness.pms.contracts.facilitators.FacilitatorType;
 import io.harness.pms.contracts.plan.Dependencies;
 import io.harness.pms.contracts.plan.Dependency;
 import io.harness.pms.contracts.plan.EdgeLayoutList;
 import io.harness.pms.contracts.plan.GraphLayoutNode;
 import io.harness.pms.contracts.plan.HarnessStruct;
 import io.harness.pms.contracts.plan.HarnessValue;
-import io.harness.pms.execution.OrchestrationFacilitatorType;
+import io.harness.pms.contracts.steps.StepType;
 import io.harness.pms.plan.creation.PlanCreatorConstants;
 import io.harness.pms.sdk.core.plan.PlanNode;
-import io.harness.pms.sdk.core.plan.PlanNode.PlanNodeBuilder;
 import io.harness.pms.sdk.core.plan.creation.beans.GraphLayoutResponse;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationContext;
 import io.harness.pms.sdk.core.plan.creation.beans.PlanCreationResponse;
-import io.harness.pms.sdk.core.plan.creation.creators.ChildrenPlanCreator;
 import io.harness.pms.sdk.core.plan.creation.yaml.StepOutcomeGroup;
 import io.harness.pms.sdk.core.steps.io.StepParameters;
 import io.harness.pms.yaml.DependenciesUtils;
-import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.YAMLFieldNameConstants;
 import io.harness.pms.yaml.YamlField;
 import io.harness.pms.yaml.YamlUtils;
 import io.harness.rbac.CDNGRbacUtility;
-import io.harness.serializer.KryoSerializer;
 import io.harness.strategy.StrategyValidationUtils;
 import io.harness.utils.NGFeatureFlagHelperService;
 import io.harness.utils.PlanCreatorUtilsCommon;
-import io.harness.when.utils.v1.RunInfoUtilsV1;
 import io.harness.yaml.core.failurestrategy.v1.FailureConfigV1;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -130,8 +124,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
     components = {HarnessModuleComponent.CDS_SERVICE_ENVIRONMENT, HarnessModuleComponent.CDS_PIPELINE})
 @Slf4j
-public class DeploymentStagePlanCreator extends ChildrenPlanCreator<YamlField> {
-  @Inject private KryoSerializer kryoSerializer;
+public class DeploymentStagePlanCreator extends AbstractStagePlanCreator<DeploymentStageNodeV1> {
   @Inject private EnvironmentService environmentService;
   @Inject private NGFeatureFlagHelperService featureFlagHelperService;
   @Inject private InfrastructureEntityService infrastructure;
@@ -151,8 +144,13 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<YamlField> {
   }
 
   @Override
-  public Class<YamlField> getFieldClass() {
-    return YamlField.class;
+  public DeploymentStageNodeV1 getFieldObject(YamlField field) {
+    try {
+      return YamlUtils.read(field.getNode().toString(), DeploymentStageNodeV1.class);
+    } catch (IOException e) {
+      throw new InvalidYamlException(
+          "Unable to parse deployment stage yaml. Please ensure that it is in correct format", e);
+    }
   }
 
   @Override
@@ -163,15 +161,7 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<YamlField> {
 
   @Override
   public LinkedHashMap<String, PlanCreationResponse> createPlanForChildrenNodes(
-      PlanCreationContext ctx, YamlField field) {
-    DeploymentStageNodeV1 deploymentStageNode;
-    try {
-      deploymentStageNode = YamlUtils.read(field.getNode().toString(), DeploymentStageNodeV1.class);
-    } catch (Exception e) {
-      throw new InvalidYamlException(
-          "Unable to parse deployment stage yaml. Please ensure that it is in correct format", e);
-    }
-
+      PlanCreationContext ctx, DeploymentStageNodeV1 deploymentStageNode) {
     failIfProjectIsFrozen(ctx);
     LinkedHashMap<String, PlanCreationResponse> planCreationResponseMap = new LinkedHashMap<>();
 
@@ -189,7 +179,8 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<YamlField> {
         stagePlanCreatorHelper.isProjectScopedResourceConstraintQueueByFFOrSetting(ctx);
     if (deploymentStageNode.getSpec().getGitOpsEnabled()) {
       // GitOps flow doesn't fork on environments, so handling it in this function.
-      return buildPlanCreationResponse(ctx, planCreationResponseMap, deploymentStageNode, specField, stepsField, field);
+      return buildPlanCreationResponse(
+          ctx, planCreationResponseMap, deploymentStageNode, specField, stepsField, deploymentStageNode);
     }
 
     List<AdviserObtainment> adviserObtainments =
@@ -210,15 +201,16 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<YamlField> {
     Map<String, YamlField> dependenciesNodeMap = new HashMap<>();
     dependenciesNodeMap.put(specField.getNode().getUuid(), specField);
 
-    Dependency strategyDependency = getDependencyForStrategy(dependenciesNodeMap, field, ctx);
+    Dependency strategyDependency = getDependencyForStrategy(dependenciesNodeMap, deploymentStageNode, ctx);
 
     planCreationResponseMap.put(specField.getNode().getUuid(),
         PlanCreationResponse.builder()
-            .dependencies(DependenciesUtils.toDependenciesProto(dependenciesNodeMap)
-                              .toBuilder()
-                              .putDependencyMetadata(field.getUuid(), strategyDependency)
-                              .putDependencyMetadata(specField.getNode().getUuid(), getDependencyForSteps(field))
-                              .build())
+            .dependencies(
+                DependenciesUtils.toDependenciesProto(dependenciesNodeMap)
+                    .toBuilder()
+                    .putDependencyMetadata(deploymentStageNode.getUuid(), strategyDependency)
+                    .putDependencyMetadata(specField.getNode().getUuid(), getDependencyForChildren(deploymentStageNode))
+                    .build())
             .build());
 
     addMultiDeploymentDependency(planCreationResponseMap, deploymentStageNode, ctx, specField);
@@ -230,102 +222,38 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<YamlField> {
     return planCreationResponseMap;
   }
 
-  Dependency getDependencyForStrategy(
-      Map<String, YamlField> dependenciesNodeMap, YamlField field, PlanCreationContext ctx) {
-    Map<String, HarnessValue> dependencyMetadata = StrategyUtilsV1.getStrategyFieldDependencyMetadataIfPresent(
-        kryoSerializer, ctx, field.getUuid(), dependenciesNodeMap, getBuild(ctx.getDependency()));
-    return Dependency.newBuilder()
-        .setNodeMetadata(HarnessStruct.newBuilder().putAllData(dependencyMetadata).build())
-        .build();
-  }
-
-  Dependency getDependencyForSteps(YamlField field) {
-    List<FailureConfigV1> stageFailureStrategies = PlanCreatorUtilsV1.getFailureStrategies(field.getNode());
-    if (stageFailureStrategies != null) {
-      return Dependency.newBuilder()
-          .setParentInfo(
-              HarnessStruct.newBuilder()
-                  .putData(PlanCreatorConstants.STAGE_FAILURE_STRATEGIES,
-                      HarnessValue.newBuilder()
-                          .setBytesValue(ByteString.copyFrom(kryoSerializer.asDeflatedBytes(stageFailureStrategies)))
-                          .build())
-                  .build())
-          .build();
-    }
-    return Dependency.newBuilder().setNodeMetadata(HarnessStruct.newBuilder().build()).build();
-  }
-
   @Override
-  public PlanNode createPlanForParentNode(PlanCreationContext ctx, YamlField config, List<String> childrenNodeIds) {
-    DeploymentStageNodeV1 stageNode;
-    try {
-      stageNode = YamlUtils.read(config.getNode().toString(), DeploymentStageNodeV1.class);
-    } catch (Exception e) {
-      throw new InvalidYamlException(
-          "Unable to parse deployment stage yaml. Please ensure that it is in correct format", e);
-    }
-
-    if (stageNode.getStrategy() != null && MultiDeploymentSpawnerUtils.hasMultiDeploymentConfigured(stageNode)) {
+  public StageElementParametersV1 getStageParameters(
+      PlanCreationContext ctx, DeploymentStageNodeV1 stageNodeV1, List<String> childrenNodeIds) {
+    if (stageNodeV1.getStrategy() != null && MultiDeploymentSpawnerUtils.hasMultiDeploymentConfigured(stageNodeV1)) {
       throw new InvalidRequestException(
           "Looping Strategy and Multi Service/Environment configurations are not supported together in a single stage. Please use any one of these");
     }
-
     YamlField specField =
         Preconditions.checkNotNull(ctx.getCurrentField().getNode().getField(YAMLFieldNameConstants.SPEC));
 
-    //    DeploymentStageStepParametersV1 stepParameters = DeploymentStageStepParametersV1.builder().build();
     DeploymentStageStepParametersV1 stepParameters =
-        (DeploymentStageStepParametersV1) getSpecParameters(specField.getNode().getUuid(), ctx, stageNode);
+        (DeploymentStageStepParametersV1) getSpecParameters(specField.getNode().getUuid(), ctx, stageNodeV1);
 
-    StageElementParametersV1Builder stageParameters = StepParametersUtils.getStageParameters(stageNode);
-    stageParameters.type(YAMLFieldNameConstants.DEPLOYMENT_STAGE_V1);
+    StageElementParametersV1Builder stageParameters = StepParametersUtils.getStageParametersBuilder(stageNodeV1);
     stageParameters.spec(stepParameters);
-    String name = stageNode.getName();
     stageParameters.spec(stepParameters);
-
-    List<AdviserObtainment> adviserObtainments = new ArrayList<>();
-    if (!MultiDeploymentSpawnerUtils.hasMultiDeploymentConfigured(stageNode)) {
-      adviserObtainments =
-          StrategyUtils.getAdviserObtainments(ctx.getCurrentField(), kryoSerializer, true, ctx.getDependency());
-    }
-
-    // We need to swap the ids if strategy is present
-    PlanNodeBuilder planNodeBuilder =
-        PlanNode.builder()
-            .uuid(StrategyUtilsV1.getSwappedPlanNodeId(ctx, stageNode.getUuid()))
-            .name(StrategyUtilsV1.getIdentifierWithExpression(ctx, name))
-            .identifier(StrategyUtilsV1.getIdentifierWithExpression(ctx, stageNode.getId()))
-            .stepType(DeploymentStageStepV1.STEP_TYPE)
-            .group(StepOutcomeGroup.STAGE.name())
-            .skipUnresolvedExpressionsCheck(true)
-            .whenCondition(RunInfoUtilsV1.getStageWhenCondition(stageNode.getWhen()))
-            .stepParameters(stageParameters.build())
-            .facilitatorObtainment(
-                FacilitatorObtainment.newBuilder()
-                    .setType(FacilitatorType.newBuilder().setType(OrchestrationFacilitatorType.CHILD).build())
-                    .build())
-            .skipExpressionChain(false)
-            .timeoutObtainment(PlanCreatorUtilsV1.getTimeoutObtainmentForStage(stageNode))
-            .adviserObtainments(adviserObtainments);
-
-    // If strategy present then don't add advisers. Strategy node will take care of running the stage nodes.
-    if (ctx.getCurrentField().getNode().getField(YAMLFieldNameConstants.SPEC).getNode().getField("strategy") == null) {
-      planNodeBuilder.adviserObtainments(getBuild(ctx.getDependency()));
-    }
-
-    if (!EmptyPredicate.isEmpty(ctx.getExecutionInputTemplate())) {
-      planNodeBuilder.executionInputTemplate(ctx.getExecutionInputTemplate());
-    }
-    return planNodeBuilder.build();
-  }
-
-  private List<AdviserObtainment> getBuild(Dependency dependency) {
-    return PlanCreatorUtilsV1.getAdviserObtainmentsForStage(kryoSerializer, dependency);
+    return stageParameters.build();
   }
 
   @Override
-  public Set<String> getSupportedYamlVersions() {
-    return Set.of(HarnessYamlVersion.V1);
+  public StepType getStepType() {
+    return DeploymentStageStepV1.STEP_TYPE;
+  }
+
+  @Override
+  public List<AdviserObtainment> getAdviserObtainments(PlanCreationContext ctx, DeploymentStageNodeV1 stageNodeV1) {
+    List<AdviserObtainment> adviserObtainments = new ArrayList<>();
+    if (!MultiDeploymentSpawnerUtils.hasMultiDeploymentConfigured(stageNodeV1)) {
+      adviserObtainments =
+          StrategyUtils.getAdviserObtainments(ctx.getCurrentField(), kryoSerializer, true, ctx.getDependency());
+    }
+    return adviserObtainments;
   }
 
   public String getIdentifierWithExpression(PlanCreationContext ctx, DeploymentStageNodeV1 node, String identifier) {
@@ -337,7 +265,7 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<YamlField> {
 
   private LinkedHashMap<String, PlanCreationResponse> buildPlanCreationResponse(PlanCreationContext ctx,
       LinkedHashMap<String, PlanCreationResponse> planCreationResponseMap, DeploymentStageNodeV1 stageNode,
-      YamlField specField, YamlField stepsField, YamlField field) {
+      YamlField specField, YamlField stepsField, DeploymentStageNodeV1 field) {
     String infraNodeId = addGitOpsClustersNode(ctx, planCreationResponseMap, stageNode, stepsField);
     Optional<String> provisionerIdOptional =
         addProvisionerNodeIfNeeded(specField, planCreationResponseMap, stageNode, infraNodeId);
@@ -346,7 +274,7 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<YamlField> {
         addServiceNodeForGitOps(ctx, specField, planCreationResponseMap, stageNode, serviceNextNodeId);
     addSpecNode(planCreationResponseMap, specField, serviceNodeId);
 
-    Map<String, YamlField> dependenciesNodeMap = new HashMap<>();
+    final Map<String, YamlField> dependenciesNodeMap = new HashMap<>();
     dependenciesNodeMap.put(specField.getNode().getUuid(), specField);
 
     Dependency strategyDependency = getDependencyForStrategy(dependenciesNodeMap, field, ctx);
@@ -356,7 +284,7 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<YamlField> {
             .dependencies(DependenciesUtils.toDependenciesProto(dependenciesNodeMap)
                               .toBuilder()
                               .putDependencyMetadata(field.getUuid(), strategyDependency)
-                              .putDependencyMetadata(specField.getNode().getUuid(), getDependencyForSteps(field))
+                              .putDependencyMetadata(specField.getNode().getUuid(), getDependencyForChildren(field))
                               .build())
             .build());
 
@@ -609,8 +537,8 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<YamlField> {
     }
     String serviceNodeId = service.getUuid();
     ServiceDefinitionType serviceType = serviceEntityHelper.getServiceDefinitionTypeFromService(ctx, service);
-    planCreationResponseMap.putAll(ServiceAllInOnePlanCreatorUtils.addServiceNode(
-        specField, kryoSerializer, service, environment, serviceNodeId, nextNodeId, serviceType, envGroupRef, ctx));
+    planCreationResponseMap.putAll(ServiceAllInOnePlanCreatorUtils.addServiceNode(specField, kryoSerializer, service,
+        environment, serviceNodeId, nextNodeId, serviceType, envGroupRef, ctx, true));
     return serviceNodeId;
   }
 
@@ -637,7 +565,8 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<YamlField> {
           kryoSerializer, service, stageNode.getSpec().getEnvironments(), serviceNodeId, nextNodeId, serviceType, ctx));
     } else if (stageNode.getSpec().getEnvironment() != null) {
       planCreationResponseMap.putAll(ServiceAllInOnePlanCreatorUtils.addServiceNode(specField, kryoSerializer, service,
-          stageNode.getSpec().getEnvironment(), serviceNodeId, nextNodeId, serviceType, ParameterField.ofNull(), ctx));
+          stageNode.getSpec().getEnvironment(), serviceNodeId, nextNodeId, serviceType, ParameterField.ofNull(), ctx,
+          true));
     }
 
     return serviceNodeId;
@@ -652,7 +581,7 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<YamlField> {
     }
 
     final EnvironmentYamlV2 finalEnvironmentYamlV2 = ServiceAllInOnePlanCreatorUtils.useFromStage(environment)
-        ? ServiceAllInOnePlanCreatorUtils.useEnvironmentYamlFromStage(environment.getUseFromStage(), specField)
+        ? ServiceAllInOnePlanCreatorUtils.useEnvironmentYamlFromStage(environment, specField, true)
         : environment;
 
     ServiceDefinitionType serviceType =
@@ -1037,7 +966,7 @@ public class DeploymentStagePlanCreator extends ChildrenPlanCreator<YamlField> {
   private EnvironmentYamlV2 getEnvironmentYaml(YamlField specField, DeploymentStageConfigV1 deploymentStageConfig) {
     return ServiceAllInOnePlanCreatorUtils.useFromStage(deploymentStageConfig.getEnvironment())
         ? ServiceAllInOnePlanCreatorUtils.useEnvironmentYamlFromStage(
-            deploymentStageConfig.getEnvironment().getUseFromStage(), specField)
+            deploymentStageConfig.getEnvironment(), specField, true)
         : deploymentStageConfig.getEnvironment();
   }
 }

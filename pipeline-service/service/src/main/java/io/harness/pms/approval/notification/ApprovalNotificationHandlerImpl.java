@@ -19,7 +19,10 @@ import static io.harness.utils.IdentifierRefHelper.IDENTIFIER_REF_DELIMITER;
 import static java.util.Objects.isNull;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.EmbeddedUser;
 import io.harness.beans.FeatureName;
 import io.harness.beans.IdentifierRef;
@@ -50,6 +53,7 @@ import io.harness.organization.remote.OrganizationClient;
 import io.harness.pms.approval.notification.stagemetadata.StageMetadataNotificationHelper;
 import io.harness.pms.approval.notification.stagemetadata.StagesSummary;
 import io.harness.pms.contracts.ambiance.Ambiance;
+import io.harness.pms.contracts.ambiance.Level;
 import io.harness.pms.contracts.plan.ExecutionTriggerInfo;
 import io.harness.pms.execution.ExecutionStatus;
 import io.harness.pms.execution.utils.AmbianceUtils;
@@ -87,17 +91,22 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_APPROVALS})
 @OwnedBy(CDC)
 @Slf4j
 public class ApprovalNotificationHandlerImpl implements ApprovalNotificationHandler {
   public static final DateTimeFormatter DISPLAY_TIME_FORMAT = DateTimeFormatter.ofPattern("MMM dd, hh:mm a z");
   public static final String STAGE_IDENTIFIER = "STAGE";
+  public static final String PARALLEL_NODE_TYPE = "parallel";
 
+  public static final Set<ExecutionStatus> FINAL_EXECUTION_STATUSES =
+      StatusUtils.finalStatuses().stream().map(ExecutionStatus::getExecutionStatus).collect(Collectors.toSet());
   private final UserGroupClient userGroupClient;
   private final NotificationClient notificationClient;
   private final NotificationHelper notificationHelper;
@@ -207,6 +216,11 @@ public class ApprovalNotificationHandlerImpl implements ApprovalNotificationHand
             .status(approvalInstance.getStatus())
             .pipelineExecutionLink(notificationHelper.generateUrl(ambiance))
             .timeRemainingForApproval(formatDuration(approvalInstance.getDeadline() - System.currentTimeMillis()))
+            .currentStageName(approvalInstance.isIncludePipelineExecutionHistory()
+                    ? getCurrentStageName(ambiance, pipelineExecutionSummaryEntity)
+                    // this can't be null else will lead to npe in notification client
+                    // this value is only used when isIncludePipelineExecutionHistory is true
+                    : "")
             .build();
     if (approvalInstance.isIncludePipelineExecutionHistory()) {
       generateModuleSpecificSummary(approvalSummary, pipelineExecutionSummaryEntity);
@@ -268,23 +282,53 @@ public class ApprovalNotificationHandlerImpl implements ApprovalNotificationHand
     }
   }
 
+  @VisibleForTesting
+  protected static String getCurrentStageName(
+      Ambiance ambiance, PipelineExecutionSummaryEntity pipelineExecutionSummaryEntity) {
+    Optional<Level> stageLevel = AmbianceUtils.getStageLevelFromAmbiance(ambiance);
+
+    if (stageLevel.isEmpty() || StringUtils.isBlank(stageLevel.get().getIdentifier())) {
+      log.error(
+          "Stage level or its identifier not found in ambiance of harness approval step, failing to send notification");
+      throw new IllegalStateException("Internal error occurred while getting current stage name");
+    }
+    String currentStageIdentifier = stageLevel.get().getIdentifier();
+
+    Optional<Map.Entry<String, GraphLayoutNodeDTO>> currentStageNode =
+        pipelineExecutionSummaryEntity.getLayoutNodeMap()
+            .entrySet()
+            .stream()
+            .filter(entry -> currentStageIdentifier.equals(entry.getValue().getNodeIdentifier()))
+            .findFirst();
+
+    if (currentStageNode.isEmpty()) {
+      log.error("Current stage node with id {} not found in execution layout, failing to send notification",
+          currentStageIdentifier);
+      throw new IllegalStateException("Internal error occurred while getting current stage name");
+    }
+
+    return StringUtils.defaultIfBlank(
+        currentStageNode.get().getValue().getName(), currentStageNode.get().getValue().getNodeIdentifier());
+  }
+
   private void traverseGraph(
       StagesSummary stagesSummary, Map<String, GraphLayoutNodeDTO> layoutNodeMap, String currentNodeId) {
     GraphLayoutNodeDTO node = layoutNodeMap.get(currentNodeId);
-    if (node.getNodeGroup().matches(STAGE_IDENTIFIER)) {
+    if (node.getNodeGroup().matches(STAGE_IDENTIFIER) && !PARALLEL_NODE_TYPE.equals(node.getNodeType())) {
       if (node.getStatus() == ExecutionStatus.NOTSTARTED) {
         if (!isEmpty(node.getName())) {
           StageMetadataNotificationHelper.addStageNodeToStagesSummary(stagesSummary.getUpcomingStages(), node);
         }
-      } else if (StatusUtils.finalStatuses().stream().anyMatch(
-                     status -> ExecutionStatus.getExecutionStatus(status) == node.getStatus())) {
+      } else if (FINAL_EXECUTION_STATUSES.contains(node.getStatus())) {
         StageMetadataNotificationHelper.addStageNodeToStagesSummary(stagesSummary.getFinishedStages(), node);
       } else {
         StageMetadataNotificationHelper.addStageNodeToStagesSummary(stagesSummary.getRunningStages(), node);
       }
     }
 
-    if (!isNull(node.getEdgeLayoutList()) && !isEmpty(node.getEdgeLayoutList().getNextIds())) {
+    if (!isNull(node.getEdgeLayoutList())
+        && (!isEmpty(node.getEdgeLayoutList().getNextIds())
+            || !isEmpty(node.getEdgeLayoutList().getCurrentNodeChildren()))) {
       if (!isEmpty(node.getEdgeLayoutList().getCurrentNodeChildren())) {
         for (String nextNodeChildrenId : node.getEdgeLayoutList().getCurrentNodeChildren()) {
           // iterating through stages which are set to run in parallel

@@ -19,6 +19,7 @@ import io.harness.beans.Scope;
 import io.harness.cd.CDStageSummaryConstants;
 import io.harness.exception.InvalidRequestException;
 import io.harness.ng.core.cdstage.CDStageSummaryResponseDTO;
+import io.harness.plancreator.strategy.StrategyUtils;
 import io.harness.pms.approval.notification.ApprovalSummary;
 import io.harness.pms.plan.execution.beans.dto.GraphLayoutNodeDTO;
 
@@ -30,12 +31,10 @@ import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
 import org.apache.commons.lang3.StringUtils;
 
-@CodePulse(
-    module = ProductModule.CDS, unitCoverageRequired = false, components = {HarnessModuleComponent.CDS_APPROVALS})
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_APPROVALS})
 @OwnedBy(CDC)
 public interface StageMetadataNotificationHelper {
   String STAGE_NODE_TYPE = "STAGE";
-  String CD_MODULE_TYPE = "cd";
   String DEPLOYMENT_STAGE_TYPE = "Deployment";
   String CD_STAGE_METADATA_ROW_FORMAT = "     %s  :  %s";
   String CD_STAGE_HEADER_FORMAT = "%s : ";
@@ -59,8 +58,10 @@ public interface StageMetadataNotificationHelper {
       @NotNull Set<String> formattedUpcomingStages, @NotNull Scope scope, @NotNull String planExecutionId);
 
   static boolean isGraphNodeOfCDDeploymentStageType(@NotNull GraphLayoutNodeDTO node) {
-    return STAGE_NODE_TYPE.equals(node.getNodeGroup()) && DEPLOYMENT_STAGE_TYPE.equals(node.getNodeType())
-        && CD_MODULE_TYPE.equals(node.getModule());
+    // this check is enough to check CD deployment stages, as another module won't have stages with same type
+    // "Deployment" we are not checking module info as in some cases module info is not being populated correctly ex1:
+    // running looping CD stages, multiService cd stages, etc.
+    return STAGE_NODE_TYPE.equals(node.getNodeGroup()) && DEPLOYMENT_STAGE_TYPE.equals(node.getNodeType());
   }
 
   /**
@@ -77,15 +78,15 @@ public interface StageMetadataNotificationHelper {
     }
     if (isGraphNodeOfCDDeploymentStageType(node)) {
       CDStageSummary cdStageSummary = CDStageSummary.builder().build();
-      cdStageSummary.setStageIdentifier(node.getNodeIdentifier());
+      cdStageSummary.setStageIdentifier(StrategyUtils.refineIdentifier(node.getNodeIdentifier()));
       cdStageSummary.setStageExecutionIdentifier(node.getNodeExecutionId());
-      cdStageSummary.setStageName(node.getName());
+      cdStageSummary.setStageName(StrategyUtils.refineIdentifier(node.getName()));
       stages.add(cdStageSummary);
     } else {
       GenericStageSummary genericStageSummary = GenericStageSummary.builder().build();
-      genericStageSummary.setStageIdentifier(node.getNodeIdentifier());
+      genericStageSummary.setStageIdentifier(StrategyUtils.refineIdentifier(node.getNodeIdentifier()));
       genericStageSummary.setStageExecutionIdentifier(node.getNodeExecutionId());
-      genericStageSummary.setStageName(node.getName());
+      genericStageSummary.setStageName(StrategyUtils.refineIdentifier(node.getName()));
       stages.add(genericStageSummary);
     }
   }
@@ -120,6 +121,22 @@ public interface StageMetadataNotificationHelper {
     if (StringUtils.isNotBlank(cdStageSummaryResponseDTO.getInfra())) {
       rows.add(String.format(CD_STAGE_METADATA_ROW_FORMAT, CDStageSummaryConstants.INFRA_DEFINITION,
           cdStageSummaryResponseDTO.getInfra()));
+    }
+    if (StringUtils.isNotBlank(cdStageSummaryResponseDTO.getServices())) {
+      rows.add(String.format(
+          CD_STAGE_METADATA_ROW_FORMAT, CDStageSummaryConstants.SERVICES, cdStageSummaryResponseDTO.getServices()));
+    }
+    if (StringUtils.isNotBlank(cdStageSummaryResponseDTO.getInfras())) {
+      rows.add(String.format(CD_STAGE_METADATA_ROW_FORMAT, CDStageSummaryConstants.INFRA_DEFINITIONS,
+          cdStageSummaryResponseDTO.getInfras()));
+    }
+    if (StringUtils.isNotBlank(cdStageSummaryResponseDTO.getEnvironments())) {
+      rows.add(String.format(CD_STAGE_METADATA_ROW_FORMAT, CDStageSummaryConstants.ENVIRONMENTS,
+          cdStageSummaryResponseDTO.getEnvironments()));
+    }
+    if (StringUtils.isNotBlank(cdStageSummaryResponseDTO.getEnvGroup())) {
+      rows.add(String.format(CD_STAGE_METADATA_ROW_FORMAT, CDStageSummaryConstants.ENVIRONMENT_GROUP,
+          cdStageSummaryResponseDTO.getEnvGroup()));
     }
 
     if (rows.isEmpty()) {

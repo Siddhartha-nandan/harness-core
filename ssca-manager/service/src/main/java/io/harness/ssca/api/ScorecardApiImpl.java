@@ -7,6 +7,9 @@
 
 package io.harness.ssca.api;
 
+import io.harness.annotations.SSCAServiceAuth;
+import io.harness.annotations.dev.HarnessTeam;
+import io.harness.annotations.dev.OwnedBy;
 import io.harness.spec.server.ssca.v1.ScorecardApi;
 import io.harness.spec.server.ssca.v1.model.SaveResponse;
 import io.harness.spec.server.ssca.v1.model.SbomScorecardRequestBody;
@@ -17,6 +20,8 @@ import com.google.inject.Inject;
 import javax.validation.Valid;
 import javax.ws.rs.core.Response;
 
+@OwnedBy(HarnessTeam.SSCA)
+@SSCAServiceAuth
 public class ScorecardApiImpl implements ScorecardApi {
   @Inject ScorecardService scorecardService;
   @Override

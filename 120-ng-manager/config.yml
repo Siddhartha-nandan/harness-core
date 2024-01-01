@@ -57,6 +57,7 @@ nextGen:
   cvngServiceSecret: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM #get secret value.
   chaosServiceSecret: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
   serviceDiscoveryServiceSecret: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+  idpServiceSecret: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
 
 enableAudit: false
 
@@ -189,6 +190,11 @@ seiServiceClientConfig:
 
 serviceDiscoveryServiceClientConfig:
   baseUrl: ${SERVICE_DISCOVERY_SERVICE_BASE_URL:-http://localhost:8080/}
+  connectTimeOutSeconds: 15
+  readTimeOutSeconds: 15
+
+idpServiceClientConfig:
+  baseUrl: ${IDP_SERVICE_CLIENT_BASE_URL:-http://localhost:12003/}
   connectTimeOutSeconds: 15
   readTimeOutSeconds: 15
 
@@ -352,6 +358,8 @@ segmentConfiguration:
   url: "segment_url_place_holder"
   apiKey: "segment_api_key"
   certValidationRequired: false
+  flushQueueSize: 250
+  flushInterval: 1
 
 subscriptionConfig:
   stripeApiKey: dummy
@@ -411,6 +419,7 @@ baseUrls:
   webhookBaseUrl: http://localhost:7457/
   ngManagerInternalBaseUrl: ${HARNESS_NG_MANAGER_INTERNAL_URL:-http://localhost:7457/}
   scmServiceBaseUrl: ${HARNESS_SCM_API_INTERNAL_URL:-http://localhost:3000/}
+  harnessCodeGitUrl: ${HARNESS_CODE_GIT_URL:- http://localhost:3000/git}
 
 ngAuthUIEnabled: false
 
@@ -549,6 +558,11 @@ pluginExecutionConfig:
     image: harnessdev/download-aws-s3:1.0.0-rootless-linux
     entrypoint:
       - /usr/local/bin/download
+  downloadHarnessStoreConfig:
+    # Use rootless image only for K8 download aws s3
+    image: harnessdev/download-harness-store:1.0.0-rootless-linux
+    entrypoint:
+      - /usr/local/bin/download
   apiUrl: https://localhost:8181/#/
 
 signupDomainDenylistConfig:
@@ -621,3 +635,5 @@ deploymentStagePlanCreationInfoThreadConfig:
 
 frpsTunnel:
   host: ${FRPS_TUNNEL_HOST:-http://localhost}
+
+publishAccountActivityMetrics: ${PUBLISH_ACCOUNT_ACTIVITY_METRICS:-false}

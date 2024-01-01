@@ -124,6 +124,16 @@ public class ConfigManagerServiceImpl implements ConfigManagerService {
   }
 
   @Override
+  public Map<String, AppConfig> getEnabledPluginsAppConfigs(String accountIdentifier) {
+    List<AppConfigEntity> allEnabledConfigEntities =
+        appConfigRepository.findAllByAccountIdentifierAndConfigTypeAndEnabled(
+            accountIdentifier, ConfigType.PLUGIN, true);
+
+    return allEnabledConfigEntities.stream().collect(
+        Collectors.toMap(AppConfigEntity::getConfigId, AppConfigMapper::toDTO));
+  }
+
+  @Override
   public AppConfig saveConfigForAccount(AppConfig appConfig, String accountIdentifier, ConfigType configType) {
     AppConfigEntity appConfigEntity = AppConfigMapper.fromDTO(appConfig, accountIdentifier);
     appConfigEntity.setConfigType(configType);
@@ -418,12 +428,10 @@ public class ConfigManagerServiceImpl implements ConfigManagerService {
 
   public void validateSchemaForPlugin(String config, String configId) throws Exception {
     String pluginSchema = ConfigManagerUtils.getPluginConfigSchema(configId);
-    if (pluginSchema == null) {
-      throw new UnsupportedOperationException(String.format(INVALID_CONFIG_ID_PROVIDED, configId));
-    }
-    if (!ConfigManagerUtils.isValidSchema(config, pluginSchema)) {
+    if (pluginSchema != null && !ConfigManagerUtils.isValidSchema(config, pluginSchema)) {
       throw new InvalidRequestException(String.format(INVALID_PLUGIN_CONFIG_PROVIDED, configId));
     }
+    // skip schema validation for custom plugins for now
   }
 
   @Override

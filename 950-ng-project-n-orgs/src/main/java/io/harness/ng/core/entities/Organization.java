@@ -95,12 +95,25 @@ public class Organization implements PersistentEntity, NGAccountAccess, UniqueId
                  .unique(false)
                  .build())
         .add(CompoundMongoIndex.builder()
-                 .name("parentIdIdentifierIdx")
-                 .field(OrganizationKeys.parentId)
+                 .name("parentUniqueIdIdentifierIdx")
+                 .field(OrganizationKeys.parentUniqueId)
                  .field(OrganizationKeys.identifier)
                  .unique(true)
                  .collation(
                      Collation.builder().locale(CollationLocale.ENGLISH).strength(CollationStrength.PRIMARY).build())
+                 .build())
+        .add(CompoundMongoIndex.builder()
+                 .name("accountIdentifierParentUniqueIdIdentifierDeletedIdx")
+                 .field(OrganizationKeys.accountIdentifier)
+                 .field(OrganizationKeys.parentUniqueId)
+                 .field(OrganizationKeys.identifier)
+                 .field(OrganizationKeys.deleted)
+                 .build())
+        .add(CompoundMongoIndex.builder()
+                 .name("accountIdentifierParentUniqueIdDeletedIdx")
+                 .field(OrganizationKeys.accountIdentifier)
+                 .field(OrganizationKeys.parentUniqueId)
+                 .field(OrganizationKeys.deleted)
                  .build())
         .build();
   }
@@ -110,6 +123,7 @@ public class Organization implements PersistentEntity, NGAccountAccess, UniqueId
 
   @FdUniqueIndex String uniqueId;
   String parentId;
+  String parentUniqueId;
   @EntityIdentifier(allowBlank = false) @FdIndex String identifier;
 
   @NGEntityName String name;

@@ -7,13 +7,14 @@
 
 package io.harness.idp.scorecard.datasources.providers.scm;
 
+import static io.harness.idp.common.CommonUtils.parseObjectToString;
 import static io.harness.idp.common.Constants.GITLAB_IDENTIFIER;
 import static io.harness.idp.scorecard.datasourcelocations.constants.DataSourceLocations.API_BASE_URL;
 import static io.harness.idp.scorecard.datasourcelocations.constants.DataSourceLocations.AUTHORIZATION_HEADER;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.idp.backstagebeans.BackstageCatalogEntity;
+import io.harness.idp.backstage.entities.BackstageCatalogEntity;
 import io.harness.idp.scorecard.datapoints.parser.factory.DataPointParserFactory;
 import io.harness.idp.scorecard.datapoints.service.DataPointService;
 import io.harness.idp.scorecard.datasourcelocations.locations.DataSourceLocationFactory;
@@ -43,14 +44,14 @@ public class GitlabProvider extends ScmBaseProvider {
   @Override
   public Map<String, Map<String, Object>> fetchData(String accountIdentifier, BackstageCatalogEntity entity,
       List<DataFetchDTO> dataPointsAndInputValues, String configs) {
-    Map<String, String> possibleReplaceableUrlBodyPairs = prepareUrlReplaceablePairs(
-        API_BASE_URL, (String) configReader.getConfigValues(accountIdentifier, configs, HOST_EXPRESSION_KEY));
+    Map<String, String> possibleReplaceableUrlBodyPairs = prepareUrlReplaceablePairs(API_BASE_URL,
+        parseObjectToString(configReader.getConfigValues(accountIdentifier, configs, HOST_EXPRESSION_KEY)));
     return scmProcessOut(accountIdentifier, entity, dataPointsAndInputValues, configs, possibleReplaceableUrlBodyPairs);
   }
 
   @Override
   protected Map<String, String> getAuthHeaders(String accountIdentifier, String configs) {
-    String token = (String) configReader.getConfigValues(accountIdentifier, configs, TOKEN_EXPRESSION_KEY);
+    String token = parseObjectToString(configReader.getConfigValues(accountIdentifier, configs, TOKEN_EXPRESSION_KEY));
     return Map.of(AUTHORIZATION_HEADER, "Bearer " + token);
   }
 }

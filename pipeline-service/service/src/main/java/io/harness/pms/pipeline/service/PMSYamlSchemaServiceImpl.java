@@ -18,6 +18,7 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.FeatureName;
+import io.harness.data.structure.EmptyPredicate;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.InvalidYamlException;
 import io.harness.exception.JsonSchemaValidationException;
@@ -25,7 +26,6 @@ import io.harness.logging.AccountLogContext;
 import io.harness.logging.AutoLogContext;
 import io.harness.pms.merger.YamlConfig;
 import io.harness.pms.merger.helpers.FQNMapGenerator;
-import io.harness.pms.pipeline.service.yamlschema.PmsYamlSchemaHelper;
 import io.harness.pms.pipeline.service.yamlschema.SchemaFetcher;
 import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.NGYamlHelper;
@@ -33,6 +33,7 @@ import io.harness.pms.yaml.YamlUtils;
 import io.harness.pms.yaml.preprocess.YamlPreProcessor;
 import io.harness.pms.yaml.preprocess.YamlPreProcessorFactory;
 import io.harness.utils.PipelineVersionConstants;
+import io.harness.utils.PmsFeatureFlagHelper;
 import io.harness.yaml.individualschema.PipelineSchemaMetadata;
 import io.harness.yaml.individualschema.PipelineSchemaParserFactory;
 import io.harness.yaml.individualschema.PipelineSchemaRequest;
@@ -63,12 +64,10 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class PMSYamlSchemaServiceImpl implements PMSYamlSchemaService {
   public static final long SCHEMA_TIMEOUT = 10;
-
   private final YamlSchemaValidator yamlSchemaValidator;
-  private final PmsYamlSchemaHelper pmsYamlSchemaHelper;
+  private final PmsFeatureFlagHelper pmsFeatureFlagHelper;
   private final SchemaFetcher schemaFetcher;
   private final InputsSchemaServiceImpl inputsSchemaService;
-
   private ExecutorService yamlSchemaExecutor;
 
   @Inject PipelineSchemaParserFactory pipelineSchemaParserFactory;
@@ -76,13 +75,14 @@ public class PMSYamlSchemaServiceImpl implements PMSYamlSchemaService {
 
   private final String PIPELINE_VERSION_V0 = "v0";
   private final String PIPELINE_VERSION_V1 = "v1";
+  private final String STEP_GROUP_NODE_TYPE = "step_group";
 
   @Inject
-  public PMSYamlSchemaServiceImpl(YamlSchemaValidator yamlSchemaValidator, PmsYamlSchemaHelper pmsYamlSchemaHelper,
+  public PMSYamlSchemaServiceImpl(YamlSchemaValidator yamlSchemaValidator, PmsFeatureFlagHelper pmsFeatureFlagHelper,
       SchemaFetcher schemaFetcher, @Named("YamlSchemaExecutorService") ExecutorService executor,
       InputsSchemaServiceImpl inputsSchemaService) {
     this.yamlSchemaValidator = yamlSchemaValidator;
-    this.pmsYamlSchemaHelper = pmsYamlSchemaHelper;
+    this.pmsFeatureFlagHelper = pmsFeatureFlagHelper;
     this.schemaFetcher = schemaFetcher;
     this.yamlSchemaExecutor = executor;
     this.inputsSchemaService = inputsSchemaService;
@@ -93,7 +93,7 @@ public class PMSYamlSchemaServiceImpl implements PMSYamlSchemaService {
       String accountId, String orgId, String projectId, JsonNode jsonNode, String harnessVersion) {
     // Keeping pipeline yaml schema validation behind ff. If ff is disabled then schema validation will happen. Will
     // remove after finding the root cause of invalid schema generation and fixing it.
-    if (!pmsYamlSchemaHelper.isFeatureFlagEnabled(FeatureName.DISABLE_PIPELINE_SCHEMA_VALIDATION, accountId)) {
+    if (!pmsFeatureFlagHelper.isEnabled(accountId, FeatureName.DISABLE_PIPELINE_SCHEMA_VALIDATION)) {
       Future<Boolean> future = yamlSchemaExecutor.submit(
           () -> validateYamlSchemaInternal(accountId, orgId, projectId, jsonNode, harnessVersion));
       try (AutoLogContext accountLogContext =
@@ -124,10 +124,10 @@ public class PMSYamlSchemaServiceImpl implements PMSYamlSchemaService {
     long start = System.currentTimeMillis();
     try {
       String schamaPath = null;
-      if (HarnessYamlVersion.V0.equals(harnessVersion)) {
-        schamaPath = PIPELINE_VERSION_V0;
-      } else {
+      if (HarnessYamlVersion.isV1(harnessVersion)) {
         schamaPath = PIPELINE_VERSION_V1;
+      } else {
+        schamaPath = PIPELINE_VERSION_V0;
       }
       JsonNode schema = schemaFetcher.fetchPipelineStaticYamlSchema(schamaPath);
 
@@ -179,6 +179,9 @@ public class PMSYamlSchemaServiceImpl implements PMSYamlSchemaService {
   private ObjectNode getIndividualSchema(
       String nodeGroup, String nodeType, String nodeGroupDifferentiator, String version) {
     SchemaParserInterface pipelineSchemaParser = pipelineSchemaParserFactory.getPipelineSchemaParser(version);
+    if (STEP_GROUP_NODE_TYPE.equals(nodeGroup) && EmptyPredicate.isEmpty(nodeGroupDifferentiator)) {
+      throw new InvalidRequestException("node_group_differentiator cannot be empty for step_group node_group.");
+    }
     return pipelineSchemaParser.getIndividualSchema(
         PipelineSchemaRequest.builder()
             .individualSchemaMetadata(PipelineSchemaMetadata.builder()

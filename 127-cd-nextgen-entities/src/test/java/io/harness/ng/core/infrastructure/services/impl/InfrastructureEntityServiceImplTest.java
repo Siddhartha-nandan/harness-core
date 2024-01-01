@@ -17,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
@@ -32,15 +33,19 @@ import io.harness.cdng.service.beans.ServiceDefinitionType;
 import io.harness.exception.InvalidRequestException;
 import io.harness.exception.ReferencedEntityException;
 import io.harness.gitaware.helper.GitAwareEntityHelper;
+import io.harness.gitaware.helper.MoveConfigOperationType;
 import io.harness.gitsync.beans.StoreType;
 import io.harness.gitsync.interceptor.GitEntityInfo;
 import io.harness.ng.core.environment.beans.Environment;
 import io.harness.ng.core.environment.services.EnvironmentService;
 import io.harness.ng.core.infrastructure.InfrastructureType;
+import io.harness.ng.core.infrastructure.dto.InfraMoveConfigOperationDTO;
+import io.harness.ng.core.infrastructure.dto.InfraMoveConfigResponse;
 import io.harness.ng.core.infrastructure.dto.InfrastructureInputsMergedResponseDto;
 import io.harness.ng.core.infrastructure.dto.NoInputMergeInputAction;
 import io.harness.ng.core.infrastructure.entity.InfrastructureEntity;
 import io.harness.ng.core.infrastructure.mappers.InfrastructureFilterHelper;
+import io.harness.ng.core.utils.CDGitXService;
 import io.harness.ng.core.utils.CoreCriteriaUtils;
 import io.harness.ng.core.utils.ServiceOverrideV2ValidationHelper;
 import io.harness.ngsettings.client.remote.NGSettingsClient;
@@ -85,6 +90,7 @@ import org.springframework.data.mongodb.core.query.Criteria;
 @RunWith(JUnitParamsRunner.class)
 public class InfrastructureEntityServiceImplTest extends CDNGEntitiesTestBase {
   @Mock InfrastructureEntitySetupUsageHelper infrastructureEntitySetupUsageHelper;
+  @Mock CDGitXService cdGitXService;
   @Mock NGSettingsClient settingsClient;
   @Mock NGFeatureFlagHelperService featureFlagHelperService;
   @Mock ServiceOverrideV2ValidationHelper overrideV2ValidationHelper;
@@ -104,6 +110,7 @@ public class InfrastructureEntityServiceImplTest extends CDNGEntitiesTestBase {
     mockRestStatic.when(() -> NGRestUtils.getResponse(any())).thenReturn(settingValueResponseDTO);
     Reflect.on(infrastructureEntityService).set("gitAwareEntityHelper", gitAwareEntityHelper);
     Reflect.on(infrastructureEntityService).set("environmentService", environmentService);
+    when(cdGitXService.isNewGitXEnabled(anyString(), anyString(), anyString())).thenReturn(true);
   }
 
   @Test
@@ -685,6 +692,48 @@ public class InfrastructureEntityServiceImplTest extends CDNGEntitiesTestBase {
     verify(infrastructureEntitySetupUsageHelper, times(2)).deleteSetupUsages(any());
   }
 
+  @Test
+  @Owner(developers = HINGER)
+  @Category(UnitTests.class)
+  public void testMoveStoreTypeConfigProjectLevelInfrastructure() {
+    String filename = "infrastructure-with-runtime-inputs.yaml";
+    String yaml = readFile(filename);
+    InfrastructureEntity createInfraRequest = InfrastructureEntity.builder()
+                                                  .accountId(ACCOUNT_ID)
+                                                  .identifier("IDENTIFIER")
+                                                  .orgIdentifier(ORG_ID)
+                                                  .projectIdentifier(PROJECT_ID)
+                                                  .envIdentifier("ENV_IDENTIFIER")
+                                                  .yaml(yaml)
+                                                  .build();
+
+    infrastructureEntityService.create(createInfraRequest);
+
+    InfraMoveConfigOperationDTO moveConfigOperationDTO =
+        InfraMoveConfigOperationDTO.builder()
+            .repoName("test_repo")
+            .branch("feature")
+            .moveConfigOperationType(
+                MoveConfigOperationType.getMoveConfigType(MoveConfigOperationType.INLINE_TO_REMOTE))
+            .connectorRef("test_github_connector")
+            .commitMessage("Moving%20Infra%20%5BIDENTIFIER%5D%20to%20Git")
+            .isNewBranch(false)
+            .filePath(".harness%2FIDENTIFIER.yaml")
+            .build();
+    InfraMoveConfigResponse moveConfigResponse = infrastructureEntityService.moveInfrastructure(
+        "ACCOUNT_ID", "ORG_ID", "PROJECT_ID", "ENV_IDENTIFIER", "IDENTIFIER", moveConfigOperationDTO);
+
+    assertThat(moveConfigResponse.getIdentifier()).isEqualTo("IDENTIFIER");
+
+    Optional<InfrastructureEntity> optionalInfrastructure =
+        infrastructureEntityService.getMetadata("ACCOUNT_ID", "ORG_ID", "PROJECT_ID", "ENV_IDENTIFIER", "IDENTIFIER");
+    assertThat(optionalInfrastructure.isPresent()).isTrue();
+    assertThat(optionalInfrastructure.get().getStoreType()).isEqualTo(StoreType.REMOTE);
+    assertThat(optionalInfrastructure.get().getConnectorRef()).isEqualTo("test_github_connector");
+    assertThat(optionalInfrastructure.get().getRepo()).isEqualTo("test_repo");
+    assertThat(optionalInfrastructure.get().getFallBackBranch()).isEqualTo("feature");
+  }
+
   private String readFile(String filename) {
     ClassLoader classLoader = getClass().getClassLoader();
     try {
@@ -769,15 +818,15 @@ public class InfrastructureEntityServiceImplTest extends CDNGEntitiesTestBase {
                            -> infrastructureEntityService.checkIfInfraIsScopedToService(
                                ACCOUNT_ID, ORG_ID, PROJECT_ID, "SERVICE_IDENTIFIER2", "ENV_IDENTIFIER", "IDENTIFIER2"))
         .isInstanceOf(InvalidRequestException.class)
-        .hasMessage("Infrastructure: [IDENTIFIER2] inside Environment: [ENV_IDENTIFIER] doesn't scoped"
-            + "to service: [SERVICE_IDENTIFIER2]");
+        .hasMessage("Infrastructure: [IDENTIFIER2] inside PROJECT level Environment: [ENV_IDENTIFIER] can't be scoped "
+            + "to PROJECT level Service: [SERVICE_IDENTIFIER2]");
 
     assertThatThrownBy(()
                            -> infrastructureEntityService.checkIfInfraIsScopedToService(ACCOUNT_ID, ORG_ID, PROJECT_ID,
                                "account.SERVICE_IDENTIFIER", "ENV_IDENTIFIER", "IDENTIFIER2"))
         .isInstanceOf(InvalidRequestException.class)
-        .hasMessage("Infrastructure: [IDENTIFIER2] inside Environment: [ENV_IDENTIFIER] doesn't scoped"
-            + "to service: [account.SERVICE_IDENTIFIER]");
+        .hasMessage("Infrastructure: [IDENTIFIER2] inside PROJECT level Environment: [ENV_IDENTIFIER] can't be scoped "
+            + "to ACCOUNT level Service: [account.SERVICE_IDENTIFIER]");
   }
 
   @Test
@@ -808,8 +857,8 @@ public class InfrastructureEntityServiceImplTest extends CDNGEntitiesTestBase {
             -> infrastructureEntityService.checkIfInfraIsScopedToService(ACCOUNT_ID, ORG_ID, PROJECT_ID,
                 List.of("SERVICE_IDENTIFIER5", "org.SERVICE_IDENTIFIER5", "account.SERVICE_IDENTIFIER5"), envInfraMap))
         .isInstanceOf(InvalidRequestException.class)
-        .hasMessage("Infrastructure: [IDENTIFIER3] inside Environment: [ENV_IDENTIFIER3] doesn't scoped "
-            + "to services: [[SERVICE_IDENTIFIER5, org.SERVICE_IDENTIFIER5, account.SERVICE_IDENTIFIER5]]");
+        .hasMessage("Infrastructure: [IDENTIFIER3] inside PROJECT level Environment: [ENV_IDENTIFIER3] can't be scoped "
+            + "to Service: [[SERVICE_IDENTIFIER5, org.SERVICE_IDENTIFIER5, account.SERVICE_IDENTIFIER5]]");
   }
 
   @Test

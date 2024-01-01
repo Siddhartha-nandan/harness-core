@@ -36,12 +36,14 @@ import io.harness.pms.execution.ExecutionStatus;
 import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.execution.utils.PlanExecutionProjectionConstants;
 import io.harness.pms.execution.utils.StatusUtils;
+import io.harness.pms.merger.YamlConfig;
 import io.harness.pms.plan.execution.ExecutionSummaryUpdateUtils;
 import io.harness.pms.plan.execution.LayoutNodeGraphConstants;
 import io.harness.pms.plan.execution.beans.PipelineExecutionSummaryEntity;
 import io.harness.pms.plan.execution.beans.PipelineExecutionSummaryEntity.PlanExecutionSummaryKeys;
 import io.harness.pms.plan.execution.beans.dto.GraphLayoutNodeDTO;
 import io.harness.pms.plan.execution.beans.dto.GraphLayoutNodeDTO.GraphLayoutNodeDTOKeys;
+import io.harness.pms.yaml.YamlUtils;
 import io.harness.repositories.executions.PmsExecutionSummaryRepository;
 
 import com.google.inject.Inject;
@@ -117,7 +119,12 @@ public class PmsExecutionSummaryServiceImpl implements PmsExecutionSummaryServic
 
       // Update Max concurrency in graph (consumed by UI) if the type of strategy is not parallelism
       // For parallelism, the maxConcurrency cannot be defined via yaml, so we are ignoring its addition in graph.
-      if (!graphLayoutNode.get(nodeExecution.getNodeId()).getNodeType().equals(StrategyType.PARALLELISM.name())) {
+      String nodeType = graphLayoutNode.get(nodeExecution.getNodeId()).getNodeType();
+      if (nodeType == null) {
+        log.warn("NodeType found null for NodeExecution uuid {}", nodeExecution.getUuid());
+      }
+
+      if (!StrategyType.PARALLELISM.name().equals(nodeType)) {
         ConcurrentChildInstance concurrentChildInstance =
             nodeExecutionInfoService.fetchConcurrentChildInstance(nodeExecution.getUuid());
         if (concurrentChildInstance != null && !nodeExecution.getExecutableResponses().isEmpty()) {
@@ -270,7 +277,14 @@ public class PmsExecutionSummaryServiceImpl implements PmsExecutionSummaryServic
   @Override
   public void updateResolvedUserInputSetYaml(String planExecutionId, String resolvedInputSetYaml) {
     Update update = new Update();
-    update.set(PlanExecutionSummaryKeys.resolvedUserInputSetYaml, resolvedInputSetYaml);
+    String simplifiedResolvedInputSetYaml = resolvedInputSetYaml;
+    try {
+      simplifiedResolvedInputSetYaml = YamlUtils.getYamlWithoutInputs(new YamlConfig(resolvedInputSetYaml));
+    } catch (Exception ex) {
+      log.error("Unable to remove validators from given Input Set Yaml for Plan Execution ID {}, please check.",
+          planExecutionId);
+    }
+    update.set(PlanExecutionSummaryKeys.resolvedUserInputSetYaml, simplifiedResolvedInputSetYaml);
     update(planExecutionId, update);
   }
 

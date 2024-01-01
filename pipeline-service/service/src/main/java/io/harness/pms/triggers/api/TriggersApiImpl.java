@@ -7,7 +7,10 @@
 
 package io.harness.pms.triggers.api;
 
+import io.harness.accesscontrol.AccountIdentifier;
 import io.harness.accesscontrol.NGAccessControlCheck;
+import io.harness.accesscontrol.OrgIdentifier;
+import io.harness.accesscontrol.ProjectIdentifier;
 import io.harness.accesscontrol.acl.api.Resource;
 import io.harness.accesscontrol.acl.api.ResourceScope;
 import io.harness.accesscontrol.clients.AccessControlClient;
@@ -57,9 +60,7 @@ public class TriggersApiImpl implements TriggersApi {
         Resource.of("PIPELINE", pipeline), PipelineRbacPermissions.PIPELINE_EXECUTE);
     NGTriggerEntity createdEntity;
     try {
-      boolean withServiceV2 = body.isWithServiceV2() != null && body.isWithServiceV2();
-      TriggerDetails triggerDetails =
-          ngTriggerApiUtils.toTriggerDetails(harnessAccount, org, project, body, withServiceV2, pipeline);
+      TriggerDetails triggerDetails = ngTriggerApiUtils.toTriggerDetails(harnessAccount, org, project, body, pipeline);
       ngTriggerService.validateTriggerConfig(triggerDetails);
       if (ignoreError != null && ignoreError) {
         createdEntity = ngTriggerService.create(triggerDetails.getNgTriggerEntity());
@@ -75,7 +76,8 @@ public class TriggersApiImpl implements TriggersApi {
 
   @Override
   @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_EXECUTE)
-  public Response getTrigger(String org, String project, String pipeline, String trigger, String harnessAccount) {
+  public Response getTrigger(@OrgIdentifier String org, @ProjectIdentifier String project, String pipeline,
+      String trigger, @AccountIdentifier String harnessAccount) {
     Optional<NGTriggerEntity> ngTriggerEntity =
         ngTriggerService.get(harnessAccount, org, project, pipeline, trigger, false);
 
@@ -98,12 +100,11 @@ public class TriggersApiImpl implements TriggersApi {
     if (!ngTriggerEntity.isPresent()) {
       throw new EntityNotFoundException(String.format("Trigger %s does not exist", trigger));
     }
-    boolean withServiceV2 = body.isWithServiceV2() != null && body.isWithServiceV2();
+
     try {
-      TriggerDetails triggerDetails =
-          ngTriggerApiUtils.toTriggerDetails(harnessAccount, org, project, body, withServiceV2, pipeline);
+      TriggerDetails triggerDetails = ngTriggerApiUtils.toTriggerDetails(harnessAccount, org, project, body, pipeline);
       triggerDetails = ngTriggerService.fetchTriggerEntityV1(harnessAccount, org, project, pipeline, trigger,
-          triggerDetails.getNgTriggerConfigV2(), triggerDetails.getNgTriggerEntity(), withServiceV2);
+          triggerDetails.getNgTriggerConfigV2(), triggerDetails.getNgTriggerEntity());
 
       ngTriggerService.validateTriggerConfig(triggerDetails);
       NGTriggerEntity updatedEntity;
@@ -121,7 +122,8 @@ public class TriggersApiImpl implements TriggersApi {
 
   @Override
   @NGAccessControlCheck(resourceType = "PIPELINE", permission = PipelineRbacPermissions.PIPELINE_EXECUTE)
-  public Response deleteTrigger(String org, String project, String pipeline, String trigger, String harnessAccount) {
+  public Response deleteTrigger(@OrgIdentifier String org, @ProjectIdentifier String project, String pipeline,
+      String trigger, @AccountIdentifier String harnessAccount) {
     boolean triggerDeleted = ngTriggerService.delete(harnessAccount, org, project, pipeline, trigger, null);
     if (triggerDeleted) {
       ngTriggerEventsService.deleteTriggerEventHistory(harnessAccount, org, project, pipeline, trigger);

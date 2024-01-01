@@ -8,6 +8,7 @@
 package io.harness.cdng.aws.sam;
 
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
+import static io.harness.exception.WingsException.USER;
 
 import static java.lang.String.format;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
@@ -16,14 +17,27 @@ import static org.apache.commons.lang3.StringUtils.SPACE;
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.beans.FeatureName;
 import io.harness.beans.steps.nodes.GitCloneStepNode;
 import io.harness.beans.steps.stepinfo.GitCloneStepInfo;
 import io.harness.cdng.aws.sam.beans.AwsSamValuesYamlDataOutcome;
 import io.harness.cdng.aws.sam.beans.AwsSamValuesYamlDataOutcome.AwsSamValuesYamlDataOutcomeBuilder;
+import io.harness.cdng.containerStepGroup.DownloadAwsS3Step;
+import io.harness.cdng.containerStepGroup.DownloadAwsS3StepInfo;
+import io.harness.cdng.containerStepGroup.DownloadAwsS3StepNode;
+import io.harness.cdng.containerStepGroup.DownloadHarnessStoreStep;
+import io.harness.cdng.containerStepGroup.DownloadHarnessStoreStepInfo;
+import io.harness.cdng.containerStepGroup.DownloadHarnessStoreStepNode;
+import io.harness.cdng.featureFlag.CDFeatureFlagHelper;
 import io.harness.cdng.manifest.steps.outcome.ManifestsOutcome;
 import io.harness.cdng.manifest.yaml.AwsSamDirectoryManifestOutcome;
+import io.harness.cdng.manifest.yaml.GitStoreConfig;
+import io.harness.cdng.manifest.yaml.S3StoreConfig;
 import io.harness.cdng.manifest.yaml.ValuesManifestOutcome;
+import io.harness.cdng.manifest.yaml.harness.HarnessStore;
 import io.harness.cdng.pipeline.steps.CdAbstractStepNode;
+import io.harness.cdng.plugininfoproviders.DownloadAwsS3PluginInfoProvider;
+import io.harness.cdng.plugininfoproviders.DownloadHarnessStorePluginInfoProvider;
 import io.harness.cdng.plugininfoproviders.GitClonePluginInfoProvider;
 import io.harness.cdng.stepsdependency.constants.OutcomeExpressionConstants;
 import io.harness.data.structure.EmptyPredicate;
@@ -31,7 +45,10 @@ import io.harness.delegate.task.stepstatus.StepExecutionStatus;
 import io.harness.delegate.task.stepstatus.StepMapOutput;
 import io.harness.delegate.task.stepstatus.StepOutput;
 import io.harness.delegate.task.stepstatus.StepStatusTaskResponseData;
+import io.harness.eraro.ErrorCode;
+import io.harness.exception.AccessDeniedException;
 import io.harness.exception.InvalidRequestException;
+import io.harness.exception.WingsException;
 import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.plugin.GitCloneStep;
 import io.harness.pms.contracts.ambiance.Ambiance;
@@ -40,6 +57,7 @@ import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.contracts.plan.PluginCreationRequest;
 import io.harness.pms.contracts.plan.PluginCreationResponseList;
 import io.harness.pms.contracts.plan.PluginCreationResponseWrapper;
+import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.expression.EngineExpressionService;
 import io.harness.pms.sdk.core.plan.creation.yaml.StepOutcomeGroup;
 import io.harness.pms.sdk.core.plugin.ContainerPluginParseException;
@@ -78,6 +96,16 @@ public class AwsSamDownloadManifestsStepHelper {
   @Inject private DownloadManifestsCommonHelper downloadManifestsCommonHelper;
 
   @Inject private AwsSamStepHelper awsSamStepHelper;
+
+  @Inject private DownloadAwsS3PluginInfoProvider downloadAwsS3PluginInfoProvider;
+
+  @Inject private DownloadHarnessStorePluginInfoProvider downloadHarnessStorePluginInfoProvider;
+
+  @Inject private DownloadAwsS3Step downloadAwsS3Step;
+
+  @Inject private DownloadHarnessStoreStep downloadHarnessStoreStep;
+
+  @Inject private CDFeatureFlagHelper cdFeatureFlagHelper;
   @Inject private ContainerStepExecutionResponseHelper containerStepExecutionResponseHelper;
 
   public AsyncExecutableResponse executeAsyncAfterRbac(
@@ -109,16 +137,59 @@ public class AwsSamDownloadManifestsStepHelper {
 
   private AsyncExecutableResponse getAsyncExecutableResponseForValuesManifest(Ambiance ambiance,
       StepInputPackage inputPackage, GitCloneStep gitCloneStep, ValuesManifestOutcome valuesManifestOutcome) {
-    GitCloneStepInfo valuesGitCloneStepInfo =
-        downloadManifestsCommonHelper.getGitCloneStepInfoFromManifestOutcome(valuesManifestOutcome);
+    if (valuesManifestOutcome.getStore() instanceof S3StoreConfig) {
+      checkForS3DownloadFeatureFlag(ambiance);
 
-    StepElementParameters valuesStepElementParameters =
-        downloadManifestsCommonHelper.getGitStepElementParameters(valuesManifestOutcome, valuesGitCloneStepInfo);
+      S3StoreConfig s3StoreConfig = (S3StoreConfig) valuesManifestOutcome.getStore();
+      DownloadAwsS3StepInfo downloadAwsS3StepInfo =
+          downloadManifestsCommonHelper.getAwsS3StepInfoWithOutputFilePathContents(valuesManifestOutcome, s3StoreConfig,
+              awsSamStepHelper.getValuesPathFromValuesManifestOutcome(valuesManifestOutcome));
 
-    Ambiance ambianceForValuesManifest = downloadManifestsCommonHelper.buildAmbiance(
-        ambiance, downloadManifestsCommonHelper.getGitCloneStepIdentifier(valuesManifestOutcome));
+      StepElementParameters stepElementParameters = downloadManifestsCommonHelper.getDownloadS3StepElementParameters(
+          valuesManifestOutcome, downloadAwsS3StepInfo);
+      Ambiance ambianceForAwsSamDirectoryManifest = downloadManifestsCommonHelper.buildAmbiance(
+          ambiance, downloadManifestsCommonHelper.getDownloadS3StepIdentifier(valuesManifestOutcome));
+      return downloadAwsS3Step.executeAsyncAfterRbac(
+          ambianceForAwsSamDirectoryManifest, stepElementParameters, inputPackage);
+    } else if (valuesManifestOutcome.getStore() instanceof HarnessStore) {
+      checkForS3DownloadFeatureFlag(ambiance);
 
-    return gitCloneStep.executeAsyncAfterRbac(ambianceForValuesManifest, valuesStepElementParameters, inputPackage);
+      HarnessStore harnessStore = (HarnessStore) valuesManifestOutcome.getStore();
+      DownloadHarnessStoreStepInfo downloadHarnessStoreStepInfo =
+          downloadManifestsCommonHelper.getDownloadHarnessStoreStepInfoWithOutputFilePathContents(valuesManifestOutcome,
+              harnessStore, awsSamStepHelper.getValuesPathFromValuesManifestOutcome(valuesManifestOutcome));
+
+      StepElementParameters stepElementParameters =
+          downloadManifestsCommonHelper.getDownloadHarnessStoreStepElementParameters(
+              valuesManifestOutcome, downloadHarnessStoreStepInfo);
+      Ambiance ambianceForValuesManifest = downloadManifestsCommonHelper.buildAmbiance(
+          ambiance, downloadManifestsCommonHelper.getDownloadHarnessStoreStepIdentifier(valuesManifestOutcome));
+      return downloadHarnessStoreStep.executeAsyncAfterRbac(
+          ambianceForValuesManifest, stepElementParameters, inputPackage);
+    } else if (valuesManifestOutcome.getStore() instanceof GitStoreConfig) {
+      GitCloneStepInfo valuesGitCloneStepInfo =
+          downloadManifestsCommonHelper.getGitCloneStepInfoFromManifestOutcome(valuesManifestOutcome);
+
+      StepElementParameters valuesStepElementParameters =
+          downloadManifestsCommonHelper.getGitStepElementParameters(valuesManifestOutcome, valuesGitCloneStepInfo);
+
+      Ambiance ambianceForValuesManifest = downloadManifestsCommonHelper.buildAmbiance(
+          ambiance, downloadManifestsCommonHelper.getGitCloneStepIdentifier(valuesManifestOutcome));
+
+      return gitCloneStep.executeAsyncAfterRbac(ambianceForValuesManifest, valuesStepElementParameters, inputPackage);
+    } else {
+      throw new InvalidRequestException(
+          format("%s store type not supported for Values Manifest", valuesManifestOutcome.getStore().getKind()), USER);
+    }
+  }
+
+  private void checkForS3DownloadFeatureFlag(Ambiance ambiance) {
+    if (!cdFeatureFlagHelper.isEnabled(
+            AmbianceUtils.getAccountId(ambiance), FeatureName.CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD)) {
+      throw new AccessDeniedException(
+          "CDS_CONTAINER_STEP_GROUP_AWS_S3_DOWNLOAD FF is not enabled for this account. Please contact harness customer care.",
+          ErrorCode.NG_ACCESS_DENIED, WingsException.USER);
+    }
   }
 
   private AsyncExecutableResponse getAsyncExecutableResponseForAwsSamDirectoryManifest(
@@ -126,15 +197,49 @@ public class AwsSamDownloadManifestsStepHelper {
     AwsSamDirectoryManifestOutcome awsSamDirectoryManifestOutcome =
         (AwsSamDirectoryManifestOutcome) awsSamStepHelper.getAwsSamDirectoryManifestOutcome(manifestsOutcome.values());
 
-    GitCloneStepInfo gitCloneStepInfo =
-        downloadManifestsCommonHelper.getGitCloneStepInfoFromManifestOutcome(awsSamDirectoryManifestOutcome);
+    if (awsSamDirectoryManifestOutcome.getStore() instanceof S3StoreConfig) {
+      checkForS3DownloadFeatureFlag(ambiance);
 
-    StepElementParameters stepElementParameters =
-        downloadManifestsCommonHelper.getGitStepElementParameters(awsSamDirectoryManifestOutcome, gitCloneStepInfo);
+      S3StoreConfig s3StoreConfig = (S3StoreConfig) awsSamDirectoryManifestOutcome.getStore();
+      DownloadAwsS3StepInfo downloadAwsS3StepInfo =
+          downloadManifestsCommonHelper.getAwsS3StepInfo(awsSamDirectoryManifestOutcome, s3StoreConfig);
 
-    Ambiance ambianceForAwsSamDirectoryManifest = downloadManifestsCommonHelper.buildAmbiance(
-        ambiance, downloadManifestsCommonHelper.getGitCloneStepIdentifier(awsSamDirectoryManifestOutcome));
-    return gitCloneStep.executeAsyncAfterRbac(ambianceForAwsSamDirectoryManifest, stepElementParameters, inputPackage);
+      StepElementParameters stepElementParameters = downloadManifestsCommonHelper.getDownloadS3StepElementParameters(
+          awsSamDirectoryManifestOutcome, downloadAwsS3StepInfo);
+      Ambiance ambianceForServerlessAwsLambdaManifest = downloadManifestsCommonHelper.buildAmbiance(
+          ambiance, downloadManifestsCommonHelper.getDownloadS3StepIdentifier(awsSamDirectoryManifestOutcome));
+      return downloadAwsS3Step.executeAsyncAfterRbac(
+          ambianceForServerlessAwsLambdaManifest, stepElementParameters, inputPackage);
+    } else if (awsSamDirectoryManifestOutcome.getStore() instanceof HarnessStore) {
+      checkForS3DownloadFeatureFlag(ambiance);
+
+      HarnessStore harnessStore = (HarnessStore) awsSamDirectoryManifestOutcome.getStore();
+      DownloadHarnessStoreStepInfo downloadHarnessStoreStepInfo =
+          downloadManifestsCommonHelper.getDownloadHarnessStoreStepInfo(awsSamDirectoryManifestOutcome, harnessStore);
+
+      StepElementParameters stepElementParameters =
+          downloadManifestsCommonHelper.getDownloadHarnessStoreStepElementParameters(
+              awsSamDirectoryManifestOutcome, downloadHarnessStoreStepInfo);
+      Ambiance ambianceForServerlessAwsLambdaManifest = downloadManifestsCommonHelper.buildAmbiance(ambiance,
+          downloadManifestsCommonHelper.getDownloadHarnessStoreStepIdentifier(awsSamDirectoryManifestOutcome));
+      return downloadHarnessStoreStep.executeAsyncAfterRbac(
+          ambianceForServerlessAwsLambdaManifest, stepElementParameters, inputPackage);
+    } else if (awsSamDirectoryManifestOutcome.getStore() instanceof GitStoreConfig) {
+      GitCloneStepInfo gitCloneStepInfo =
+          downloadManifestsCommonHelper.getGitCloneStepInfoFromManifestOutcome(awsSamDirectoryManifestOutcome);
+
+      StepElementParameters stepElementParameters =
+          downloadManifestsCommonHelper.getGitStepElementParameters(awsSamDirectoryManifestOutcome, gitCloneStepInfo);
+
+      Ambiance ambianceForAwsSamDirectoryManifest = downloadManifestsCommonHelper.buildAmbiance(
+          ambiance, downloadManifestsCommonHelper.getGitCloneStepIdentifier(awsSamDirectoryManifestOutcome));
+      return gitCloneStep.executeAsyncAfterRbac(
+          ambianceForAwsSamDirectoryManifest, stepElementParameters, inputPackage);
+    } else {
+      throw new InvalidRequestException(format("%s store type not supported for AWS SAM Directory Manifest",
+                                            awsSamDirectoryManifestOutcome.getStore().getKind()),
+          USER);
+    }
   }
 
   public StepResponse handleAsyncResponse(Ambiance ambiance, Map<String, ResponseData> responseDataMap) {
@@ -250,21 +355,55 @@ public class AwsSamDownloadManifestsStepHelper {
   private PluginCreationResponseWrapper getPluginCreationResponseWrapperForValuesManifest(PluginCreationRequest request,
       Set<Integer> usedPorts, Ambiance ambiance, CdAbstractStepNode cdAbstractStepNode,
       ValuesManifestOutcome valuesManifestOutcome) {
-    GitCloneStepInfo valuesGitCloneStepInfo =
-        downloadManifestsCommonHelper.getGitCloneStepInfoFromManifestOutcome(valuesManifestOutcome);
+    if (valuesManifestOutcome.getStore() instanceof S3StoreConfig) {
+      checkForS3DownloadFeatureFlag(ambiance);
 
-    String valuesYamlPath = awsSamStepHelper.getValuesPathFromValuesManifestOutcome(valuesManifestOutcome);
+      S3StoreConfig s3StoreConfig = (S3StoreConfig) valuesManifestOutcome.getStore();
+      DownloadAwsS3StepInfo downloadAwsS3StepInfo =
+          downloadManifestsCommonHelper.getAwsS3StepInfoWithOutputFilePathContents(valuesManifestOutcome, s3StoreConfig,
+              awsSamStepHelper.getValuesPathFromValuesManifestOutcome(valuesManifestOutcome));
 
-    valuesGitCloneStepInfo.setOutputFilePathsContent(
-        ParameterField.<List<String>>builder().value(Collections.singletonList(valuesYamlPath)).build());
+      DownloadAwsS3StepNode downloadAwsS3StepNode = downloadManifestsCommonHelper.getAwsS3StepNode(
+          cdAbstractStepNode, valuesManifestOutcome, downloadAwsS3StepInfo);
 
-    GitCloneStepNode valuesGitCloneStepNode = downloadManifestsCommonHelper.getGitCloneStepNode(
-        valuesManifestOutcome, valuesGitCloneStepInfo, cdAbstractStepNode);
+      PluginCreationRequest pluginCreationRequest =
+          request.toBuilder().setStepJsonNode(YamlUtils.writeYamlString(downloadAwsS3StepNode)).build();
+      return downloadAwsS3PluginInfoProvider.getPluginInfo(pluginCreationRequest, usedPorts, ambiance);
+    } else if (valuesManifestOutcome.getStore() instanceof HarnessStore) {
+      checkForS3DownloadFeatureFlag(ambiance);
 
-    PluginCreationRequest valuesPluginCreationRequest =
-        request.toBuilder().setStepJsonNode(YamlUtils.writeYamlString(valuesGitCloneStepNode)).build();
+      HarnessStore harnessStore = (HarnessStore) valuesManifestOutcome.getStore();
+      DownloadHarnessStoreStepInfo downloadHarnessStoreStepInfo =
+          downloadManifestsCommonHelper.getDownloadHarnessStoreStepInfoWithOutputFilePathContents(valuesManifestOutcome,
+              harnessStore, awsSamStepHelper.getValuesPathFromValuesManifestOutcome(valuesManifestOutcome));
 
-    return gitClonePluginInfoProvider.getPluginInfo(valuesPluginCreationRequest, usedPorts, ambiance);
+      DownloadHarnessStoreStepNode downloadHarnessStoreStepNode =
+          downloadManifestsCommonHelper.getDownloadHarnessStoreStepNode(
+              cdAbstractStepNode, valuesManifestOutcome, downloadHarnessStoreStepInfo);
+
+      PluginCreationRequest pluginCreationRequest =
+          request.toBuilder().setStepJsonNode(YamlUtils.writeYamlString(downloadHarnessStoreStepNode)).build();
+      return downloadHarnessStorePluginInfoProvider.getPluginInfo(pluginCreationRequest, usedPorts, ambiance);
+    } else if (valuesManifestOutcome.getStore() instanceof GitStoreConfig) {
+      GitCloneStepInfo valuesGitCloneStepInfo =
+          downloadManifestsCommonHelper.getGitCloneStepInfoFromManifestOutcome(valuesManifestOutcome);
+
+      String valuesYamlPath = awsSamStepHelper.getValuesPathFromValuesManifestOutcome(valuesManifestOutcome);
+
+      valuesGitCloneStepInfo.setOutputFilePathsContent(
+          ParameterField.<List<String>>builder().value(Collections.singletonList(valuesYamlPath)).build());
+
+      GitCloneStepNode valuesGitCloneStepNode = downloadManifestsCommonHelper.getGitCloneStepNode(
+          valuesManifestOutcome, valuesGitCloneStepInfo, cdAbstractStepNode);
+
+      PluginCreationRequest valuesPluginCreationRequest =
+          request.toBuilder().setStepJsonNode(YamlUtils.writeYamlString(valuesGitCloneStepNode)).build();
+
+      return gitClonePluginInfoProvider.getPluginInfo(valuesPluginCreationRequest, usedPorts, ambiance);
+    } else {
+      throw new InvalidRequestException(
+          format("%s store type not supported for Values Manifest", valuesManifestOutcome.getStore().getKind()), USER);
+    }
   }
 
   private PluginCreationResponseWrapper getPluginCreationResponseWrapperForAwsSamDirectoryManifest(
@@ -273,15 +412,48 @@ public class AwsSamDownloadManifestsStepHelper {
     AwsSamDirectoryManifestOutcome awsSamDirectoryManifestOutcome =
         (AwsSamDirectoryManifestOutcome) awsSamStepHelper.getAwsSamDirectoryManifestOutcome(manifestsOutcome.values());
 
-    GitCloneStepInfo gitCloneStepInfo =
-        downloadManifestsCommonHelper.getGitCloneStepInfoFromManifestOutcome(awsSamDirectoryManifestOutcome);
+    if (awsSamDirectoryManifestOutcome.getStore() instanceof S3StoreConfig) {
+      checkForS3DownloadFeatureFlag(ambiance);
 
-    GitCloneStepNode gitCloneStepNode = downloadManifestsCommonHelper.getGitCloneStepNode(
-        awsSamDirectoryManifestOutcome, gitCloneStepInfo, cdAbstractStepNode);
+      S3StoreConfig s3StoreConfig = (S3StoreConfig) awsSamDirectoryManifestOutcome.getStore();
+      DownloadAwsS3StepInfo downloadAwsS3StepInfo =
+          downloadManifestsCommonHelper.getAwsS3StepInfo(awsSamDirectoryManifestOutcome, s3StoreConfig);
 
-    PluginCreationRequest pluginCreationRequest =
-        request.toBuilder().setStepJsonNode(YamlUtils.writeYamlString(gitCloneStepNode)).build();
+      DownloadAwsS3StepNode downloadAwsS3StepNode = downloadManifestsCommonHelper.getAwsS3StepNode(
+          cdAbstractStepNode, awsSamDirectoryManifestOutcome, downloadAwsS3StepInfo);
 
-    return gitClonePluginInfoProvider.getPluginInfo(pluginCreationRequest, usedPorts, ambiance);
+      PluginCreationRequest pluginCreationRequest =
+          request.toBuilder().setStepJsonNode(YamlUtils.writeYamlString(downloadAwsS3StepNode)).build();
+      return downloadAwsS3PluginInfoProvider.getPluginInfo(pluginCreationRequest, usedPorts, ambiance);
+    } else if (awsSamDirectoryManifestOutcome.getStore() instanceof HarnessStore) {
+      checkForS3DownloadFeatureFlag(ambiance);
+
+      HarnessStore harnessStore = (HarnessStore) awsSamDirectoryManifestOutcome.getStore();
+      DownloadHarnessStoreStepInfo downloadHarnessStoreStepInfo =
+          downloadManifestsCommonHelper.getDownloadHarnessStoreStepInfo(awsSamDirectoryManifestOutcome, harnessStore);
+
+      DownloadHarnessStoreStepNode downloadHarnessStoreStepNode =
+          downloadManifestsCommonHelper.getDownloadHarnessStoreStepNode(
+              cdAbstractStepNode, awsSamDirectoryManifestOutcome, downloadHarnessStoreStepInfo);
+
+      PluginCreationRequest pluginCreationRequest =
+          request.toBuilder().setStepJsonNode(YamlUtils.writeYamlString(downloadHarnessStoreStepNode)).build();
+      return downloadHarnessStorePluginInfoProvider.getPluginInfo(pluginCreationRequest, usedPorts, ambiance);
+    } else if (awsSamDirectoryManifestOutcome.getStore() instanceof GitStoreConfig) {
+      GitCloneStepInfo gitCloneStepInfo =
+          downloadManifestsCommonHelper.getGitCloneStepInfoFromManifestOutcome(awsSamDirectoryManifestOutcome);
+
+      GitCloneStepNode gitCloneStepNode = downloadManifestsCommonHelper.getGitCloneStepNode(
+          awsSamDirectoryManifestOutcome, gitCloneStepInfo, cdAbstractStepNode);
+
+      PluginCreationRequest pluginCreationRequest =
+          request.toBuilder().setStepJsonNode(YamlUtils.writeYamlString(gitCloneStepNode)).build();
+
+      return gitClonePluginInfoProvider.getPluginInfo(pluginCreationRequest, usedPorts, ambiance);
+    } else {
+      throw new InvalidRequestException(format("%s store type not supported for AWS SAM Directory Manifest",
+                                            awsSamDirectoryManifestOutcome.getStore().getKind()),
+          USER);
+    }
   }
 }

@@ -6,6 +6,7 @@
  */
 
 package io.harness.ngtriggers.resource;
+
 import static io.harness.NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE;
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
 
@@ -29,6 +30,8 @@ import io.harness.ng.core.dto.PollingTriggerStatusUpdateDTO;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ngtriggers.Constants;
 import io.harness.ngtriggers.beans.config.NGTriggerConfigV2;
+import io.harness.ngtriggers.beans.dto.BulkTriggersRequestDTO;
+import io.harness.ngtriggers.beans.dto.BulkTriggersResponseDTO;
 import io.harness.ngtriggers.beans.dto.NGTriggerCatalogDTO;
 import io.harness.ngtriggers.beans.dto.NGTriggerDetailsResponseDTO;
 import io.harness.ngtriggers.beans.dto.NGTriggerEventHistoryDTO;
@@ -65,6 +68,7 @@ import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
+import javax.ws.rs.PATCH;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
@@ -371,4 +375,12 @@ public interface NGTriggerResource {
           "targetIdentifier") @ResourceIdentifier String targetIdentifier,
       @QueryParam("operationType") GitMoveOperationType operationType,
       @QueryParam("pipelineBranchName") String pipelineBranchName);
+
+  @PATCH
+  @Hidden
+  @Path("/bulk-toggle")
+  @InternalApi
+  ResponseDTO<BulkTriggersResponseDTO> bulkToggleTriggers(
+      @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,
+      @NotNull @Body BulkTriggersRequestDTO bulkTriggersRequestDTO);
 }

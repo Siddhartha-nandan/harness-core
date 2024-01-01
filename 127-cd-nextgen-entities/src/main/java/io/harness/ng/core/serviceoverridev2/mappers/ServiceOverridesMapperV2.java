@@ -15,6 +15,11 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.exception.InvalidRequestException;
+import io.harness.gitaware.helper.GitAwareContextHelper;
+import io.harness.gitsync.beans.StoreType;
+import io.harness.gitsync.sdk.CacheResponse;
+import io.harness.gitx.EntityGitInfo;
 import io.harness.ng.core.environment.beans.NGEnvironmentGlobalOverride;
 import io.harness.ng.core.environment.yaml.NGEnvironmentConfig;
 import io.harness.ng.core.environment.yaml.NGEnvironmentInfoConfig;
@@ -24,17 +29,24 @@ import io.harness.ng.core.serviceoverride.mapper.NGServiceOverrideEntityConfigMa
 import io.harness.ng.core.serviceoverride.yaml.NGServiceOverrideConfig;
 import io.harness.ng.core.serviceoverride.yaml.NGServiceOverrideInfoConfig;
 import io.harness.ng.core.serviceoverridev2.beans.ServiceOverrideRequestDTOV2;
+import io.harness.ng.core.serviceoverridev2.beans.ServiceOverrideSpecConfig;
 import io.harness.ng.core.serviceoverridev2.beans.ServiceOverridesResponseDTOV2;
 import io.harness.ng.core.serviceoverridev2.beans.ServiceOverridesSpec;
 import io.harness.ng.core.serviceoverridev2.beans.ServiceOverridesSpec.ServiceOverridesSpecBuilder;
 import io.harness.ng.core.serviceoverridev2.beans.ServiceOverridesType;
+import io.harness.ng.core.template.CacheResponseMetadataDTO;
+import io.harness.pms.yaml.YamlUtils;
 import io.harness.utils.IdentifierRefHelper;
+import io.harness.utils.YamlPipelineUtils;
 
+import java.io.IOException;
 import java.util.Optional;
 import javax.validation.constraints.NotNull;
 import lombok.NonNull;
 import lombok.experimental.UtilityClass;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true,
     components = {HarnessModuleComponent.CDS_SERVICE_ENVIRONMENT})
 @OwnedBy(HarnessTeam.CDC)
@@ -70,6 +82,42 @@ public class ServiceOverridesMapperV2 {
         .type(entity.getType())
         .isNewlyCreated(isNewlyCreated)
         .yamlInternal(entity.getYamlInternal())
+        .entityGitInfo(getEntityGitInfo(entity))
+        .storeType(entity.getStoreType())
+        .connectorRef(entity.getConnectorRef())
+        .fallbackBranch(entity.getFallBackBranch())
+        .cacheResponseMetadataDTO(getCacheResponse(entity))
+        .yaml(getYamlFromOverridesV2(entity))
+        .build();
+  }
+
+  private EntityGitInfo getEntityGitInfo(NGServiceOverridesEntity overridesEntity) {
+    if (StoreType.REMOTE.equals(overridesEntity.getStoreType())) {
+      EntityGitInfo entityGitInfo = GitAwareContextHelper.getEntityInfo(overridesEntity);
+      return GitAwareContextHelper.updateEntityGitInfoFromScmGitMetadata(entityGitInfo);
+    }
+
+    return null;
+  }
+
+  private CacheResponseMetadataDTO getCacheResponse(NGServiceOverridesEntity overridesEntity) {
+    if (overridesEntity.getStoreType() == StoreType.REMOTE) {
+      CacheResponse cacheResponse = GitAwareContextHelper.getCacheResponseFromScmGitMetadata();
+
+      if (cacheResponse != null) {
+        return createCacheResponseMetadataDTO(cacheResponse);
+      }
+    }
+
+    return null;
+  }
+
+  private CacheResponseMetadataDTO createCacheResponseMetadataDTO(CacheResponse cacheResponse) {
+    return CacheResponseMetadataDTO.builder()
+        .cacheState(cacheResponse.getCacheState())
+        .ttlLeft(cacheResponse.getTtlLeft())
+        .lastUpdatedAt(cacheResponse.getLastUpdatedAt())
+        .isSyncEnabled(cacheResponse.isSyncEnabled())
         .build();
   }
 
@@ -149,5 +197,52 @@ public class ServiceOverridesMapperV2 {
             .type(ServiceOverridesType.ENV_GLOBAL_OVERRIDE)
             .spec(serviceOverridesSpecBuilder.build())
             .build());
+  }
+
+  public ServiceOverridesSpec toServiceOverrideSpec(@NonNull NGServiceOverrideConfig configV1) {
+    NGServiceOverrideInfoConfig infoConfigV1 = configV1.getServiceOverrideInfoConfig();
+    return ServiceOverridesSpec.builder()
+        .manifests(infoConfigV1.getManifests())
+        .configFiles(infoConfigV1.getConfigFiles())
+        .variables(infoConfigV1.getVariables())
+        .connectionStrings(infoConfigV1.getConnectionStrings())
+        .applicationSettings(infoConfigV1.getApplicationSettings())
+        .build();
+  }
+
+  public ServiceOverridesSpec toServiceOverrideSpec(@NonNull NGEnvironmentInfoConfig infoConfigV1) {
+    ServiceOverridesSpecBuilder builder = ServiceOverridesSpec.builder().variables(infoConfigV1.getVariables());
+    if (infoConfigV1.getNgEnvironmentGlobalOverride() != null) {
+      NGEnvironmentGlobalOverride ngEnvironmentGlobalOverride = infoConfigV1.getNgEnvironmentGlobalOverride();
+      builder.manifests(ngEnvironmentGlobalOverride.getManifests())
+          .configFiles(ngEnvironmentGlobalOverride.getConfigFiles())
+          .connectionStrings(ngEnvironmentGlobalOverride.getConnectionStrings())
+          .applicationSettings(ngEnvironmentGlobalOverride.getApplicationSettings());
+    }
+    return builder.build();
+  }
+
+  public ServiceOverridesSpec toServiceOverrideSpec(String entityYaml) {
+    try {
+      return YamlPipelineUtils.read(entityYaml, ServiceOverridesSpec.class);
+    } catch (IOException e) {
+      throw new InvalidRequestException(String.format("Cannot read serviceOverride yaml %s ", entityYaml));
+    }
+  }
+
+  public void setYamlV2IfNotPresent(NGServiceOverridesEntity requestedEntity) {
+    if (isEmpty(requestedEntity.getYamlV2())) {
+      requestedEntity.setYamlV2(getYamlFromOverridesV2(requestedEntity));
+    }
+  }
+
+  public String getYamlFromOverridesV2(NGServiceOverridesEntity requestedEntity) {
+    if (isEmpty(requestedEntity.getYamlV2())) {
+      ServiceOverridesSpec serviceOverrideSpec = requestedEntity.getSpec();
+      ServiceOverrideSpecConfig specConfig = ServiceOverrideSpecConfig.builder().spec(serviceOverrideSpec).build();
+      return YamlUtils.writeYamlString(specConfig);
+    }
+
+    return requestedEntity.getYamlV2();
   }
 }

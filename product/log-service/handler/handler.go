@@ -29,7 +29,7 @@ import (
 
 // Handler returns an http.Handler that exposes the
 // service resources.
-func Handler(queue queue.Queue, cache cache.Cache, stream stream.Stream, store store.Store, stackdriver *stackdriver.Stackdriver, config config.Config, ngClient, ngPlatformClient, aclClient *client.HTTPClient, gcsClient gcputils.GCS, metrics *metric.Metrics) http.Handler {
+func Handler(queue queue.Queue, cache cache.Cache, stream stream.Stream, store store.Store, stackdriver *stackdriver.Stackdriver, config config.Config, ngClient, aclClient *client.HTTPClient, gcsClient gcputils.GCS, metrics *metric.Metrics) http.Handler {
 	r := chi.NewRouter()
 	r.Use(logger.Middleware)
 
@@ -86,8 +86,11 @@ func Handler(queue queue.Queue, cache cache.Cache, stream stream.Stream, store s
 		if !config.Auth.DisableAuth {
 			sr.Use(AuthMiddleware(config, ngClient, aclClient, true))
 		}
+
 		sr.Post("/", HandleOpen(stream))
 		sr.Delete("/", HandleClose(stream, store, config.Redis.ScanBatch))
+		sr.Put("/", HandleWrite(stream, metrics))
+		sr.Get("/", HandleTail(stream, metrics))
 		sr.Get("/info", HandleInfo(stream))
 
 		return sr
@@ -175,7 +178,7 @@ func Handler(queue queue.Queue, cache cache.Cache, stream stream.Stream, store s
 			With(RequiredQueryParams(accountIDParam, usePrefixParam)).
 			With(ValidatePrefixRequest()).
 			With(CacheRequest(cache)).
-			Post("/", HandleZipLinkPrefix(queue, store, cache, config, gcsClient, ngPlatformClient))
+			Post("/", HandleZipLinkPrefix(queue, store, cache, config, gcsClient, ngClient))
 
 		return sr
 	}())

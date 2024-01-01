@@ -9,6 +9,7 @@ package io.harness.ssca.services;
 
 import static io.harness.rule.OwnerRule.ARPITJ;
 import static io.harness.rule.OwnerRule.REETIKA;
+import static io.harness.rule.OwnerRule.VARSHA_LALWANI;
 
 import static junit.framework.TestCase.assertEquals;
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
@@ -49,9 +50,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.reflect.FieldUtils;
@@ -558,5 +561,80 @@ public class ArtifactServiceImplTest extends SSCAManagerTestBase {
     artifactService.updateArtifactEnvCount(artifact, EnvType.PreProduction, -4);
     assertThat(argument.getValue().getNonProdEnvCount()).isEqualTo(0);
     assertThat(argument.getValue().getProdEnvCount()).isEqualTo(2);
+  }
+
+  @Test
+  @Owner(developers = ARPITJ)
+  @Category(UnitTests.class)
+  public void testGetCDImagePath() {
+    ArtifactServiceImpl artifactServiceImpl = new ArtifactServiceImpl();
+    List<List<String>> inputs = List.of(
+        List.of("https://index.docker.com/v2/", "arpit/image-new", "tag-1", "index.docker.com/arpit/image-new:tag-1"),
+        List.of("https://registry.hub.docker.com/v2/", "arpit/image-new", "tag-1",
+            "registry.hub.docker.com/arpit/image-new:tag-1"),
+        List.of("https://gcr.io/v1/", "gcr.io/arpit/image-new", "tag-1", "gcr.io/arpit/image-new:tag-1"));
+    for (List<String> input : inputs) {
+      assertThat(artifactServiceImpl.getCDImagePath(input.get(0), input.get(1), input.get(2))).isEqualTo(input.get(3));
+    }
+  }
+
+  @Test
+  @Owner(developers = VARSHA_LALWANI)
+  @Category(UnitTests.class)
+  public void testGetDistinctArtifactIds_WithOrchestrationIdNull() {
+    List<ArtifactEntity> artifactEntities = Arrays.asList(builderFactory.getArtifactEntityBuilder()
+                                                              .artifactId("artifactId")
+                                                              .artifactCorrelationId("artifactCorrelationId")
+                                                              .orchestrationId("orchestrationId")
+                                                              .build(),
+        builderFactory.getArtifactEntityBuilder()
+            .artifactId("artifact2")
+            .artifactCorrelationId("artifactCorrelation2")
+            .build());
+    Mockito.when(artifactRepository.findDistinctArtifactIds(any()))
+        .thenReturn(artifactEntities.stream().map(ArtifactEntity::getArtifactId).collect(Collectors.toList()));
+    Set<String> artifactIds = artifactService.getDistinctArtifactIds(builderFactory.getContext().getAccountId(),
+        builderFactory.getContext().getOrgIdentifier(), builderFactory.getContext().getProjectIdentifier(),
+        Collections.emptyList());
+    assertThat(artifactIds.size()).isEqualTo(0);
+  }
+
+  @Test
+  @Owner(developers = VARSHA_LALWANI)
+  @Category(UnitTests.class)
+  public void testGetDistinctArtifactIds() {
+    List<ArtifactEntity> artifactEntities = Arrays.asList(builderFactory.getArtifactEntityBuilder()
+                                                              .artifactId("artifactId")
+                                                              .artifactCorrelationId("artifactCorrelationId")
+                                                              .orchestrationId("orchestrationId")
+                                                              .build(),
+        builderFactory.getArtifactEntityBuilder()
+            .artifactId("artifact2")
+            .artifactCorrelationId("artifactCorrelation2")
+            .build());
+    ArgumentCaptor<Criteria> criteriaArgumentCaptor = ArgumentCaptor.forClass(Criteria.class);
+    Mockito.when(artifactRepository.findDistinctArtifactIds(any()))
+        .thenReturn(artifactEntities.stream().map(ArtifactEntity::getArtifactId).collect(Collectors.toList()));
+    Set<String> artifactIds = artifactService.getDistinctArtifactIds(builderFactory.getContext().getAccountId(),
+        builderFactory.getContext().getOrgIdentifier(), builderFactory.getContext().getProjectIdentifier(),
+        artifactEntities.stream().map(ArtifactEntity::getOrchestrationId).collect(Collectors.toList()));
+    assertThat(artifactIds.size()).isEqualTo(2);
+    assertThat(artifactIds).contains("artifactId");
+    assertThat(artifactIds).contains("artifact2");
+
+    verify(artifactRepository, times(1)).findDistinctArtifactIds(criteriaArgumentCaptor.capture());
+    Criteria criteria = criteriaArgumentCaptor.getValue();
+    Document document = criteria.getCriteriaObject();
+
+    assertEquals(5, document.size());
+    assertThat(document.get(ArtifactEntityKeys.accountId)).isEqualTo(builderFactory.getContext().getAccountId());
+    assertThat(document.get(ArtifactEntityKeys.orgId)).isEqualTo(builderFactory.getContext().getOrgIdentifier());
+    assertThat(document.get(ArtifactEntityKeys.projectId))
+        .isEqualTo(builderFactory.getContext().getProjectIdentifier());
+    assertThat(document.get(ArtifactEntityKeys.invalid)).isEqualTo(false);
+    assertThat(document.get("$and"))
+        .isEqualTo(List.of(new Document("orchestrationId",
+            new Document("$in",
+                artifactEntities.stream().map(ArtifactEntity::getOrchestrationId).collect(Collectors.toList())))));
   }
 }
