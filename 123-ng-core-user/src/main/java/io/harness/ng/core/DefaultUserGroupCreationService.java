@@ -126,7 +126,7 @@ public class DefaultUserGroupCreationService implements Runnable {
         for (Organization organization : organizations) {
           Scope scope = Scope.of(accountId, organization.getIdentifier(), null);
           createOrUpdateUserGroupAtScope(scope);
-          createUserGroupForProjects(accountId, organization.getIdentifier());
+          createUserGroupForProjects(accountId, organization.getIdentifier(), organization.getUniqueId());
         }
         pageIndex++;
       } while (true);
@@ -143,7 +143,7 @@ public class DefaultUserGroupCreationService implements Runnable {
     }
   }
 
-  private void createUserGroupForProjects(String accountId, String orgIdentifier) {
+  private void createUserGroupForProjects(String accountId, String orgIdentifier, String orgUniqueId) {
     int pageIndex = 0;
     int pageSize = 100;
     try {
@@ -151,8 +151,8 @@ public class DefaultUserGroupCreationService implements Runnable {
         Pageable pageable = PageRequest.of(pageIndex, pageSize);
         Criteria criteria = Criteria.where("accountIdentifier")
                                 .is(accountId)
-                                .and("orgIdentifier")
-                                .is(orgIdentifier)
+                                .and(ProjectKeys.parentUniqueId)
+                                .is(orgUniqueId)
                                 .and(ProjectKeys.deleted)
                                 .is(FALSE);
         List<Project> projects = projectService.list(criteria, pageable).getContent();

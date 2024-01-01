@@ -259,6 +259,7 @@ public class ProjectResource {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Paginated list of Projects")
       })
+  @ScopeInfoResolutionExemptedApi
   public ResponseDTO<PageResponse<ProjectResponse>>
   listWithMultiOrg(@Parameter(description = ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
                        NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
@@ -353,8 +354,8 @@ public class ProjectResource {
         ResourceScope.of(accountIdentifier, orgIdentifier, moveProjectRequest.getDestinationOrgIdentifier()),
         Resource.of(ORGANIZATION, moveProjectRequest.getDestinationOrgIdentifier()), CREATE_PROJECT_PERMISSION);
     Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null);
-    return ResponseDTO.newResponse(projectService.moveProject(accountIdentifier, scopeInfo.orElseThrow(), orgIdentifier,
-        identifier, moveProjectRequest.getDestinationOrgIdentifier()));
+    return ResponseDTO.newResponse(projectService.moveProject(
+        accountIdentifier, scopeInfo.orElseThrow(), identifier, moveProjectRequest.getDestinationOrgIdentifier()));
   }
 
   @DELETE

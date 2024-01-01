@@ -440,7 +440,7 @@ public class OrganizationServiceImpl implements OrganizationService {
       Criteria orgCriteria = Criteria.where(OrganizationKeys.accountIdentifier)
                                  .is(accountIdentifier)
                                  .and(OrganizationKeys.parentUniqueId)
-                                 .is(scopeInfo.getUniqueId())
+                                 .is(accountIdentifier)
                                  .and(OrganizationKeys.deleted)
                                  .ne(Boolean.TRUE);
       organizations = organizationRepository.findAllOrgs(orgCriteria);

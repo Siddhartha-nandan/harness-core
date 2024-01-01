@@ -77,6 +77,10 @@ public class ScopeInfoFilterTest {
     assertThat(getOrg(requestPath)).isNull();
     assertThat(getScopeLevel(requestPath)).isEqualTo(ACCOUNT);
 
+    requestPath = TestPath.builder().url("/aggregate/projects").accountQueryParam(ACCOUNT_QUERY_PARAM_VALUE).build();
+    assertThat(getOrg(requestPath)).isNull();
+    assertThat(getScopeLevel(requestPath)).isEqualTo(ACCOUNT);
+
     requestPath = TestPath.builder()
                       .url("/aggregate/projects/{identifier}")
                       .accountQueryParam(ACCOUNT_QUERY_PARAM_VALUE)
