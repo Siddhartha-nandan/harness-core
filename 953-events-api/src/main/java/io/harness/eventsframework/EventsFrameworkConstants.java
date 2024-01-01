@@ -277,4 +277,8 @@ public final class EventsFrameworkConstants {
 
   // === Delegate Service Constants ===
   public static final String TASK_RESPONSE_TOPIC = "task_response_topic";
+
+  public static final String BACKSTAGE_CATALOG_REDIS_EVENT_CONSUMER = "BACKSTAGE_CATALOG_REDIS_EVENT_CONSUMER";
+  public static final String BACKSTAGE_SCAFFOLDER_TASKS_REDIS_EVENT_CONSUMER =
+      "BACKSTAGE_SCAFFOLDER_TASKS_REDIS_EVENT_CONSUMER";
 }

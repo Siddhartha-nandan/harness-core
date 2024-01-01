@@ -11,6 +11,8 @@
 package io.harness.timescaledb;
 
 import io.harness.timescaledb.tables.Anomalies;
+import io.harness.timescaledb.tables.BackstageCatalog;
+import io.harness.timescaledb.tables.BackstageScaffolderTasks;
 import io.harness.timescaledb.tables.BillingData;
 import io.harness.timescaledb.tables.CeRecommendations;
 import io.harness.timescaledb.tables.Environments;
@@ -155,6 +157,17 @@ public class Public extends SchemaImpl {
   public final WorkloadInfo WORKLOAD_INFO = WorkloadInfo.WORKLOAD_INFO;
 
   /**
+   * The table <code>public.backstage_catalog</code>.
+   */
+  public final BackstageCatalog BACKSTAGE_CATALOG = BackstageCatalog.BACKSTAGE_CATALOG;
+
+  /**
+   * The table <code>public.backstage_scaffolder_tasks</code>.
+   */
+  public final BackstageScaffolderTasks BACKSTAGE_SCAFFOLDER_TASKS =
+      BackstageScaffolderTasks.BACKSTAGE_SCAFFOLDER_TASKS;
+
+  /**
    * No further instances allowed
    */
   private Public() {
@@ -177,6 +190,7 @@ public class Public extends SchemaImpl {
         ServiceInfraInfo.SERVICE_INFRA_INFO, Services.SERVICES,
         ServiceInstancesLicenseDailyReport.SERVICE_INSTANCES_LICENSE_DAILY_REPORT,
         ServicesLicenseDailyReport.SERVICES_LICENSE_DAILY_REPORT, UtilizationData.UTILIZATION_DATA,
-        WorkloadInfo.WORKLOAD_INFO, TimeBucketListCdStatus.TIME_BUCKET_LIST_CD_STATUS);
+        WorkloadInfo.WORKLOAD_INFO, TimeBucketListCdStatus.TIME_BUCKET_LIST_CD_STATUS,
+        BackstageCatalog.BACKSTAGE_CATALOG, BackstageScaffolderTasks.BACKSTAGE_SCAFFOLDER_TASKS);
   }
 }

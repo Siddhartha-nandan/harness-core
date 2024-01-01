@@ -95,6 +95,20 @@ data:
   MAX_QUEUE_SIZE_IN_BYTES_SSCA: {{.Values.config.MAX_QUEUE_SIZE_IN_BYTES_SSCA | quote}}
   POLL_INTERVAL_MS_SSCA: {{.Values.config.POLL_INTERVAL_MS_SSCA | quote}}
 #  MONGODB_CONNECTION_STRING_SSCA: {{.Values.config.MONGODB_CONNECTION_STRING_SSCA | quote}}
+
+  IS_ENABLED_IDP: {{.Values.config.IS_ENABLED_IDP | quote}}
+  MONGO_DB_SSL_ENABLED_IDP: {{.Values.config.MONGO_DB_SSL_ENABLED_IDP | quote}}
+  COLLECTION_INCLUDE_LIST_IDP: {{.Values.config.COLLECTION_INCLUDE_LIST_IDP | quote}}
+  DEBEZIUM_NAME_IDP: {{.Values.config.DEBEZIUM_NAME_IDP | quote}}
+  MONGODB_NAME_IDP: {{.Values.config.MONGODB_NAME_IDP | quote}}
+  DATABASE_INCLUDE_LIST_IDP: {{.Values.config.DATABASE_INCLUDE_LIST_IDP | quote}}
+  REDIS_STREAM_SIZE_IDP: {{.Values.config.REDIS_STREAM_SIZE_IDP | quote}}
+  SNAPSHOT_MODE_IDP: {{.Values.config.SNAPSHOT_MODE_IDP | quote}}
+  MAX_QUEUE_SIZE_IDP: {{.Values.config.MAX_QUEUE_SIZE_IDP | quote}}
+  MAX_BATCH_SIZE_IDP: {{.Values.config.MAX_BATCH_SIZE_IDP | quote}}
+  MAX_QUEUE_SIZE_IN_BYTES_IDP: {{.Values.config.MAX_QUEUE_SIZE_IN_BYTES_IDP | quote}}
+  POLL_INTERVAL_MS_IDP: {{.Values.config.POLL_INTERVAL_MS_IDP | quote}}
+#  MONGODB_CONNECTION_STRING_IDP: {{.Values.config.MONGODB_CONNECTION_STRING_IDP | quote}}
   {{ include "harnesscommon.harnessfunctions.java17flags" (dict "context" $) | nindent 2 }}
   # Additional configs
   {{- if .Values.additionalConfigs }}

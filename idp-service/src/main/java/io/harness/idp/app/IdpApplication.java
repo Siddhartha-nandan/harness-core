@@ -42,6 +42,8 @@ import io.harness.idp.annotations.IdpServiceAuth;
 import io.harness.idp.annotations.IdpServiceAuthIfHasApiKey;
 import io.harness.idp.configmanager.jobs.ConfigPurgeJob;
 import io.harness.idp.envvariable.jobs.BackstageEnvVariablesSyncJob;
+import io.harness.idp.events.consumers.BackstageCatalogRedisEventConsumer;
+import io.harness.idp.events.consumers.BackstageScaffolderTasksRedisEventConsumer;
 import io.harness.idp.events.consumers.EntityCrudStreamConsumer;
 import io.harness.idp.events.consumers.IdpCatalogEntitiesSyncCaptureEventConsumer;
 import io.harness.idp.events.consumers.IdpEventConsumerController;
@@ -308,6 +310,8 @@ public class IdpApplication extends Application<IdpConfiguration> {
     queueListenerController.register(injector.getInstance(NgOrchestrationNotifyEventListenerNonVersioned.class), 1);
     controller.register(injector.getInstance(IdpModuleLicenseUsageCaptureEventConsumer.class), 2);
     controller.register(injector.getInstance(IdpCatalogEntitiesSyncCaptureEventConsumer.class), 1);
+    controller.register(injector.getInstance(BackstageCatalogRedisEventConsumer.class), 1);
+    controller.register(injector.getInstance(BackstageScaffolderTasksRedisEventConsumer.class), 1);
   }
 
   private void registerOasResource(IdpConfiguration config, Environment environment, Injector injector) {

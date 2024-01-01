@@ -11,6 +11,8 @@
 package io.harness.timescaledb;
 
 import io.harness.timescaledb.tables.Anomalies;
+import io.harness.timescaledb.tables.BackstageCatalog;
+import io.harness.timescaledb.tables.BackstageScaffolderTasks;
 import io.harness.timescaledb.tables.BillingData;
 import io.harness.timescaledb.tables.CeRecommendations;
 import io.harness.timescaledb.tables.Environments;
@@ -148,4 +150,15 @@ public class Tables {
    * The table <code>public.workload_info</code>.
    */
   public static final WorkloadInfo WORKLOAD_INFO = WorkloadInfo.WORKLOAD_INFO;
+
+  /**
+   * The table <code>public.backstage_catalog</code>.
+   */
+  public static final BackstageCatalog BACKSTAGE_CATALOG = BackstageCatalog.BACKSTAGE_CATALOG;
+
+  /**
+   * The table <code>public.backstage_scaffolder_tasks</code>.
+   */
+  public static final BackstageScaffolderTasks BACKSTAGE_SCAFFOLDER_TASKS =
+      BackstageScaffolderTasks.BACKSTAGE_SCAFFOLDER_TASKS;
 }

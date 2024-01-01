@@ -280,9 +280,11 @@ import io.harness.telemetry.segment.SegmentConfiguration;
 import io.harness.threading.ThreadPool;
 import io.harness.threading.ThreadPoolConfig;
 import io.harness.time.TimeModule;
+import io.harness.timescaledb.JooqModule;
 import io.harness.timescaledb.TimeScaleDBConfig;
 import io.harness.timescaledb.TimeScaleDBService;
 import io.harness.timescaledb.TimeScaleDBServiceImpl;
+import io.harness.timescaledb.metrics.HExecuteListener;
 import io.harness.token.TokenClientModule;
 import io.harness.tunnel.TunnelResourceClientModule;
 import io.harness.user.UserClientModule;
@@ -319,6 +321,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import javax.cache.Cache;
 import lombok.extern.slf4j.Slf4j;
+import org.jooq.ExecuteListener;
 import org.reflections.Reflections;
 import org.springframework.core.convert.converter.Converter;
 
@@ -390,7 +393,8 @@ public class IdpModule extends AbstractModule {
             .build();
       }
     });
-    install(new EventsFrameworkModule(appConfig.getEventsFrameworkConfiguration()));
+    install(new EventsFrameworkModule(
+        appConfig.getEventsFrameworkConfiguration(), appConfig.getDebeziumConsumersConfigs()));
     install(new AbstractModule() {
       @Override
       protected void configure() {
@@ -620,15 +624,23 @@ public class IdpModule extends AbstractModule {
                 .setNameFormat("idp-telemetry-publisher-Thread-%d")
                 .setPriority(Thread.NORM_PRIORITY)
                 .build()));
-    bind(TimeScaleDBConfig.class)
-        .annotatedWith(Names.named("TimeScaleDBConfig"))
-        .toInstance(TimeScaleDBConfig.builder().build());
+    if (appConfig.getEnableDashboardTimescale() != null && appConfig.getEnableDashboardTimescale()) {
+      bind(TimeScaleDBConfig.class)
+          .annotatedWith(Names.named("TimeScaleDBConfig"))
+          .toInstance(appConfig.getTimeScaleDBConfig() != null ? appConfig.getTimeScaleDBConfig()
+                                                               : TimeScaleDBConfig.builder().build());
+    } else {
+      bind(TimeScaleDBConfig.class)
+          .annotatedWith(Names.named("TimeScaleDBConfig"))
+          .toInstance(TimeScaleDBConfig.builder().build());
+    }
     try {
       bind(TimeScaleDBService.class)
           .toConstructor(TimeScaleDBServiceImpl.class.getConstructor(TimeScaleDBConfig.class));
     } catch (NoSuchMethodException e) {
       log.error("TimeScaleDbServiceImpl Initialization Failed in due to missing constructor", e);
     }
+    install(JooqModule.getInstance());
 
     MapBinder<PluginInfo.PluginTypeEnum, PluginDetailedInfoMapper> pluginInfoMapBinder =
         MapBinder.newMapBinder(binder(), PluginInfo.PluginTypeEnum.class, PluginDetailedInfoMapper.class);
@@ -1066,5 +1078,12 @@ public class IdpModule extends AbstractModule {
   @Named("customPlugins")
   public CustomPluginsConfig customPluginsConfig() {
     return this.appConfig.getCustomPluginsConfig();
+  }
+
+  @Provides
+  @Singleton
+  @Named("PSQLExecuteListener")
+  ExecuteListener executeListener() {
+    return HExecuteListener.getInstance();
   }
 }

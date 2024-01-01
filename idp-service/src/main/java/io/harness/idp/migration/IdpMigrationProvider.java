@@ -9,6 +9,7 @@ package io.harness.idp.migration;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.idp.migration.timescale.IdpTimescaleBGMigrationDetails;
 import io.harness.migration.MigrationDetails;
 import io.harness.migration.MigrationProvider;
 import io.harness.migration.entities.NGSchema;
@@ -31,7 +32,10 @@ public class IdpMigrationProvider implements MigrationProvider {
   @Override
   public List<Class<? extends MigrationDetails>> getMigrationDetailsList() {
     return new ArrayList<Class<? extends MigrationDetails>>() {
-      { add(IdpBGMigrationDetails.class); }
+      {
+        add(IdpBGMigrationDetails.class);
+        add(IdpTimescaleBGMigrationDetails.class);
+      }
     };
   }
 }

@@ -126,6 +126,21 @@ debeziumConfigs:
     heartbeat.interval.ms: ${HEARTBEAT_INTERVAL_SSCA:-10000}
     mongodb.connection.string: ${MONGODB_CONNECTION_STRING_SSCA:-mongodb://localhost:27017}
     transforms.unwrap.array.encoding: ${TRANSFORMS_UNWRAP_ARRAY_ENCODING_SSCA:-array}
+  - isEnabled: ${IS_ENABLED_IDP:-false}
+    name: ${DEBEZIUM_NAME_IDP:-idp}
+    mongodb.name: ${MONGODB_NAME_IDP:-idpMongo}
+    mongodb.ssl.enabled: ${MONGO_DB_SSL_ENABLED_IDP:-false}
+    database.include.list: ${DATABASE_INCLUDE_LIST_IDP:-idp-harness}
+    collection.include.list: ${COLLECTION_INCLUDE_LIST_IDP:-idp-harness.backstageCatalog,idp-harness.backstageScaffolderTasks}
+    redisStreamSize: ${REDIS_STREAM_SIZE_IDP:-10000}
+    snapshot.mode: ${SNAPSHOT_MODE_IDP:-all}
+    max.queue.size: ${MAX_QUEUE_SIZE_IDP:-8192}
+    max.batch.size: ${MAX_BATCH_SIZE_IDP:-2048}
+    max.queue.size.in.bytes: ${MAX_QUEUE_SIZE_IN_BYTES_IDP:-1000000000}
+    poll.interval.ms: ${POLL_INTERVAL_MS_IDP:-3000}
+    heartbeat.interval.ms: ${HEARTBEAT_INTERVAL_IDP:-10000}
+    mongodb.connection.string: ${MONGODB_CONNECTION_STRING_IDP:-mongodb://localhost:27017}
+    transforms.unwrap.array.encoding: ${TRANSFORMS_UNWRAP_ARRAY_ENCODING_IDP:-document}
 
 eventsFramework:
   redis:

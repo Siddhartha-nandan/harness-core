@@ -10,6 +10,8 @@
  */
 package io.harness.timescaledb;
 
+import io.harness.timescaledb.tables.BackstageCatalog;
+import io.harness.timescaledb.tables.BackstageScaffolderTasks;
 import io.harness.timescaledb.tables.CeRecommendations;
 import io.harness.timescaledb.tables.ModuleLicenses;
 import io.harness.timescaledb.tables.NodeInfo;
@@ -21,6 +23,8 @@ import io.harness.timescaledb.tables.ServiceInfraInfo;
 import io.harness.timescaledb.tables.ServiceInstancesLicenseDailyReport;
 import io.harness.timescaledb.tables.ServicesLicenseDailyReport;
 import io.harness.timescaledb.tables.WorkloadInfo;
+import io.harness.timescaledb.tables.records.BackstageCatalogRecord;
+import io.harness.timescaledb.tables.records.BackstageScaffolderTasksRecord;
 import io.harness.timescaledb.tables.records.CeRecommendationsRecord;
 import io.harness.timescaledb.tables.records.ModuleLicensesRecord;
 import io.harness.timescaledb.tables.records.NodeInfoRecord;
@@ -105,4 +109,11 @@ public class Keys {
           new TableField[] {WorkloadInfo.WORKLOAD_INFO.ACCOUNTID, WorkloadInfo.WORKLOAD_INFO.CLUSTERID,
               WorkloadInfo.WORKLOAD_INFO.WORKLOADID},
           true);
+  public static final UniqueKey<BackstageCatalogRecord> BACKSTAGE_CATALOG_PKEY =
+      Internal.createUniqueKey(BackstageCatalog.BACKSTAGE_CATALOG, DSL.name("backstage_catalog_pkey"),
+          new TableField[] {BackstageCatalog.BACKSTAGE_CATALOG.ID}, true);
+  public static final UniqueKey<BackstageScaffolderTasksRecord> BACKSTAGE_SCAFFOLDER_TASKS_PKEY =
+      Internal.createUniqueKey(BackstageScaffolderTasks.BACKSTAGE_SCAFFOLDER_TASKS,
+          DSL.name("backstage_scaffolder_tasks_pkey"),
+          new TableField[] {BackstageScaffolderTasks.BACKSTAGE_SCAFFOLDER_TASKS.ID}, true);
 }

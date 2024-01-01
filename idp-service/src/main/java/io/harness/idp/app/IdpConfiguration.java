@@ -25,6 +25,7 @@ import io.harness.enforcement.client.EnforcementClientConfiguration;
 import io.harness.eventsframework.EventsFrameworkConfiguration;
 import io.harness.grpc.client.GrpcClientConfig;
 import io.harness.grpc.server.GrpcServerConfig;
+import io.harness.idp.events.config.DebeziumConsumersConfig;
 import io.harness.idp.onboarding.config.OnboardingModuleConfig;
 import io.harness.idp.plugin.config.CustomPluginsConfig;
 import io.harness.idp.provision.ProvisionModuleConfig;
@@ -42,6 +43,7 @@ import io.harness.ssca.beans.entities.SSCAServiceConfig;
 import io.harness.sto.beans.entities.STOServiceConfig;
 import io.harness.telemetry.segment.SegmentConfiguration;
 import io.harness.threading.ThreadPoolConfig;
+import io.harness.timescaledb.TimeScaleDBConfig;
 
 import ch.qos.logback.access.spi.IAccessEvent;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -161,6 +163,9 @@ public class IdpConfiguration extends Configuration {
   @JsonProperty("enableMetrics") private boolean enableMetrics;
   @JsonProperty("allowedKindsForCatalogSync") private List<String> allowedKindsForCatalogSync;
   @JsonProperty("customPlugins") private CustomPluginsConfig customPluginsConfig;
+  @JsonProperty("debeziumConsumersConfigs") DebeziumConsumersConfig debeziumConsumersConfigs;
+  @JsonProperty("enableDashboardTimescale") private Boolean enableDashboardTimescale;
+  @JsonProperty("timescaledb") private TimeScaleDBConfig timeScaleDBConfig;
 
   public static final Collection<Class<?>> HARNESS_RESOURCE_CLASSES = getResourceClasses();
   public static final String IDP_SPEC_PACKAGE = "io.harness.spec.server.idp.v1";

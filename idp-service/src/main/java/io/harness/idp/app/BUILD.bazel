@@ -85,6 +85,7 @@ java_binary(
         "@maven//:io_swagger_core_v3_swagger_models",
         "@maven//:org_apache_logging_log4j_log4j_api",
         "@maven//:org_apache_logging_log4j_log4j_to_slf4j",
+        "@maven//:org_jooq_jooq",
     ],
 )
 

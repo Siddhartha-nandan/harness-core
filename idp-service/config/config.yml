@@ -465,3 +465,24 @@ allowedKindsForCatalogSync:
 
 customPlugins:
   triggerPipelineUrl: ""
+
+debeziumConsumersConfigs:
+  backstageCatalog:
+    topic: ${DEBEZIUM_BACKSTAGE_CATALOG_CONSUMER_TOPIC_NAME:-DEBEZIUM_idpMongo.idp-harness.backstageCatalog}
+    batchSize: ${DEBEZIUM_BACKSTAGE_CATALOG_CONSUMER_BATCH_SIZE:-100}
+    maxProcessingTimeSeconds: ${DEBEZIUM_BACKSTAGE_CATALOG_CONSUMER_MAX_PROCESSING_TIME_SECONDS:-10}
+  backstageScaffolderTasks:
+    topic: ${DEBEZIUM_BACKSTAGE_SCAFFOLDER_TASKS_CONSUMER_TOPIC_NAME:-DEBEZIUM_idpMongo.idp-harness.backstageScaffolderTasks}
+    batchSize: ${DEBEZIUM_BACKSTAGE_SCAFFOLDER_TASKS_CONSUMER_BATCH_SIZE:-100}
+    maxProcessingTimeSeconds: ${DEBEZIUM_BACKSTAGE_SCAFFOLDER_TASKS_CONSUMER_MAX_PROCESSING_TIME_SECONDS:-10}
+
+enableDashboardTimescale: false
+
+timescaledb:
+  timescaledbUrl: "jdbc:postgresql://localhost:5432/harness"
+  timescaledbUsername: "postgres"
+  timescaledbPassword: ""
+  connectTimeout: 10
+  socketTimeout: 30
+  logUnclosedConnections: false
+  loggerLevel: OFF
