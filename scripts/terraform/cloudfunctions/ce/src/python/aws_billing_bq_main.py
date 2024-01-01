@@ -96,7 +96,8 @@ def main(request):
     get_preferred_currency(jsonData)
     insert_currencies_with_unit_conversion_factors_in_bq(jsonData)
     initialize_fx_rates_dict(jsonData)
-    fetch_default_conversion_factors_from_API(jsonData)
+    fetch_default_conversion_factors_from_BQ(jsonData)
+#     insert_default_conversion_factors_to_BQ(jsonData)
     fetch_custom_conversion_factors(jsonData)
     verify_existence_of_required_conversion_factors(jsonData)
     update_fx_rate_column_in_raw_table(jsonData)
@@ -398,22 +399,64 @@ def initialize_fx_rates_dict(jsonData):
         print_("Failed to list distinct AWS source-currencies for account", "WARN")
 
 
-def fetch_default_conversion_factors_from_API(jsonData):
+def fetch_default_conversion_factors_from_BQ(jsonData):
     if not jsonData["ccmPreferredCurrency"]:
         return
 
     year, month = jsonData["reportYear"], jsonData["reportMonth"]
-    date_start = "%s-%s-01" % (year, month)
-    date_end = "%s-%s-%s" % (year, month, monthrange(int(year), int(month))[1])
 
-    # fetch conversion factors from the API for all sourceCurrencies vs USD and destCcy vs USD for that DATE.
-    # cdn.jsdelivr.net api returns currency-codes in lowercase
-    try:
-        response = requests.get(f"https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/{date_start}/currencies/usd.json")
-        fx_rates_from_api = response.json()
-    except Exception as e:
-        print_(e)
-        fx_rates_from_api = BACKUP_CURRENCY_FX_RATES[date_start]
+    query = """ SELECT * FROM `%s.CE_INTERNAL.currencyConversionFactorDefault` where conversionSource = "API"
+                and EXTRACT(MONTH from month) = {'%s'} and EXTRACT(YEAR from month) = {'%s'} """
+                % (PROJECTID, month, year)
+
+    query_job = client.query(query)
+
+    data_found = False
+    if query_job.result() is None:
+        for num in range(1, 28):
+            date = "{:02d}".format(num)
+            date_start = "%s-%s-%s" % (year, month, date)
+            try:
+                response = requests.get(f"https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/{date_start}/currencies/usd.json")
+                fx_rates_from_api = response.json()
+            except Exception as e:
+                print_(e)
+                fx_rates_from_api = BACKUP_CURRENCY_FX_RATES[date_start]
+            if fx_rates_from_api is None:
+                continue
+            else:
+                data_found = True
+                insert_default_conversion_factors_to_BQ(jsonData)
+
+
+    if data_found is False:
+        for num in range(month, 1, -1):
+            query = """ SELECT * FROM `%s.CE_INTERNAL.currencyConversionFactorDefault` where conversionSource = "API"
+                            and EXTRACT(MONTH from month) = {'%s'} and EXTRACT(YEAR from month) = {'%s'} """
+                            % (PROJECTID, month, year)
+
+            query_job = client.query(query)
+            if query_job.result() is not None:
+                insert_default_conversion_factors_to_BQ(jsonData)
+                break
+
+
+def insert_default_conversion_factors_to_BQ(jsonData):
+#     if not jsonData["ccmPreferredCurrency"]:
+#         return
+#
+#     year, month = jsonData["reportYear"], jsonData["reportMonth"]
+#     date_start = "%s-%s-01" % (year, month)
+#     date_end = "%s-%s-%s" % (year, month, monthrange(int(year), int(month))[1])
+#
+#     # fetch conversion factors from the API for all sourceCurrencies vs USD and destCcy vs USD for that DATE.
+#     # cdn.jsdelivr.net api returns currency-codes in lowercase
+#     try:
+#         response = requests.get(f"https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/{date_start}/currencies/usd.json")
+#         fx_rates_from_api = response.json()
+#     except Exception as e:
+#         print_(e)
+#         fx_rates_from_api = BACKUP_CURRENCY_FX_RATES[date_start]
     # 1 usd = x src
     # 1 usd = y dest
     # 1 src = (y/x) dest
@@ -461,12 +504,7 @@ def fetch_default_conversion_factors_from_API(jsonData):
             """ % (currency.upper(), 1.0 / fx_rates_from_api["usd"][currency], date_start,
                    current_timestamp, current_timestamp)
 
-    query = """DELETE FROM `%s.CE_INTERNAL.currencyConversionFactorDefault` 
-                WHERE accountId IS NULL AND conversionSource = "API" 
-                AND (CONCAT(sourceCurrency,'_',destinationCurrency) in (%s) OR 
-                    CONCAT(destinationCurrency,'_',sourceCurrency) in (%s));
-                    
-               INSERT INTO `%s.CE_INTERNAL.currencyConversionFactorDefault` 
+    query = """ INSERT INTO `%s.CE_INTERNAL.currencyConversionFactorDefault`
                (accountId,cloudServiceProvider,sourceCurrency,destinationCurrency,
                conversionFactor,month,conversionSource,createdAt,updatedAt)
                    (%s)
