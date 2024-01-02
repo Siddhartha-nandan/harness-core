@@ -15,10 +15,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.harness.CategoryTest;
-import io.harness.audit.client.remote.AuditClient;
 import io.harness.category.element.UnitTests;
 import io.harness.cdstage.remote.CDNGStageSummaryResourceClient;
 import io.harness.data.structure.UUIDGenerator;
+import io.harness.engine.executions.plan.PlanExecutionMetadataService;
+import io.harness.engine.executions.plan.PlanExecutionMetadataServiceImpl;
 import io.harness.ng.core.cdstage.CDStageSummaryResponseDTO;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.notification.PipelineEventType;
@@ -35,8 +36,6 @@ import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import retrofit2.Call;
@@ -51,11 +50,14 @@ public class WebhookNotificationServiceImplTest extends CategoryTest {
 
   CDNGStageSummaryResourceClient cdngStageSummaryResourceClient;
   WebhookNotificationService webhookNotificationService;
+  PlanExecutionMetadataService planExecutionMetadataService;
   @Before
   public void setUp() {
     MockitoAnnotations.initMocks(this);
     cdngStageSummaryResourceClient = mock(CDNGStageSummaryResourceClient.class, RETURNS_DEEP_STUBS);
-    webhookNotificationService = new WebhookNotificationServiceImpl(cdngStageSummaryResourceClient);
+    planExecutionMetadataService = mock(PlanExecutionMetadataServiceImpl.class, RETURNS_DEEP_STUBS);
+    webhookNotificationService =
+        new WebhookNotificationServiceImpl(cdngStageSummaryResourceClient, planExecutionMetadataService);
   }
 
   @Test
@@ -73,7 +75,7 @@ public class WebhookNotificationServiceImplTest extends CategoryTest {
             .build();
     ModuleInfo moduleInfo =
         webhookNotificationService.getModuleInfo(ambiance, executionSummaryEntity, PipelineEventType.PIPELINE_START);
-    assertThat(moduleInfo).isNull();
+    assertThat(moduleInfo).isNotNull();
   }
 
   @Test
