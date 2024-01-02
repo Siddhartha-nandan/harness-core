@@ -94,7 +94,12 @@ global:
       # --  provide default values if redis.installed is set to false
       hosts:
         - redis:6379
- 
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
       secretName: ""
       userKey: ""
       passwordKey: ""
