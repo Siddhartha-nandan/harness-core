@@ -160,7 +160,7 @@ public class ConfigEnvVariableServiceImplTest extends CategoryTest {
     // update case and delete case for env variables deleted from UI
     // here mutable list is needed that's why we are constructing list like this
     List<BackstageEnvSecretVariable> oldEnvSecretVariables = new ArrayList<>();
-    oldEnvSecretVariables.add(backstageEnvSecretVariable);
+    oldEnvSecretVariables.add(getTestBackstageEnvSecretVariable());
     BackstageEnvSecretVariable toBeDeletedEnvSecretVariable = getTestBackstageEnvSecretVariable();
     toBeDeletedEnvSecretVariable.setIdentifier(TEST_OLD_IDENTIFIER);
     oldEnvSecretVariables.add(toBeDeletedEnvSecretVariable);
