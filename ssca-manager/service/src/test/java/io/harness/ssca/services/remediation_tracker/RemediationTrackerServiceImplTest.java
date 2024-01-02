@@ -61,6 +61,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.junit.Before;
 import org.junit.Test;
@@ -90,6 +91,7 @@ public class RemediationTrackerServiceImplTest extends SSCAManagerTestBase {
 
   @Inject RemediationTrackerRepository repository;
 
+  String authToken = UUID.randomUUID().toString();
   @Before
   public void setup() throws IllegalAccessException, IOException {
     MockitoAnnotations.initMocks(this);
@@ -553,10 +555,11 @@ public class RemediationTrackerServiceImplTest extends SSCAManagerTestBase {
         getRemediationTrackerEntity(remediationTrackerCreateRequestBody);
 
     assertThatExceptionOfType(InvalidArgumentsException.class)
-        .isThrownBy(()
-                        -> remediationTrackerService.createTicket(builderFactory.getContext().getProjectIdentifier(),
-                            remediationTrackerEntity.getUuid(), builderFactory.getContext().getOrgIdentifier(),
-                            builderFactory.getCreateTicketRequest(), builderFactory.getContext().getAccountId()))
+        .isThrownBy(
+            ()
+                -> remediationTrackerService.createTicket(builderFactory.getContext().getProjectIdentifier(),
+                    remediationTrackerEntity.getUuid(), builderFactory.getContext().getOrgIdentifier(),
+                    builderFactory.getCreateTicketRequest(), builderFactory.getContext().getAccountId(), authToken))
         .withMessage(String.format("Remediation Tracker: %s is already closed.", remediationTrackerEntity.getUuid()));
   }
 
@@ -576,7 +579,7 @@ public class RemediationTrackerServiceImplTest extends SSCAManagerTestBase {
 
     String ticketId = remediationTrackerService.createTicket(builderFactory.getContext().getProjectIdentifier(),
         remediationTrackerEntity.getUuid(), builderFactory.getContext().getOrgIdentifier(), createTicketRequest,
-        builderFactory.getContext().getAccountId());
+        builderFactory.getContext().getAccountId(), authToken);
 
     remediationTrackerEntity = remediationTrackerService.getRemediationTracker(remediationTrackerEntity.getUuid());
 

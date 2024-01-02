@@ -371,8 +371,8 @@ public class RemediationTrackerServiceImpl implements RemediationTrackerService 
   }
 
   @Override
-  public String createTicket(
-      String projectId, String remediationTrackerId, String orgId, CreateTicketRequest body, String accountId) {
+  public String createTicket(String projectId, String remediationTrackerId, String orgId, CreateTicketRequest body,
+      String accountId, String authToken) {
     RemediationTrackerEntity remediationTracker =
         repository
             .findByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndUuid(
@@ -382,8 +382,6 @@ public class RemediationTrackerServiceImpl implements RemediationTrackerService 
       throw new InvalidArgumentsException(
           String.format("Remediation Tracker: %s is already closed.", remediationTrackerId));
     }
-
-    String authToken = NextGenAuthenticationFilter.AUTHORIZATION_HEADER;
 
     if (!isEmpty(body.getArtifactId())) {
       ArtifactInfo artifactInfo = remediationTracker.getArtifactInfos().get(body.getArtifactId());

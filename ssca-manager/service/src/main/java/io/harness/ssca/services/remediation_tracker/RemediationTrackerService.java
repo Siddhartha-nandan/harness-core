@@ -52,8 +52,8 @@ public interface RemediationTrackerService {
   RemediationTrackersOverallSummaryResponseBody getOverallSummaryForRemediationTrackers(
       String accountId, String orgId, String projectId);
 
-  String createTicket(
-      String projectId, String remediationTrackerId, String orgId, CreateTicketRequest body, String accountId);
+  String createTicket(String projectId, String remediationTrackerId, String orgId, CreateTicketRequest body,
+      String accountId, String authToken);
 
   Page<RemediationListingResponse> listRemediations(
       String accountId, String orgId, String projectId, RemediationListingRequestBody body, Pageable pageable);

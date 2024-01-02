@@ -16,6 +16,7 @@ import io.harness.accesscontrol.NGAccessControlCheck;
 import io.harness.accesscontrol.OrgIdentifier;
 import io.harness.accesscontrol.ProjectIdentifier;
 import io.harness.accesscontrol.ResourceIdentifier;
+import io.harness.security.NextGenAuthenticationFilter;
 import io.harness.security.annotations.NextGenManagerAuth;
 import io.harness.spec.server.ssca.v1.RemediationApi;
 import io.harness.spec.server.ssca.v1.model.CreateTicketRequest;
@@ -45,6 +46,7 @@ import java.util.List;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.core.Response;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -168,8 +170,10 @@ public class RemediationTrackerApiImpl implements RemediationApi {
   @Override
   @NGAccessControlCheck(resourceType = REMEDIATION_TRACKER_RESOURCE, permission = REMEDIATION_TRACKER_EDIT)
   public Response createTicket(@ProjectIdentifier String project, @ResourceIdentifier String remediation,
-      @OrgIdentifier String org, @Valid CreateTicketRequest body, @AccountIdentifier String harnessAccount) {
-    String ticketId = remediationTrackerService.createTicket(project, remediation, org, body, harnessAccount);
+      @OrgIdentifier String org, @Valid CreateTicketRequest body, @AccountIdentifier String harnessAccount,
+      @HeaderParam(NextGenAuthenticationFilter.AUTHORIZATION_HEADER) String authToken) {
+    String ticketId =
+        remediationTrackerService.createTicket(project, remediation, org, body, harnessAccount, authToken);
     RemediationTrackerCreateResponseBody response = new RemediationTrackerCreateResponseBody().id(ticketId);
     return Response.ok().entity(response).build();
   }
