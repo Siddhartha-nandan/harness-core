@@ -57,27 +57,19 @@ public class RoleResourceMigration implements Runnable {
   private final PersistentLocker persistentLocker;
   private final String DEBUG_MESSAGE = "ProjectOrgBasicRoleCreationJob: ";
   private static final String LOCK_NAME = "ProjectOrgBasicRoleCreationJobLock";
-
-  private static final String ORGANIZATION_VIEWER = "_organization_viewer";
-  private static final String PROJECT_VIEWER = "_project_viewer";
-
-  private static final String ORGANIZATION_BASIC = "_organization_basic";
-  private static final String PROJECT_BASIC = "_project_basic";
-  private final ProjectService projectService;
-  private final AccessControlClient accessControlClient;
   private final PMSInputSetService pmsInputSetService;
   private final ResourceGroupClient resourceGroupClient;
   private final ProjectClient projectClient;
+  private final String PIPELINE_RESOURCE_TYPE = "PIPELINE";
+  private final String INPUT_RESOURCE_TYPE = "INPUT_SET";
 
   @Inject
   public RoleResourceMigration(FeatureFlagService featureFlagService, AccountUtils accountUtils,
-      PersistentLocker persistentLocker, ProjectService projectService, AccessControlClient accessControlClient,
-      PMSInputSetService pmsInputSetService, ResourceGroupClient resourceGroupClient, ProjectClient projectClient) {
+      PersistentLocker persistentLocker, PMSInputSetService pmsInputSetService, ResourceGroupClient resourceGroupClient,
+      ProjectClient projectClient) {
     this.featureFlagService = featureFlagService;
     this.accountUtils = accountUtils;
     this.persistentLocker = persistentLocker;
-    this.projectService = projectService;
-    this.accessControlClient = accessControlClient;
     this.pmsInputSetService = pmsInputSetService;
     this.resourceGroupClient = resourceGroupClient;
     this.projectClient = projectClient;
@@ -130,7 +122,7 @@ public class RoleResourceMigration implements Runnable {
   }
 
   private void validateAndUpdateInputSetPermission(ResourceGroupResponse response, ResourceSelector resourceSelector) {
-    if (resourceSelector.getResourceType().equals("PIPELINE")) {
+    if (resourceSelector.getResourceType().equals(PIPELINE_RESOURCE_TYPE)) {
       ResourceGroupDTO.ResourceGroupDTOBuilder resourceGroupDTOBuilder = createResourceGroupDTOBuilder(response);
       List<ResourceSelector> resourceSelectorList = response.getResourceGroup().getResourceFilter().getResources();
       if (resourceSelector.getIdentifiers() != null) {
@@ -152,10 +144,10 @@ public class RoleResourceMigration implements Runnable {
         inputSetEntities.forEach(
             inputSetEntity -> inputSetIdentifiers.add(identifier + "-" + inputSetEntity.getIdentifier()));
         ResourceSelector resourceSelectorNew =
-            ResourceSelector.builder().resourceType("INPUT_SET").identifiers(inputSetIdentifiers).build();
+            ResourceSelector.builder().resourceType(INPUT_RESOURCE_TYPE).identifiers(inputSetIdentifiers).build();
         if (!resourceSelectorList.contains(resourceSelectorNew)) {
           resourceSelectorList.add(
-              ResourceSelector.builder().resourceType("INPUT_SET").identifiers(inputSetIdentifiers).build());
+              ResourceSelector.builder().resourceType(INPUT_RESOURCE_TYPE).identifiers(inputSetIdentifiers).build());
           resourceGroupDTOBuilder.resourceFilter(ResourceFilter.builder().resources(resourceSelectorList).build());
           updateResourceGroup(response, resourceGroupDTOBuilder);
         }
@@ -165,7 +157,7 @@ public class RoleResourceMigration implements Runnable {
 
   private void createAllInputSetPermission(ResourceGroupResponse response, List<ResourceSelector> resourceSelectorList,
       ResourceGroupDTO.ResourceGroupDTOBuilder resourceGroupDTOBuilder) {
-    ResourceSelector resourceSelector = ResourceSelector.builder().resourceType("INPUT_SET").build();
+    ResourceSelector resourceSelector = ResourceSelector.builder().resourceType(INPUT_RESOURCE_TYPE).build();
     if (!resourceSelectorList.contains(resourceSelector)) {
       resourceSelectorList.add(resourceSelector);
       resourceGroupDTOBuilder.resourceFilter(ResourceFilter.builder().resources(resourceSelectorList).build());
@@ -222,7 +214,7 @@ public class RoleResourceMigration implements Runnable {
         }
       }
     } catch (Exception ex) {
-      log.error("Failed to filter accounts for FF PL_REMOVE_USER_VIEWER_ROLE_ASSIGNMENTS");
+      log.error("Failed to filter accounts for FF PIE_INPUT_SET_MIGRATION");
     }
     return targetAccounts;
   }
