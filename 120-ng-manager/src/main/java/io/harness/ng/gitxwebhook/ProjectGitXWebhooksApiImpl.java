@@ -8,6 +8,7 @@
 package io.harness.ng.gitxwebhook;
 
 import static io.harness.ng.gitxwebhook.GitXWebhooksApiImpl.HTTP_201;
+import static io.harness.ng.gitxwebhook.GitXWebhooksApiImpl.HTTP_204;
 import static io.harness.ng.gitxwebhook.GitXWebhooksApiImpl.HTTP_404;
 
 import io.harness.annotations.dev.CodePulse;
@@ -17,7 +18,6 @@ import io.harness.beans.Scope;
 import io.harness.gitsync.gitxwebhooks.dtos.CreateGitXWebhookRequestDTO;
 import io.harness.gitsync.gitxwebhooks.dtos.CreateGitXWebhookResponseDTO;
 import io.harness.gitsync.gitxwebhooks.dtos.DeleteGitXWebhookRequestDTO;
-import io.harness.gitsync.gitxwebhooks.dtos.DeleteGitXWebhookResponseDTO;
 import io.harness.gitsync.gitxwebhooks.dtos.GetGitXWebhookRequestDTO;
 import io.harness.gitsync.gitxwebhooks.dtos.GetGitXWebhookResponseDTO;
 import io.harness.gitsync.gitxwebhooks.dtos.ListGitXWebhookRequestDTO;
@@ -31,7 +31,6 @@ import io.harness.gitsync.gitxwebhooks.service.GitXWebhookService;
 import io.harness.spec.server.ng.v1.ProjectGitxWebhooksApi;
 import io.harness.spec.server.ng.v1.model.CreateGitXWebhookRequest;
 import io.harness.spec.server.ng.v1.model.CreateGitXWebhookResponse;
-import io.harness.spec.server.ng.v1.model.DeleteGitXWebhookResponse;
 import io.harness.spec.server.ng.v1.model.GitXWebhookResponse;
 import io.harness.spec.server.ng.v1.model.UpdateGitXWebhookRequest;
 import io.harness.spec.server.ng.v1.model.UpdateGitXWebhookResponse;
@@ -100,11 +99,8 @@ public class ProjectGitXWebhooksApiImpl implements ProjectGitxWebhooksApi {
   public Response deleteProjectGitxWebhook(String org, String project, String gitxWebhook, String harnessAccount) {
     DeleteGitXWebhookRequestDTO deleteGitXWebhookRequestDTO =
         GitXWebhookMapper.buildDeleteGitXWebhookRequestDTO(Scope.of(harnessAccount, org, project), gitxWebhook);
-    DeleteGitXWebhookResponseDTO deleteGitXWebhookResponse =
-        gitXWebhookService.deleteGitXWebhook(deleteGitXWebhookRequestDTO);
-    DeleteGitXWebhookResponse responseBody =
-        GitXWebhookMapper.buildDeleteGitXWebhookResponse(deleteGitXWebhookResponse);
-    return Response.ok().entity(responseBody).build();
+    gitXWebhookService.deleteGitXWebhook(deleteGitXWebhookRequestDTO);
+    return Response.status(HTTP_204).build();
   }
 
   @Override
