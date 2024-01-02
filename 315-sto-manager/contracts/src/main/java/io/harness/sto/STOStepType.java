@@ -47,6 +47,7 @@ import io.harness.beans.steps.nodes.security.NexusIQScanNode;
 import io.harness.beans.steps.nodes.security.NiktoScanNode;
 import io.harness.beans.steps.nodes.security.NmapScanNode;
 import io.harness.beans.steps.nodes.security.OpenvasScanNode;
+import io.harness.beans.steps.nodes.security.OsvScannerScanNode;
 import io.harness.beans.steps.nodes.security.OwaspScanNode;
 import io.harness.beans.steps.nodes.security.PrismaCloudScanNode;
 import io.harness.beans.steps.nodes.security.ProwlerScanNode;
@@ -61,7 +62,6 @@ import io.harness.beans.steps.nodes.security.SysdigScanNode;
 import io.harness.beans.steps.nodes.security.TenableScanNode;
 import io.harness.beans.steps.nodes.security.VeracodeScanNode;
 import io.harness.beans.steps.nodes.security.ZapScanNode;
-import io.harness.enforcement.constants.FeatureRestrictionName;
 import io.harness.plancreator.steps.common.StepElementParameters;
 import io.harness.pms.contracts.steps.StepCategory;
 import io.harness.pms.contracts.steps.StepInfo;
@@ -71,15 +71,10 @@ import io.harness.pms.sdk.core.plan.creation.creators.PartialPlanCreator;
 import io.harness.pms.sdk.core.steps.Step;
 import io.harness.steps.executable.AsyncExecutableWithRbac;
 import io.harness.sto.plan.creator.step.STOGenericStepPlanCreator;
-import io.harness.yaml.schema.beans.YamlGroup;
-import io.harness.yaml.schema.beans.YamlSchemaMetadata;
-import io.harness.yaml.schema.beans.YamlSchemaRootClass;
 
-import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -136,6 +131,8 @@ public enum STOStepType {
   NMAP("Nmap", null, null, NmapScanNode.class, EntityType.NMAP, new String[] {DAST}),
   OPENVAS(
       "Openvas", null, FeatureName.STO_STEPS_TEST_MODE, OpenvasScanNode.class, EntityType.OPENVAS, new String[] {DAST}),
+  OSV_SCANNER("OsvScanner", "OSV Scanner", FeatureName.STO_STEP_PALETTE_OSV, OsvScannerScanNode.class,
+      EntityType.OSV_SCANNER, new String[] {SCA, CONTAINER_SECURITY}),
   OWASP("Owasp", null, null, OwaspScanNode.class, EntityType.OWASP, new String[] {SCA}),
   PRISMA_CLOUD("PrismaCloud", "Prisma Cloud", null, PrismaCloudScanNode.class, EntityType.PRISMA_CLOUD,
       new String[] {CONTAINER_SECURITY}),
@@ -175,7 +172,7 @@ public enum STOStepType {
     return lookup.get(name);
   }
 
-  public static StepInfo createStepInfo(STOStepType stoStepType, ModuleType moduleType, String[] stepCategory) {
+  public static StepInfo createStepInfo(STOStepType stoStepType, String[] stepCategory) {
     StepInfo.Builder stepInfoBuilder =
         StepInfo.newBuilder()
             .setType(stoStepType.getName())
@@ -194,10 +191,6 @@ public enum STOStepType {
       stepInfoBuilder.setFeatureFlag(featureName.name());
     }
 
-    if (moduleType == ModuleType.CI) {
-      stepInfoBuilder.setFeatureRestrictionName(FeatureRestrictionName.SECURITY.name());
-    }
-
     return stepInfoBuilder.build();
   }
 
@@ -205,10 +198,10 @@ public enum STOStepType {
     return Arrays.stream(STOStepType.values()).map(e -> e.getName()).collect(Collectors.toSet());
   }
 
-  public static List<StepInfo> getStepInfos(ModuleType moduleType) {
+  public static List<StepInfo> getStepInfos() {
     List<StepInfo> stepInfos = new ArrayList<>();
     Arrays.asList(STOStepType.values())
-        .forEach(e -> stepInfos.add(STOStepType.createStepInfo(e, moduleType, e.getStepCategories())));
+        .forEach(e -> stepInfos.add(STOStepType.createStepInfo(e, e.getStepCategories())));
 
     return stepInfos;
   }
@@ -227,29 +220,6 @@ public enum STOStepType {
 
     return stoSteps;
   }
-
-  public static YamlSchemaRootClass createStepYaml(STOStepType stepType) {
-    return YamlSchemaRootClass.builder()
-        .entityType(stepType.getEntityType())
-        .availableAtProjectLevel(true)
-        .availableAtOrgLevel(false)
-        .yamlSchemaMetadata(YamlSchemaMetadata.builder()
-                                .modulesSupported(Collections.singletonList(ModuleType.STO))
-                                .yamlGroup(YamlGroup.builder().group(StepCategory.STEP.name()).build())
-                                .build())
-        .availableAtAccountLevel(false)
-        .clazz(stepType.getNode())
-        .build();
-  }
-
-  public static ImmutableList<YamlSchemaRootClass> createSecurityStepYamlDefinitions() {
-    ImmutableList.Builder<YamlSchemaRootClass> stepPaletteListBuilder = ImmutableList.builder();
-
-    Arrays.asList(STOStepType.values()).forEach(e -> stepPaletteListBuilder.add(createStepYaml(e)));
-
-    return stepPaletteListBuilder.build();
-  }
-
   private static PartialPlanCreator<?> getPlanCreator(STOStepType stepType) {
     return new STOGenericStepPlanCreator(stepType);
   }

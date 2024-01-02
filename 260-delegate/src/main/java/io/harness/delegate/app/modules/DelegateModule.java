@@ -7,6 +7,14 @@
 
 package io.harness.delegate.app.modules;
 
+import static io.harness.delegate.task.scm.ScmDelegateClientConstants.DEFAULT_SCM_SERVER_CORE_POOL_SIZE;
+import static io.harness.delegate.task.scm.ScmDelegateClientConstants.DEFAULT_SCM_SERVER_MAX_POOL_SIZE;
+import static io.harness.delegate.task.scm.ScmDelegateClientConstants.DEFAULT_SCM_SERVER_POOL_IDLE_TIME_UNIT;
+import static io.harness.delegate.task.scm.ScmDelegateClientConstants.DEFAULT_SCM_SERVER_POOL_IDLE_TIME_VALUE;
+import static io.harness.delegate.task.scm.ScmDelegateClientConstants.SCM_SERVER_CORE_POOL_SIZE_ENV_VAR;
+import static io.harness.delegate.task.scm.ScmDelegateClientConstants.SCM_SERVER_MAX_POOL_SIZE_ENV_VAR;
+import static io.harness.delegate.task.scm.ScmDelegateClientConstants.SCM_SERVER_POOL_IDLE_TIME_IN_SECONDS_ENV_VAR;
+
 import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
 
 import io.harness.annotations.dev.BreakDependencyOn;
@@ -538,8 +546,8 @@ import io.harness.manifest.CustomManifestService;
 import io.harness.manifest.CustomManifestServiceImpl;
 import io.harness.nexus.service.NexusRegistryService;
 import io.harness.nexus.service.NexusRegistryServiceImpl;
-import io.harness.oidc.gcp.GcpOidcConnectorValidatorUtility;
-import io.harness.oidc.gcp.GcpOidcDelegateConnectorValidatorUtility;
+import io.harness.oidc.gcp.connector.GcpOidcConnectorValidatorUtility;
+import io.harness.oidc.gcp.connector.GcpOidcDelegateConnectorValidatorUtility;
 import io.harness.openshift.OpenShiftClient;
 import io.harness.openshift.OpenShiftClientImpl;
 import io.harness.pcf.CfCliClient;
@@ -581,6 +589,7 @@ import io.harness.terragrunt.TerragruntClient;
 import io.harness.terragrunt.TerragruntClientImpl;
 import io.harness.threading.ThreadPool;
 import io.harness.time.TimeModule;
+import io.harness.utils.system.SystemWrapper;
 import io.harness.version.VersionModule;
 
 import software.wings.api.DeploymentType;
@@ -939,7 +948,6 @@ import org.asynchttpclient.DefaultAsyncHttpClientConfig;
 @RequiredArgsConstructor
 public class DelegateModule extends AbstractModule {
   private final DelegateConfiguration configuration;
-
   /*
    * Creates and return ScheduledExecutorService object, which can be used for health monitoring purpose.
    * This threadpool currently being used for various below operations:
@@ -1084,6 +1092,21 @@ public class DelegateModule extends AbstractModule {
   public ExecutorService k8sSteadyStateExecutor() {
     return Executors.newCachedThreadPool(
         new ThreadFactoryBuilder().setNameFormat("k8sSteadyState-%d").setPriority(Thread.MAX_PRIORITY).build());
+  }
+
+  @Provides
+  @Singleton
+  @Named("scmServerExecutor")
+  public ExecutorService scmServerExecutor() {
+    int scmExecutorCorePoolSize =
+        SystemWrapper.getOrDefaultInt(SCM_SERVER_CORE_POOL_SIZE_ENV_VAR, DEFAULT_SCM_SERVER_CORE_POOL_SIZE);
+    int scmExecutorMaxPoolSize =
+        SystemWrapper.getOrDefaultInt(SCM_SERVER_MAX_POOL_SIZE_ENV_VAR, DEFAULT_SCM_SERVER_MAX_POOL_SIZE);
+    int poolIdleTimeInSeconds = SystemWrapper.getOrDefaultInt(
+        SCM_SERVER_POOL_IDLE_TIME_IN_SECONDS_ENV_VAR, DEFAULT_SCM_SERVER_POOL_IDLE_TIME_VALUE);
+    return ThreadPool.create(scmExecutorCorePoolSize, scmExecutorMaxPoolSize, poolIdleTimeInSeconds,
+        DEFAULT_SCM_SERVER_POOL_IDLE_TIME_UNIT,
+        new ThreadFactoryBuilder().setNameFormat("scm-server-executor-%d").setPriority(Thread.MIN_PRIORITY).build());
   }
 
   @Provides

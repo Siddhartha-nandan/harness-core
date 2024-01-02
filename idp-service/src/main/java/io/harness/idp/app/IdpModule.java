@@ -9,9 +9,11 @@ package io.harness.idp.app;
 
 import static io.harness.audit.ResourceTypeConstants.IDP_ALLOW_LIST;
 import static io.harness.audit.ResourceTypeConstants.IDP_APP_CONFIGS;
+import static io.harness.audit.ResourceTypeConstants.IDP_BACKSTAGE_CATALOG_ENTITY;
 import static io.harness.audit.ResourceTypeConstants.IDP_CATALOG_CONNECTOR;
 import static io.harness.audit.ResourceTypeConstants.IDP_CHECKS;
 import static io.harness.audit.ResourceTypeConstants.IDP_CONFIG_ENV_VARIABLES;
+import static io.harness.audit.ResourceTypeConstants.IDP_LAYOUT;
 import static io.harness.audit.ResourceTypeConstants.IDP_OAUTH_CONFIG;
 import static io.harness.audit.ResourceTypeConstants.IDP_PROXY_HOST;
 import static io.harness.audit.ResourceTypeConstants.IDP_SCORECARDS;
@@ -87,10 +89,12 @@ import io.harness.idp.allowlist.services.AllowListService;
 import io.harness.idp.allowlist.services.AllowListServiceImpl;
 import io.harness.idp.audittrails.eventhandlers.AllowListEventHandler;
 import io.harness.idp.audittrails.eventhandlers.AppConfigEventHandler;
+import io.harness.idp.audittrails.eventhandlers.BackstageCatalogEntityEventHandler;
 import io.harness.idp.audittrails.eventhandlers.BackstageSecretEnvEventHandler;
 import io.harness.idp.audittrails.eventhandlers.CatalogConnectorEventHandler;
 import io.harness.idp.audittrails.eventhandlers.CheckEventHandler;
 import io.harness.idp.audittrails.eventhandlers.IDPNextGenOutboxEventHandler;
+import io.harness.idp.audittrails.eventhandlers.LayoutEventHandler;
 import io.harness.idp.audittrails.eventhandlers.OAuthConfigEventHandler;
 import io.harness.idp.audittrails.eventhandlers.ProxyHostDetailsEventHandler;
 import io.harness.idp.audittrails.eventhandlers.ScorecardEventHandler;
@@ -159,7 +163,9 @@ import io.harness.idp.provision.service.ProvisionServiceImpl;
 import io.harness.idp.proxy.config.ProxyAllowListConfig;
 import io.harness.idp.proxy.delegate.DelegateProxyApi;
 import io.harness.idp.proxy.delegate.DelegateProxyApiImpl;
-import io.harness.idp.proxy.layout.LayoutProxyApiImpl;
+import io.harness.idp.proxy.layout.resource.LayoutProxyApiImpl;
+import io.harness.idp.proxy.layout.service.LayoutService;
+import io.harness.idp.proxy.layout.service.LayoutServiceImpl;
 import io.harness.idp.proxy.services.ProxyApi;
 import io.harness.idp.proxy.services.ProxyApiImpl;
 import io.harness.idp.scorecard.checks.resources.ChecksApiImpl;
@@ -461,7 +467,7 @@ public class IdpModule extends AbstractModule {
     install(
         new CIExecutionServiceModule(appConfig.getCiExecutionServiceConfig(), appConfig.getShouldConfigureWithPMS()));
     install(new IACMServiceClientModule(appConfig.getIacmServiceConfig()));
-    install(EnforcementClientModule.getInstance(appConfig.getManagerClientConfig(), // Licencing
+    install(EnforcementClientModule.getInstance(appConfig.getNgManagerServiceHttpClientConfig(), // Licencing
         appConfig.getNgManagerServiceSecret(), IDP_SERVICE.getServiceId(),
         appConfig.getEnforcementClientConfiguration()));
     install(new CDStageConfigResourceClientModule(appConfig.getNgManagerServiceHttpClientConfig(),
@@ -534,6 +540,7 @@ public class IdpModule extends AbstractModule {
     bind(StatsComputeService.class).to(StatsComputeServiceImpl.class);
     bind(AsyncScoreComputationService.class).to(AsyncScoreComputationServiceImpl.class);
     bind(DataPointService.class).to(DataPointServiceImpl.class);
+    bind(LayoutService.class).to(LayoutServiceImpl.class);
     bind(HarnessDataPointsApi.class).to(HarnessDataPointsApiImpl.class);
     bind(KubernetesDataPointsApi.class).to(KubernetesDataPointsApiImpl.class);
     bind(DataPointDataValueService.class).to(DataPointDataValueServiceImpl.class);
@@ -600,6 +607,9 @@ public class IdpModule extends AbstractModule {
     bind(ScheduledExecutorService.class)
         .annotatedWith(Names.named("statsComputeDailyRunJob"))
         .toInstance(new ManagedScheduledExecutorService("statsComputeDailyRunJob"));
+    bind(ScheduledExecutorService.class)
+        .annotatedWith(Names.named("scaffolderTasksSyncJob"))
+        .toInstance(new ManagedScheduledExecutorService("scaffolderTasksSyncJob"));
     install(new AbstractTelemetryModule() {
       @Override
       public TelemetryConfiguration telemetryConfiguration() {
@@ -643,6 +653,8 @@ public class IdpModule extends AbstractModule {
     outboxEventHandlerMapBinder.addBinding(IDP_CHECKS).to(CheckEventHandler.class);
     outboxEventHandlerMapBinder.addBinding(IDP_ALLOW_LIST).to(AllowListEventHandler.class);
     outboxEventHandlerMapBinder.addBinding(IDP_OAUTH_CONFIG).to(OAuthConfigEventHandler.class);
+    outboxEventHandlerMapBinder.addBinding(IDP_LAYOUT).to(LayoutEventHandler.class);
+    outboxEventHandlerMapBinder.addBinding(IDP_BACKSTAGE_CATALOG_ENTITY).to(BackstageCatalogEntityEventHandler.class);
   }
 
   @Provides
@@ -867,7 +879,7 @@ public class IdpModule extends AbstractModule {
   @Provides
   @Singleton
   List<YamlSchemaRootClass> yamlSchemaRootClasses() {
-    return ImmutableList.<YamlSchemaRootClass>builder().addAll(IdpServiceRegistrars.yamlSchemaRegistrars).build();
+    return ImmutableList.<YamlSchemaRootClass>builder().build();
   }
 
   @Provides
