@@ -13,4 +13,6 @@ import io.harness.annotations.dev.OwnedBy;
 @OwnedBy(HarnessTeam.CDC)
 public interface CDGitXService {
   boolean isNewGitXEnabled(String accountIdentifier, String orgIdentifier, String projectIdentifier);
+
+  void assertGitXIsEnabled(String accountIdentifier, String orgIdentifier, String projectIdentifier);
 }

@@ -12,6 +12,7 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.exception.InvalidRequestException;
 import io.harness.gitsync.persistance.GitSyncSdkService;
 
 import com.google.inject.Inject;
@@ -34,6 +35,14 @@ public class CDGitXServiceImpl implements CDGitXService {
       return isGitSimplificationEnabledForAProject(accountIdentifier, orgIdentifier, projectIdentifier);
     } else {
       return true;
+    }
+  }
+
+  @Override
+  public void assertGitXIsEnabled(String accountIdentifier, String orgIdentifier, String projectIdentifier) {
+    if (!isNewGitXEnabled(accountIdentifier, orgIdentifier, projectIdentifier)) {
+      throw new InvalidRequestException(
+          GitXUtils.getErrorMessageForGitSimplificationNotEnabled(orgIdentifier, projectIdentifier));
     }
   }
 
