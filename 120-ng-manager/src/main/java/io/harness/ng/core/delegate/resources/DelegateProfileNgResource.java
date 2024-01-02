@@ -31,6 +31,7 @@ import io.harness.rest.RestResponse;
 import software.wings.security.annotations.AuthRule;
 
 import com.codahale.metrics.annotation.ExceptionMetered;
+import com.codahale.metrics.annotation.ResponseMetered;
 import com.codahale.metrics.annotation.Timed;
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
@@ -93,6 +94,7 @@ public class DelegateProfileNgResource {
   @ApiOperation(value = "Gets Delegate Configuration (profile)", nickname = "getDelegateProfileNg")
   @Timed
   @ExceptionMetered
+  @ResponseMetered
   @Hidden
   @Operation(operationId = "getDelegateConfigrationDetails",
       summary = "Retrieves Delegate Configuration details for given Delegate Configuration Id.",
@@ -117,6 +119,8 @@ public class DelegateProfileNgResource {
   @POST
   @ApiOperation(value = "Adds a Delegate Configuration (profile)", nickname = "addDelegateProfileNg")
   @Hidden
+  @Timed
+  @ResponseMetered
   @Operation(operationId = "createDelegateConfiguration",
       summary = "Creates Delegate Configuration specified by Configuration details in body",
       responses =
@@ -146,6 +150,7 @@ public class DelegateProfileNgResource {
   @ApiOperation(value = "Updates a Delegate profile", nickname = "updateDelegateProfileNg")
   @Timed
   @ExceptionMetered
+  @ResponseMetered
   @Hidden
   @Operation(operationId = "updateDelegateConfiguration", summary = "Updates Delegate Configuration specified by Id",
       responses =
@@ -177,6 +182,7 @@ public class DelegateProfileNgResource {
   @Path("/{delegateProfileId}/scoping-rules")
   @Timed
   @ExceptionMetered
+  @ResponseMetered
   @ApiOperation(value = "Updates the scoping rules inside the Delegate profile", nickname = "updateScopingRulesNg")
   @Hidden
   @Operation(operationId = "updateScopingRules",
@@ -207,6 +213,7 @@ public class DelegateProfileNgResource {
   @ApiOperation(value = "Deletes a Delegate Configuration (profile)", nickname = "deleteDelegateProfileNg")
   @Timed
   @ExceptionMetered
+  @ResponseMetered
   @Hidden
   @Operation(operationId = "deleteDelegateConfig", summary = "Deletes Delegate Configuration specified by Id",
       responses =
@@ -233,6 +240,7 @@ public class DelegateProfileNgResource {
   @ApiOperation(value = "Lists the Delegate Configurations (profiles)", nickname = "listDelegateProfilesNg")
   @Timed
   @ExceptionMetered
+  @ResponseMetered
   @Hidden
   @Operation(operationId = "getDelegateConfigurationsForAccount",
       summary = "Lists Delegate Configuration for specified Account, Organization and Project",
@@ -257,6 +265,7 @@ public class DelegateProfileNgResource {
   @ApiOperation(value = "Updates the selectors inside the Delegate profile", nickname = "updateSelectorsNg")
   @Timed
   @ExceptionMetered
+  @ResponseMetered
   @Hidden
   @Operation(operationId = "updateDelegateSelectors",
       summary = "Updates Delegate Selectors for Delegate Configuration specified by Id",

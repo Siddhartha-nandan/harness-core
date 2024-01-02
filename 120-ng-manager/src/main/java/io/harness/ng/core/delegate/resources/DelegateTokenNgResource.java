@@ -30,6 +30,7 @@ import io.harness.remote.client.CGRestUtils;
 import io.harness.rest.RestResponse;
 
 import com.codahale.metrics.annotation.ExceptionMetered;
+import com.codahale.metrics.annotation.ResponseMetered;
 import com.codahale.metrics.annotation.Timed;
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
@@ -86,6 +87,7 @@ public class DelegateTokenNgResource {
   @POST
   @Timed
   @ExceptionMetered
+  @ResponseMetered
   @ApiOperation(value = "Creates Delegate Token", nickname = "createDelegateToken")
   @Operation(operationId = "createDelegateToken", summary = "Creates Delegate Token.",
       responses =
@@ -113,6 +115,7 @@ public class DelegateTokenNgResource {
   @PUT
   @Timed
   @ExceptionMetered
+  @ResponseMetered
   @ApiOperation(value = "Revokes Delegate Token", nickname = "revokeDelegateToken")
   @Operation(operationId = "revokeDelegateToken", summary = "Revokes Delegate Token.",
       responses =
@@ -137,6 +140,7 @@ public class DelegateTokenNgResource {
   @GET
   @Timed
   @ExceptionMetered
+  @ResponseMetered
   @ApiOperation(value = "Get Delegate Tokens", nickname = "getDelegateTokens")
   @Operation(operationId = "getDelegateTokens",
       summary = "Retrieves Delegate Tokens by Account, Organization, Project and status.",
@@ -171,6 +175,7 @@ public class DelegateTokenNgResource {
   @Path("/delegate-groups")
   @Timed
   @ExceptionMetered
+  @ResponseMetered
   @ApiOperation(value = "Get Delegate Groups", nickname = "getDelegateGroupsUsingToken")
   @Operation(operationId = "getDelegateGroupsUsingToken",
       summary = "Lists delegate groups that are using the specified delegate token.",

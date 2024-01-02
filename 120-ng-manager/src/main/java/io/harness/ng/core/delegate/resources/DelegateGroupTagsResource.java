@@ -30,6 +30,7 @@ import io.harness.remote.client.CGRestUtils;
 import io.harness.rest.RestResponse;
 
 import com.codahale.metrics.annotation.ExceptionMetered;
+import com.codahale.metrics.annotation.ResponseMetered;
 import com.codahale.metrics.annotation.Timed;
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
@@ -90,6 +91,7 @@ public class DelegateGroupTagsResource {
   @Timed
   @Path("{groupIdentifier}")
   @ExceptionMetered
+  @ResponseMetered
   @Operation(operationId = "listTagsForDelegateGroup", summary = "Retrieves list of tags attached with Delegate group",
       responses =
       {
@@ -121,6 +123,7 @@ public class DelegateGroupTagsResource {
   @Timed
   @Path("{groupIdentifier}")
   @ExceptionMetered
+  @ResponseMetered
   @Operation(operationId = "addTagsToDelegateGroup", summary = "Add given list of tags to the Delegate group",
       responses =
       {
@@ -153,6 +156,7 @@ public class DelegateGroupTagsResource {
   @Timed
   @Path("{groupIdentifier}")
   @ExceptionMetered
+  @ResponseMetered
   @Operation(operationId = "updateTagsOfDelegateGroup",
       summary = "Clears all existing tags with delegate group and attach given set of tags to delegate group.",
       responses =
@@ -186,6 +190,7 @@ public class DelegateGroupTagsResource {
   @Timed
   @Path("{groupIdentifier}")
   @ExceptionMetered
+  @ResponseMetered
   @Operation(operationId = "deleteTagsFromDelegateGroup", summary = "Deletes all tags from the Delegate group",
       responses =
       {
@@ -218,6 +223,7 @@ public class DelegateGroupTagsResource {
   @Timed
   @Path("/delegate-groups")
   @ExceptionMetered
+  @ResponseMetered
   @Operation(operationId = "listDelegateGroupsUsingTags",
       summary = "List delegate groups that are having mentioned tags.",
       responses =

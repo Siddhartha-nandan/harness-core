@@ -56,6 +56,18 @@ public class NextGenManagerDropwizardMetricsPublisherImpl implements MetricsPubl
       MetricFilter.startsWith("io.harness.ng.core.artifacts.resources.docker.DockerArtifactResource");
   private static final MetricFilter FILESTORE_RESOURCE_FILTER =
       MetricFilter.startsWith("io.harness.filestore.resource.FileStoreResource");
+  private static final MetricFilter DELEGATE_DOWNLOAD_RESOURCE_FILTER =
+      MetricFilter.startsWith("io.harness.ng.core.delegate.resources.DelegateDownloadResource");
+  private static final MetricFilter DELEGATE_TOKEN_NG_RESOURCE_FILTER =
+      MetricFilter.startsWith("io.harness.ng.core.delegate.resources.DelegateTokenNgResource");
+  private static final MetricFilter DELEGATE_CONFIG_NG_V2_RESOURCE_FILTER =
+      MetricFilter.startsWith("io.harness.ng.core.delegate.resources.DelegateConfigNgV2Resource");
+  private static final MetricFilter DELEGATE_GROUP_TAGS_RESOURCE_FILTER =
+      MetricFilter.startsWith("io.harness.ng.core.delegate.resources.DelegateGroupTagsResource");
+  private static final MetricFilter DELEGATE_PROFILE_NG_RESOURCE_FILTER =
+      MetricFilter.startsWith("io.harness.ng.core.delegate.resources.DelegateProfileNgResource");
+  private static final MetricFilter DELEGATE_SETUP_NG_RESOURCE_FILTER =
+      MetricFilter.startsWith("io.harness.ng.core.delegate.resources.DelegateSetupNgResource");
   private static final String NG_MANAGER_RESOURCE_RESPONSE_COUNT_METRIC_NAME =
       "io_harness_ng_manager_resources_responses_count";
 
@@ -72,6 +84,18 @@ public class NextGenManagerDropwizardMetricsPublisherImpl implements MetricsPubl
     metricRegistry.getMeters(DOCKER_ARTIFACT_RESOURCE_FILTER)
         .forEach((key, value) -> recordResourceMeter(sanitizeMetricName(key), value));
     metricRegistry.getMeters(FILESTORE_RESOURCE_FILTER)
+        .forEach((key, value) -> recordResourceMeter(sanitizeMetricName(key), value));
+    metricRegistry.getMeters(DELEGATE_DOWNLOAD_RESOURCE_FILTER)
+        .forEach((key, value) -> recordResourceMeter(sanitizeMetricName(key), value));
+    metricRegistry.getMeters(DELEGATE_TOKEN_NG_RESOURCE_FILTER)
+        .forEach((key, value) -> recordResourceMeter(sanitizeMetricName(key), value));
+    metricRegistry.getMeters(DELEGATE_CONFIG_NG_V2_RESOURCE_FILTER)
+        .forEach((key, value) -> recordResourceMeter(sanitizeMetricName(key), value));
+    metricRegistry.getMeters(DELEGATE_GROUP_TAGS_RESOURCE_FILTER)
+        .forEach((key, value) -> recordResourceMeter(sanitizeMetricName(key), value));
+    metricRegistry.getMeters(DELEGATE_PROFILE_NG_RESOURCE_FILTER)
+        .forEach((key, value) -> recordResourceMeter(sanitizeMetricName(key), value));
+    metricRegistry.getMeters(DELEGATE_SETUP_NG_RESOURCE_FILTER)
         .forEach((key, value) -> recordResourceMeter(sanitizeMetricName(key), value));
 
     Set<Map.Entry<String, Gauge>> gaugeSet = metricRegistry.getGauges().entrySet();

@@ -28,6 +28,7 @@ import io.harness.ng.core.dto.FailureDTO;
 import io.harness.remote.client.CGRestUtils;
 
 import com.codahale.metrics.annotation.ExceptionMetered;
+import com.codahale.metrics.annotation.ResponseMetered;
 import com.codahale.metrics.annotation.Timed;
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
@@ -92,6 +93,7 @@ public class DelegateDownloadResource {
   @ApiOperation(value = "Downloads a kubernetes delegate yaml file.", nickname = "downloadKubernetesDelegateYaml")
   @Timed
   @ExceptionMetered
+  @ResponseMetered
   @Operation(operationId = "downloadKubernetesDelegateYaml", summary = "Downloads a kubernetes delegate yaml file.",
       responses =
       {
@@ -132,6 +134,7 @@ public class DelegateDownloadResource {
   @ApiOperation(value = "Downloads a docker delegate yaml file.", nickname = "downloadDockerDelegateYaml")
   @Timed
   @ExceptionMetered
+  @ResponseMetered
   @Operation(operationId = "downloadDockerDelegateYaml", summary = "Downloads a docker delegate yaml file.",
       responses =
       {

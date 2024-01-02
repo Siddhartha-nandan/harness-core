@@ -34,6 +34,7 @@ import io.harness.remote.client.CGRestUtils;
 import io.harness.rest.RestResponse;
 
 import com.codahale.metrics.annotation.ExceptionMetered;
+import com.codahale.metrics.annotation.ResponseMetered;
 import com.codahale.metrics.annotation.Timed;
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
@@ -108,6 +109,7 @@ public class DelegateSetupNgResource {
   @Timed
   @Path("generate-helm-values")
   @ExceptionMetered
+  @ResponseMetered
   @ApiOperation(value = "Generate helm values yaml file", nickname = "generateNgHelmValuesYaml")
   @Operation(operationId = "generateNgHelmValuesYaml",
       summary = "Generates helm values yaml file from the data specified in request body (Delegate setup details).",
@@ -140,6 +142,7 @@ public class DelegateSetupNgResource {
   @GET
   @Timed
   @Path("delegate-terraform-module-file")
+  @ResponseMetered
   @ExceptionMetered
   @ApiOperation(value = "Generate delegate terraform example module file", nickname = "generateTerraformModule")
   @Operation(operationId = "generateTerraformModule",
@@ -170,6 +173,7 @@ public class DelegateSetupNgResource {
   @DELETE
   @Path("delegate/{delegateIdentifier}")
   @Timed
+  @ResponseMetered
   @ExceptionMetered
   @ApiOperation(value = "Deletes delegate", nickname = "deleteDelegate")
   @Operation(operationId = "deleteDelegate", summary = "Deletes a Delegate by its identifier.",
@@ -203,6 +207,7 @@ public class DelegateSetupNgResource {
   @GET
   @Timed
   @Path("latest-supported-version")
+  @ResponseMetered
   @ExceptionMetered
   @ApiOperation(value = "Gets the latest supported delegate version", nickname = "publishedDelegateVersion")
   @Operation(operationId = "publishedDelegateVersion",
@@ -225,6 +230,7 @@ public class DelegateSetupNgResource {
   @Path("/override-delegate-tag")
   @ApiOperation(value = "Overrides delegate image tag for account", nickname = "overrideDelegateImageTag")
   @Timed
+  @ResponseMetered
   @ExceptionMetered
   @Operation(operationId = "overrideDelegateImageTag", summary = "Overrides delegate image tag for account",
       responses =
@@ -247,6 +253,7 @@ public class DelegateSetupNgResource {
   @POST
   @Timed
   @Path("listDelegates")
+  @ResponseMetered
   @ExceptionMetered
   @ApiOperation(value = "Lists all delegates in NG", nickname = "listDelegates")
   @Operation(operationId = "listDelegates", summary = "Lists all delegates in NG filtered by provided conditions",
