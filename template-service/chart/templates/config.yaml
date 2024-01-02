@@ -51,6 +51,7 @@ data:
   OPA_CONNECTIVITY_ENABLED: 'true'
   {{- end }}
   PIPELINE_SERVICE_CLIENT_BASEURL: http://pipeline-service.{{ .Release.Namespace }}.svc.cluster.local:12001/api/
+  #Changes to use internal connection urls for PMS client gRPC
   INTERNAL_PMS_GRPC_AUTHORITY: pipeline-service:12011
   INTERNAL_PMS_GRPC_TARGET: pipeline-service:12011
   {{ include "harnesscommon.harnessfunctions.java17flags" (dict "context" $) | nindent 2 }}

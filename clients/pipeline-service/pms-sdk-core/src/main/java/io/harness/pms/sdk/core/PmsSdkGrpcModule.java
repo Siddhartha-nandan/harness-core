@@ -101,7 +101,7 @@ public class PmsSdkGrpcModule extends AbstractModule {
     GrpcClientConfig clientConfig = config.getGrpcClientConfig();
     String authorityToUse = clientConfig.getAuthority();
 
-   return NettyChannelBuilder.forTarget(clientConfig.getTarget())
+    return NettyChannelBuilder.forTarget(clientConfig.getTarget())
                 .overrideAuthority(authorityToUse)
                 .usePlaintext()
                 .maxInboundMessageSize(GrpcInProcessServer.GRPC_MAXIMUM_MESSAGE_SIZE)

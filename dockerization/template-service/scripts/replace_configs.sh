@@ -256,5 +256,6 @@ replace_key_value pmsGrpcClientConfig.authority $PMS_GRPC_AUTHORITY
 
 replace_key_value enableOpentelemetry "$ENABLE_OPENTELEMETRY"
 
+#Changes to use internal connection urls for PMS client gRPC
 replace_key_value pmsGrpcClientConfig.target $INTERNAL_PMS_GRPC_TARGET
 replace_key_value pmsGrpcClientConfig.authority $INTERNAL_PMS_GRPC_AUTHORITY

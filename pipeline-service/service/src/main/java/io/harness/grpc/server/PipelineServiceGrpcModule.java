@@ -142,7 +142,6 @@ public class PipelineServiceGrpcModule extends AbstractModule {
 
   private Channel getChannel(GrpcClientConfig clientConfig, NegotiationType grpcNegotiationType) throws SSLException {
     String authorityToUse = clientConfig.getAuthority();
-    Channel channel;
     return NettyChannelBuilder.forTarget(clientConfig.getTarget())
         .overrideAuthority(authorityToUse)
         .usePlaintext()

@@ -269,5 +269,6 @@ replace_key_value redisLockConfig.retryAttempts $REDIS_RETRY_ATTEMPTS
 replace_key_value redisLockConfig.timeout $REDIS_TIMEOUT
 replace_key_value redisLockConfig.useScriptCache $REDIS_LOCK_CONFIG_REDIS_USE_SCRIPT_CACHE
 
+#Changes to use internal connection urls for PMS client gRPC
 replace_key_value pmsGrpcClientConfig.target $INTERNAL_PMS_GRPC_TARGET
 replace_key_value pmsGrpcClientConfig.authority $INTERNAL_PMS_GRPC_AUTHORITY
