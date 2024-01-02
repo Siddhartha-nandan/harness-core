@@ -19,7 +19,7 @@ FROM ubuntu:latest as builder
 RUN apt-get update -y && apt-get install -y curl
 
 # Download the Go distribution archive
-RUN curl -O https://dl.google.com/go/go1.19.8.linux-amd64.tar.gz
+RUN curl -O https://dl.google.com/go/go1.21.5.linux-amd64.tar.gz
 
 RUN mkdir -p /app
 ARG GCP_KEY
@@ -46,7 +46,7 @@ RUN GRPC_HEALTH_PROBE_VERSION=v0.4.22 && \
 RUN echo "Second Debug Done"
 
 # Second stage
-FROM us.gcr.io/platform-205701/harness/ubi8/go1:1.21 as base
+FROM us.gcr.io/platform-205701/harness/feature-base-image/ubi8/go1:PL-43592.115 as base
 COPY --from=builder2 /bin/grpc_health_probe /grpc_health_probe
 # Copy ci-scm binary
 COPY --from=builder /root/.cache/bazel/_bazel_root/8c069df52082beee3c95ca17836fb8e2/execroot/harness_monorepo/bazel-out/k8-fastbuild/bin/product/ci/scm/scm_/scm /usr/local/bin/scm
