@@ -153,10 +153,9 @@ public class NGSecretServiceV2Impl implements NGSecretServiceV2 {
   }
 
   @Override
-  public boolean validateTheIdentifierIsUnique(
-      String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier) {
-    return !secretRepository.existsByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndIdentifier(
-        accountIdentifier, orgIdentifier, projectIdentifier, identifier);
+  public boolean validateTheIdentifierIsUnique(ScopeInfo scopeInfo, String identifier) {
+    return !secretRepository.existsByAccountIdentifierAndParentUniqueIdAndIdentifier(
+        scopeInfo.getAccountIdentifier(), scopeInfo.getUniqueId(), identifier);
   }
 
   @Override

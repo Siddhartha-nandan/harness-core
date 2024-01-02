@@ -139,10 +139,10 @@ public class AwsHelperResourceTest extends CategoryTest {
     try (MockedStatic<IdentifierRefHelper> ignore = mockStatic(IdentifierRefHelper.class)) {
       when(IdentifierRefHelper.getIdentifierRef(anyString(), anyString(), anyString(), anyString()))
           .thenAnswer(i -> identifierRef);
-      when(awsHelperService.getVPCs(any(), anyString(), anyString(), anyString())).thenReturn(vpcs);
+      when(awsHelperService.getVPCs(any(), any(), anyString())).thenReturn(vpcs);
 
       ResponseDTO<List<AwsVPC>> result = awsHelperResource.getVpcs(
-          CONNECTOR_REF, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, REGION, null, null);
+          CONNECTOR_REF, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, REGION, null, null, scopeInfo);
       assertThat(result.getData()).isEqualTo(vpcs);
     }
   }
@@ -167,12 +167,12 @@ public class AwsHelperResourceTest extends CategoryTest {
                                        .build())
                              .build())
                      .build());
-      when(awsHelperService.getVPCs(any(), anyString(), anyString(), anyString())).thenReturn(vpcs);
+      when(awsHelperService.getVPCs(any(), any(), anyString())).thenReturn(vpcs);
       when(infrastructureEntityService.get(anyString(), anyString(), anyString(), anyString(), anyString()))
           .thenReturn(Optional.of(InfrastructureEntity.builder().build()));
 
       ResponseDTO<List<AwsVPC>> result = awsHelperResource.getVpcs(
-          null, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, null, ENV_ID, INFRA_DEFINITION_ID);
+          null, ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, null, ENV_ID, INFRA_DEFINITION_ID, scopeInfo);
       assertThat(result.getData()).isEqualTo(vpcs);
     }
   }

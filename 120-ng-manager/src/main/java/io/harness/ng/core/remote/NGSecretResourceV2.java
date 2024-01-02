@@ -159,10 +159,9 @@ public class NGSecretResourceV2 {
       @Parameter(description = ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
           NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
       @Parameter(description = ORG_PARAM_MESSAGE) @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
-      @Parameter(description = PROJECT_PARAM_MESSAGE) @QueryParam(
-          NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier) {
-    return ResponseDTO.newResponse(
-        ngSecretService.validateTheIdentifierIsUnique(accountIdentifier, orgIdentifier, projectIdentifier, identifier));
+      @Parameter(description = PROJECT_PARAM_MESSAGE) @QueryParam(NGCommonEntityConstants.PROJECT_KEY)
+      String projectIdentifier, @Context ScopeInfo scopeInfo) {
+    return ResponseDTO.newResponse(ngSecretService.validateTheIdentifierIsUnique(scopeInfo, identifier));
   }
 
   @POST
@@ -569,7 +568,8 @@ public class NGSecretResourceV2 {
           "encryptionKey") @NotNull String encryptionKey,
       @Parameter(description = "encryptionValue of the file secret from cg") @QueryParam(
           "encryptedValue") @NotNull String encryptedValue,
-      @Parameter(description = "Specification of Secret file") @FormDataParam("spec") String spec) {
+      @Parameter(description = "Specification of Secret file") @FormDataParam("spec") String spec,
+      @Context ScopeInfo scopeInfo) {
     SecretRequestWrapper dto = JsonUtils.asObject(spec, SecretRequestWrapper.class);
     validateRequestPayload(dto);
 
@@ -586,7 +586,7 @@ public class NGSecretResourceV2 {
     }
 
     return ResponseDTO.newResponse(
-        ngSecretService.create(accountIdentifier, dto.getSecret(), encryptionKey, encryptedValue));
+        ngSecretService.create(accountIdentifier, scopeInfo, dto.getSecret(), encryptionKey, encryptedValue));
   }
 
   @POST

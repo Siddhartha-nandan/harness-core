@@ -27,12 +27,12 @@ import org.springframework.data.domain.Page;
 
 @OwnedBy(PL)
 public interface SecretCrudService {
-  Boolean validateTheIdentifierIsUnique(
-      String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier);
+  Boolean validateTheIdentifierIsUnique(ScopeInfo scopeInfo, String identifier);
 
   SecretResponseWrapper create(String accountIdentifier, ScopeInfo scopeInfo, SecretDTOV2 dto);
 
-  SecretResponseWrapper create(String accountIdentifier, SecretDTOV2 dto, String encryptionKey, String encryptedValue);
+  SecretResponseWrapper create(
+      String accountIdentifier, ScopeInfo scopeInfo, SecretDTOV2 dto, String encryptionKey, String encryptedValue);
 
   SecretResponseWrapper createViaYaml(String accountIdentifier, ScopeInfo scopeInfo, SecretDTOV2 dto);
 

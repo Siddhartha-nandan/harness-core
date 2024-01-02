@@ -25,8 +25,7 @@ import org.springframework.data.mongodb.core.query.Criteria;
 
 @OwnedBy(PL)
 public interface NGSecretServiceV2 {
-  boolean validateTheIdentifierIsUnique(
-      String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier);
+  boolean validateTheIdentifierIsUnique(ScopeInfo scopeInfo, String identifier);
 
   Optional<Secret> get(String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier);
 

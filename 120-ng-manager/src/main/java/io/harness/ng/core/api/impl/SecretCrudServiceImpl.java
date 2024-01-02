@@ -242,10 +242,8 @@ public class SecretCrudServiceImpl implements SecretCrudService {
   }
 
   @Override
-  public Boolean validateTheIdentifierIsUnique(
-      String accountIdentifier, String orgIdentifier, String projectIdentifier, String identifier) {
-    return ngSecretService.validateTheIdentifierIsUnique(
-        accountIdentifier, orgIdentifier, projectIdentifier, identifier);
+  public Boolean validateTheIdentifierIsUnique(ScopeInfo scopeInfo, String identifier) {
+    return ngSecretService.validateTheIdentifierIsUnique(scopeInfo, identifier);
   }
 
   @Override
@@ -291,7 +289,7 @@ public class SecretCrudServiceImpl implements SecretCrudService {
 
   @Override
   public SecretResponseWrapper create(
-      String accountIdentifier, SecretDTOV2 dto, String encryptionKey, String encryptedValue) {
+      String accountIdentifier, ScopeInfo scopeInfo, SecretDTOV2 dto, String encryptionKey, String encryptedValue) {
     SecretResponseWrapper secretResponseWrapper = SecretResponseWrapper.builder().build();
     if (!isOpaPoliciesSatisfied(accountIdentifier, getMaskedDTOForOpa(dto), secretResponseWrapper)) {
       return secretResponseWrapper;
@@ -302,7 +300,7 @@ public class SecretCrudServiceImpl implements SecretCrudService {
         encryptedDataService.createSecretText(accountIdentifier, dto, encryptionKey, encryptedValue);
 
     if (Optional.ofNullable(encryptedData).isPresent()) {
-      secretResponseWrapper = createSecretInternal(accountIdentifier, dto, false);
+      secretResponseWrapper = createSecretInternal(accountIdentifier, scopeInfo, dto, false);
       secretResponseWrapper.setGovernanceMetadata(governanceMetadata);
       return secretResponseWrapper;
     }
