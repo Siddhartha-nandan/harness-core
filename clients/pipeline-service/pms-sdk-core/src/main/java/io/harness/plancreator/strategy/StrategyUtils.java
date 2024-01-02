@@ -7,7 +7,6 @@
 
 package io.harness.plancreator.strategy;
 
-import static io.harness.beans.FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR;
 import static io.harness.plancreator.strategy.StrategyConstants.CURRENT_GLOBAL_ITERATION;
 import static io.harness.plancreator.strategy.StrategyConstants.IDENTIFIER_POSTFIX;
 import static io.harness.plancreator.strategy.StrategyConstants.ITEM;
@@ -37,7 +36,6 @@ import io.harness.plancreator.PlanCreatorUtilsV1;
 import io.harness.plancreator.steps.GenericPlanCreatorUtils;
 import io.harness.pms.contracts.advisers.AdviserObtainment;
 import io.harness.pms.contracts.advisers.AdviserType;
-import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.ambiance.Level;
 import io.harness.pms.contracts.plan.Dependency;
 import io.harness.pms.contracts.plan.EdgeLayoutList;
