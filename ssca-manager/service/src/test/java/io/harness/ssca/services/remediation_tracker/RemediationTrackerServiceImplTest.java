@@ -15,6 +15,7 @@ import static io.harness.ssca.entities.remediation_tracker.RemediationStatus.ON_
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.harness.BuilderFactory;
@@ -22,27 +23,40 @@ import io.harness.SSCAManagerTestBase;
 import io.harness.beans.EmbeddedUser;
 import io.harness.category.element.UnitTests;
 import io.harness.exception.InvalidArgumentsException;
+import io.harness.ng.core.user.UserInfo;
 import io.harness.repositories.remediation_tracker.RemediationTrackerRepository;
+import io.harness.rest.RestResponse;
 import io.harness.rule.Owner;
-import io.harness.spec.server.ssca.v1.model.ExcludeArtifactRequestBody;
+import io.harness.spec.server.ssca.v1.model.ExcludeArtifactRequest;
+import io.harness.spec.server.ssca.v1.model.NameOperator;
 import io.harness.spec.server.ssca.v1.model.RemediationCondition;
+import io.harness.spec.server.ssca.v1.model.RemediationListingRequestBody;
+import io.harness.spec.server.ssca.v1.model.RemediationListingRequestBodyComponentNameFilter;
+import io.harness.spec.server.ssca.v1.model.RemediationListingRequestBodyCveFilter;
+import io.harness.spec.server.ssca.v1.model.RemediationListingResponse;
 import io.harness.spec.server.ssca.v1.model.RemediationStatus;
 import io.harness.spec.server.ssca.v1.model.RemediationTrackerCreateRequestBody;
 import io.harness.spec.server.ssca.v1.model.RemediationTrackersOverallSummaryResponseBody;
 import io.harness.spec.server.ssca.v1.model.VulnerabilitySeverity;
+import io.harness.ssca.api.ArtifactApiUtils;
 import io.harness.ssca.beans.EnvType;
 import io.harness.ssca.beans.remediation_tracker.PatchedPendingArtifactEntitiesResult;
 import io.harness.ssca.entities.remediation_tracker.CVEVulnerability;
 import io.harness.ssca.entities.remediation_tracker.RemediationTrackerEntity;
+import io.harness.ssca.entities.remediation_tracker.VulnerabilityInfoType;
 import io.harness.ssca.services.ArtifactService;
 import io.harness.ssca.services.CdInstanceSummaryService;
 import io.harness.ssca.services.NormalisedSbomComponentService;
+import io.harness.ssca.utils.PageResponseUtils;
+import io.harness.user.remote.UserClient;
 
 import com.google.inject.Inject;
+import java.io.IOException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.junit.Before;
@@ -50,6 +64,9 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.data.domain.Pageable;
+import retrofit2.Call;
+import retrofit2.Response;
 
 public class RemediationTrackerServiceImplTest extends SSCAManagerTestBase {
   @Inject RemediationTrackerService remediationTrackerService;
@@ -60,6 +77,8 @@ public class RemediationTrackerServiceImplTest extends SSCAManagerTestBase {
 
   @Mock NormalisedSbomComponentService normalisedSbomComponentService;
 
+  @Mock private UserClient userClient;
+
   private BuilderFactory builderFactory;
 
   private RemediationTrackerCreateRequestBody remediationTrackerCreateRequestBody;
@@ -67,10 +86,14 @@ public class RemediationTrackerServiceImplTest extends SSCAManagerTestBase {
   @Inject RemediationTrackerRepository repository;
 
   @Before
-  public void setup() throws IllegalAccessException {
+  public void setup() throws IllegalAccessException, IOException {
     MockitoAnnotations.initMocks(this);
     builderFactory = BuilderFactory.getDefault();
     remediationTrackerCreateRequestBody = builderFactory.getRemediationTrackerCreateRequestBody();
+    UserInfo user = UserInfo.builder().email("EMAIL").name("NAME").build();
+    Call userCall = mock(Call.class);
+    when(userClient.getUserById(any())).thenReturn(userCall);
+    when(userCall.execute()).thenReturn(Response.success(new RestResponse(Optional.of(user))));
     when(normalisedSbomComponentService.getOrchestrationIds(any(), any(), any(), any(), any()))
         .thenReturn(new ArrayList<>());
     when(artifactService.getDistinctArtifactIds(any(), any(), any(), any()))
@@ -83,7 +106,7 @@ public class RemediationTrackerServiceImplTest extends SSCAManagerTestBase {
             builderFactory.getCdInstanceSummaryBuilder().artifactCorrelationId("pending").build()));
     FieldUtils.writeField(remediationTrackerService, "artifactService", artifactService, true);
     FieldUtils.writeField(remediationTrackerService, "cdInstanceSummaryService", cdInstanceSummaryService, true);
-    testUserProvider.setActiveUser(EmbeddedUser.builder().name("user1").email("user1@harness.io").build());
+    testUserProvider.setActiveUser(EmbeddedUser.builder().uuid("UUID").name("user1").email("user1@harness.io").build());
   }
 
   @Test
@@ -365,8 +388,7 @@ public class RemediationTrackerServiceImplTest extends SSCAManagerTestBase {
     assertThat(remediationTrackerEntity.getStatus()).isEqualTo(COMPLETED);
     assertThat(remediationTrackerEntity.getEndTimeMilli()).isNotNull();
     assertThat(remediationTrackerEntity.isClosedManually()).isTrue();
-    assertThat(remediationTrackerEntity.getClosedBy().getName()).isEqualTo(testUserProvider.activeUser().getName());
-    assertThat(remediationTrackerEntity.getClosedBy().getEmail()).isEqualTo(testUserProvider.activeUser().getEmail());
+    assertThat(remediationTrackerEntity.getClosedBy()).isEqualTo(testUserProvider.activeUser().getUuid());
   }
 
   @Test
@@ -381,8 +403,136 @@ public class RemediationTrackerServiceImplTest extends SSCAManagerTestBase {
 
     remediationTrackerService.excludeArtifact(builderFactory.getContext().getAccountId(),
         builderFactory.getContext().getOrgIdentifier(), builderFactory.getContext().getProjectIdentifier(),
-        remediationTrackerEntity.getUuid(), new ExcludeArtifactRequestBody().artifactId("artifactId"));
+        remediationTrackerEntity.getUuid(), new ExcludeArtifactRequest().artifactId("artifactId"));
     remediationTrackerEntity = remediationTrackerService.getRemediationTracker(remediationTrackerEntity.getUuid());
     assertThat(remediationTrackerEntity.getArtifactInfos().get("artifactId").isExcluded()).isTrue();
+  }
+
+  @Test
+  @Owner(developers = VARSHA_LALWANI)
+  @Category(UnitTests.class)
+  public void testListRemediations() {
+    createRemediations();
+
+    Pageable pageable = PageResponseUtils.getPageable(0, 3, ArtifactApiUtils.getSortFieldMapping("component"), "ASC");
+    List<RemediationListingResponse> response =
+        remediationTrackerService
+            .listRemediations(builderFactory.getContext().getAccountId(),
+                builderFactory.getContext().getOrgIdentifier(), builderFactory.getContext().getProjectIdentifier(),
+                new RemediationListingRequestBody(), pageable)
+            .getContent();
+
+    assertThat(response).isNotNull();
+    assertThat(response).hasSize(3);
+    assertThat(response.get(0).getStatus()).isEqualTo(RemediationStatus.COMPLETED);
+    assertThat(response.get(0).getComponent()).isEqualTo("remediation1");
+    assertThat(response.get(0).getRemediationCondition().getOperator())
+        .isEqualTo(RemediationCondition.OperatorEnum.ALL);
+    assertThat(response.get(0).getScheduleStatus()).isEqualTo("On time");
+    assertThat(response.get(0).getCve()).isNull();
+    assertThat(response.get(0).getSeverity()).isEqualTo(VulnerabilitySeverity.HIGH);
+    assertThat(response.get(0).getContact().getName()).isEqualTo("test");
+    assertThat(response.get(0).getContact().getEmail()).isEqualTo("test@gmail.com");
+    assertThat(response.get(0).getDeploymentsCount().getPatchedProdCount()).isEqualTo(1);
+    assertThat(response.get(0).getDeploymentsCount().getPatchedNonProdCount()).isZero();
+    assertThat(response.get(0).getDeploymentsCount().getPendingProdCount()).isEqualTo(1);
+    assertThat(response.get(0).getDeploymentsCount().getPendingNonProdCount()).isZero();
+
+    assertThat(response.get(1).getCve()).isNotNull();
+    assertThat(response.get(1).getCve()).isEqualTo("CVE-2021-44228");
+  }
+
+  @Test
+  @Owner(developers = VARSHA_LALWANI)
+  @Category(UnitTests.class)
+  public void testListRemediationsWithBothFilters() {
+    createRemediations();
+
+    Pageable pageable = PageResponseUtils.getPageable(0, 3, ArtifactApiUtils.getSortFieldMapping("component"), "ASC");
+    List<RemediationListingResponse> response =
+        remediationTrackerService
+            .listRemediations(builderFactory.getContext().getAccountId(),
+                builderFactory.getContext().getOrgIdentifier(), builderFactory.getContext().getProjectIdentifier(),
+                new RemediationListingRequestBody()
+                    .cveFilter(
+                        new RemediationListingRequestBodyCveFilter().value("CVE-").operator(NameOperator.CONTAINS))
+                    .componentNameFilter(new RemediationListingRequestBodyComponentNameFilter()
+                                             .value("remediation2")
+                                             .operator(NameOperator.EQUALS)),
+                pageable)
+            .getContent();
+    assertThat(response).isNotNull();
+    assertThat(response).hasSize(1);
+    assertThat(response.get(0).getComponent()).isEqualTo("remediation2");
+  }
+
+  @Test
+  @Owner(developers = VARSHA_LALWANI)
+  @Category(UnitTests.class)
+  public void testListRemediationsWithOneFilter() {
+    createRemediations();
+
+    Pageable pageable = PageResponseUtils.getPageable(0, 3, ArtifactApiUtils.getSortFieldMapping("component"), "ASC");
+    List<RemediationListingResponse> response =
+        remediationTrackerService
+            .listRemediations(builderFactory.getContext().getAccountId(),
+                builderFactory.getContext().getOrgIdentifier(), builderFactory.getContext().getProjectIdentifier(),
+                new RemediationListingRequestBody().cveFilter(
+                    new RemediationListingRequestBodyCveFilter().value("CVE-").operator(NameOperator.CONTAINS)),
+                pageable)
+            .getContent();
+
+    assertThat(response).isNotNull();
+    assertThat(response).hasSize(2);
+    assertThat(response.get(0).getComponent()).isEqualTo("remediation2");
+    assertThat(response.get(1).getComponent()).isEqualTo("remediation3");
+  }
+
+  private void createRemediations() {
+    // This creates three different remediation trackers, two completed, one on-going. one completed and one on-going
+    // are with CVE.
+    RemediationTrackerCreateRequestBody remediationTrackerCreateRequestBody =
+        builderFactory.getRemediationTrackerCreateRequestBody();
+    String remediationTrackerId = remediationTrackerService.createRemediationTracker(
+        builderFactory.getContext().getAccountId(), builderFactory.getContext().getOrgIdentifier(),
+        builderFactory.getContext().getProjectIdentifier(), remediationTrackerCreateRequestBody);
+    RemediationTrackerEntity remediationTrackerEntity =
+        remediationTrackerService.getRemediationTracker(remediationTrackerId);
+    remediationTrackerEntity.getVulnerabilityInfo().setComponent("remediation1");
+    remediationTrackerEntity.setStatus(COMPLETED);
+    remediationTrackerEntity.setStartTimeMilli(builderFactory.getClock().millis());
+    remediationTrackerEntity.setEndTimeMilli(
+        builderFactory.getClock().instant().plus(1, ChronoUnit.DAYS).toEpochMilli());
+    repository.save(remediationTrackerEntity);
+
+    remediationTrackerId = remediationTrackerService.createRemediationTracker(
+        builderFactory.getContext().getAccountId(), builderFactory.getContext().getOrgIdentifier(),
+        builderFactory.getContext().getProjectIdentifier(), remediationTrackerCreateRequestBody);
+    remediationTrackerEntity = remediationTrackerService.getRemediationTracker(remediationTrackerId);
+    remediationTrackerEntity.setStatus(COMPLETED);
+    CVEVulnerability cveVulnerability =
+        CVEVulnerability.builder()
+            .type(VulnerabilityInfoType.CVE)
+            .cve("CVE-2021-44228")
+            .component("log4j")
+            .severity(io.harness.ssca.entities.remediation_tracker.VulnerabilitySeverity.HIGH)
+            .build();
+    remediationTrackerEntity.setVulnerabilityInfo(cveVulnerability);
+    remediationTrackerEntity.getVulnerabilityInfo().setComponent("remediation2");
+    remediationTrackerEntity.setStartTimeMilli(
+        builderFactory.getClock().instant().plus(5, ChronoUnit.MINUTES).toEpochMilli());
+    remediationTrackerEntity.setEndTimeMilli(
+        builderFactory.getClock().instant().plus(2, ChronoUnit.DAYS).toEpochMilli());
+    repository.save(remediationTrackerEntity);
+
+    remediationTrackerId = remediationTrackerService.createRemediationTracker(
+        builderFactory.getContext().getAccountId(), builderFactory.getContext().getOrgIdentifier(),
+        builderFactory.getContext().getProjectIdentifier(), remediationTrackerCreateRequestBody);
+    remediationTrackerEntity = remediationTrackerService.getRemediationTracker(remediationTrackerId);
+    cveVulnerability.setCve("CVE-2021-44229");
+    remediationTrackerEntity.setStatus(ON_GOING);
+    remediationTrackerEntity.setVulnerabilityInfo(cveVulnerability);
+    remediationTrackerEntity.getVulnerabilityInfo().setComponent("remediation3");
+    repository.save(remediationTrackerEntity);
   }
 }
