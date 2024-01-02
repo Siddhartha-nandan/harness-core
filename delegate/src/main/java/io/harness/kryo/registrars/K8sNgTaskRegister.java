@@ -6,6 +6,7 @@
  */
 
 package io.harness.kryo.registrars;
+
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
@@ -31,6 +32,7 @@ import io.harness.delegate.beans.connector.awsconnector.AwsFixedDelayBackoffStra
 import io.harness.delegate.beans.connector.awsconnector.AwsFullJitterBackoffStrategySpecDTO;
 import io.harness.delegate.beans.connector.awsconnector.AwsInheritFromDelegateSpecDTO;
 import io.harness.delegate.beans.connector.awsconnector.AwsManualConfigSpecDTO;
+import io.harness.delegate.beans.connector.awsconnector.AwsOidcSpecDTO;
 import io.harness.delegate.beans.connector.awsconnector.AwsSdkClientBackoffStrategyDTO;
 import io.harness.delegate.beans.connector.awsconnector.AwsSdkClientBackoffStrategySpecDTO;
 import io.harness.delegate.beans.connector.awsconnector.AwsSdkClientBackoffStrategyType;
@@ -252,6 +254,7 @@ import io.harness.k8s.model.HelmVersion;
 import io.harness.k8s.model.K8sContainer;
 import io.harness.k8s.model.K8sPod;
 import io.harness.k8s.model.KubernetesResourceId;
+import io.harness.k8s.trafficrouting.TrafficRoutingInfoDTO;
 import io.harness.logging.CommandExecutionStatus;
 import io.harness.manifest.CustomManifestSource;
 import io.harness.ng.core.dto.secrets.KerberosConfigDTO;
@@ -531,6 +534,7 @@ public class K8sNgTaskRegister implements KryoRegistrar {
     kryo.register(AwsSdkClientBackoffStrategyDTO.class, 10000458);
     kryo.register(AwsSdkClientBackoffStrategySpecDTO.class, 10000459);
     kryo.register(AwsSdkClientBackoffStrategyType.class, 10000460);
+    kryo.register(AwsOidcSpecDTO.class, 10000461);
 
     // k8s traffic routing
     kryo.register(HeaderConfig.class, 20002000);
@@ -551,5 +555,6 @@ public class K8sNgTaskRegister implements KryoRegistrar {
     kryo.register(K8sTrafficRoutingRequest.class, 20002012);
     kryo.register(K8sTrafficRoutingResponse.class, 20002013);
     kryo.register(K8sTrafficRoutingConfigType.class, 20002014);
+    kryo.register(TrafficRoutingInfoDTO.class, 20002016);
   }
 }

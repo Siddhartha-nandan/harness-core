@@ -584,6 +584,21 @@ paths:
         - $ref: '#/components/parameters/AccountHeader'
     parameters:
       - $ref: '#/components/parameters/PluginId'
+    delete:
+      summary: Delete custom plugin info
+      operationId: delete-custom-plugin-info
+      responses:
+        '204':
+          description: No Content
+      x-stoplight:
+        id: 1brpcp6chep0j
+      x-internal: true
+      security:
+        - x-api-key: []
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
+      tags:
+        - PluginInfo
   /v1/app-config:
     post:
       summary: Save Or Update Plugin Config
@@ -1330,6 +1345,23 @@ paths:
         - $ref: '#/components/parameters/AccountHeader'
       security:
         - x-api-key: []
+  /v1/data-sources/scm/data-point/values:
+    post:
+      summary: Get data points data for scm data source
+      operationId: get-scm-data-point-values
+      tags:
+        - ScmDataPoints
+      responses:
+        '200':
+          $ref: '#/components/responses/DataSourceDataPointInfoResponse'
+      x-stoplight:
+        id: 9fi72j8suwpyn
+      requestBody:
+        $ref: '#/components/requestBodies/ScmConfigRequest'
+      parameters:
+        - $ref: '#/components/parameters/AccountHeader'
+      security:
+        - x-api-key: []
   /v1/license/usage/save:
     post:
       summary: Save IDP module license usage
@@ -1388,29 +1420,6 @@ paths:
         $ref: '#/components/requestBodies/ScorecardRecalibrateRequest'
       x-internal: true
     parameters: []
-  '/v1/plugins-info/{plugin-id}/upload':
-    parameters:
-      - schema:
-          type: string
-        name: plugin-id
-        in: path
-        required: true
-    post:
-      summary: Upload Custom Plugin File
-      operationId: upload-custom-plugin-file
-      responses:
-        '200':
-          $ref: '#/components/responses/CustomPluginInfoResponse'
-      x-stoplight:
-        id: 32n05qs9vws0f
-      parameters:
-        - $ref: '#/components/parameters/AccountHeader'
-      requestBody:
-        $ref: '#/components/requestBodies/FileUploadRequest'
-      security:
-        - x-api-key: []
-      tags:
-        - PluginInfo
   /v1/backstage-harness/sync:
     post:
       summary: Sync Backstage Entities as Harness Entities for all IDP enabled accounts
@@ -1888,6 +1897,8 @@ components:
           enum:
             - DEFAULT
             - CUSTOM
+      required:
+        - id
     PluginInfoResponse:
       title: PluginInfoResponse
       x-stoplight:
@@ -2248,8 +2259,6 @@ components:
             id: 43cv9jhplzytw
       required:
         - plugin_details
-        - config
-        - exports
     LayoutIngestRequest:
       title: LayoutIngestRequest
       x-stoplight:
@@ -3360,14 +3369,16 @@ components:
           type: string
           x-stoplight:
             id: bulmbn2grsz1a
-        values:
+        data_source_identifier:
+          type: string
+          x-stoplight:
+            id: auomnn2gppz9a
+        input_values:
           type: array
           x-stoplight:
             id: ojz53dfz4w06d
           items:
-            x-stoplight:
-              id: puyrizdau54b3
-            type: string
+            $ref: '#/components/schemas/InputValue'
       required:
         - data_point_identifier
         - values
@@ -3392,7 +3403,7 @@ components:
       x-stoplight:
         id: ygs9m3sxopb3z
       type: object
-      description: Resonse for getting the data point data
+      description: Response for getting the data point data
       x-internal: true
       properties:
         resource:
@@ -3509,6 +3520,47 @@ components:
       properties:
         request:
           $ref: '#/components/schemas/KubernetesConfig'
+    ScmConfig:
+      title: ScmConfig
+      x-stoplight:
+        id: 4lnqpy92i93nn
+      type: object
+      description: Scm data source config
+      properties:
+        token:
+          type: string
+          x-stoplight:
+            id: trwbwp52ghvr1
+        repo_scm:
+          type: string
+          x-stoplight:
+            id: ild5tcji7lp79
+        repo_owner:
+          type: string
+          x-stoplight:
+            id: jsd5zcji6lp79
+        repo_name:
+          type: string
+          x-stoplight:
+            id: 4g3czqv7rubhe
+        repo_branch:
+          type: string
+          x-stoplight:
+            id: utj0sh93p6jpf
+        repo_sub_folder:
+          type: string
+          x-stoplight:
+            id: oiao02rw7ueem
+        data_source_location:
+          $ref: '#/components/schemas/DataSourceLocationInfo'
+    ScmRequest:
+      title: ScmRequest
+      x-stoplight:
+        id: qdoqi2ofwsxrr
+      type: object
+      properties:
+        request:
+          $ref: '#/components/schemas/ScmConfig'
     ScorecardRecalibrateIdentifiers:
       title: ScorecardRecalibrateIdentifiers
       x-stoplight:
@@ -3856,61 +3908,6 @@ components:
       properties:
         info:
           $ref: '#/components/schemas/CustomPluginDetailedInfo'
-    FileUpload:
-      title: FileUpload
-      x-stoplight:
-        id: 42qigqf34g3qa
-      type: object
-      description: Details of the file to be upload
-      properties:
-        file_type:
-          type: string
-          x-stoplight:
-            id: fkuih8a0cohq6
-          enum:
-            - ICON
-            - SCREENSHOT
-            - ZIP
-        file:
-          type: string
-          x-stoplight:
-            id: m506b6wsbw9b4
-          format: binary
-      required:
-        - file_type
-        - file
-    FileUploadInfo:
-      title: FileUploadInfo
-      x-stoplight:
-        id: tg0lcsmut5g4m
-      type: object
-      properties:
-        identifier:
-          type: string
-          x-stoplight:
-            id: 68qkmk2s7q3ke
-        name:
-          type: string
-          x-stoplight:
-            id: 9xravl6w1v0ri
-        url:
-          type: string
-          x-stoplight:
-            id: mm714ve2fwzkk
-      required:
-        - identifier
-        - name
-        - url
-    FileUploadResponse:
-      title: FileUploadResponse
-      x-stoplight:
-        id: rk1u7nzipft0a
-      type: object
-      properties:
-        info:
-          $ref: '#/components/schemas/FileUploadInfo'
-      required:
-        - info
     BackstageHarnessSyncRequest:
       title: BackstageHarnessSyncRequest
       type: object
@@ -3922,6 +3919,7 @@ components:
           enum:
             - create
             - update
+            - upsert
             - delete
         sync_mode:
           type: string
@@ -4273,6 +4271,15 @@ components:
           schema:
             $ref: '#/components/schemas/KubernetesRequest'
       description: Kubernetes Configuration
+    ScmConfigRequest:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ScmRequest'
+        application/yaml:
+          schema:
+            $ref: '#/components/schemas/ScmRequest'
+      description: Scm Configuration
     LicenseUsageSaveRequest:
       content:
         application/json:
@@ -4292,11 +4299,6 @@ components:
         application/json:
           schema:
             type: object
-    FileUploadRequest:
-      content:
-        multipart/form-data:
-          schema:
-            $ref: '#/components/schemas/FileUpload'
     BackstageHarnessSyncRequest:
       content:
         application/json:
@@ -4743,15 +4745,6 @@ components:
         application/yaml:
           schema:
             $ref: '#/components/schemas/CustomPluginInfoResponse'
-    FileUploadResponse:
-      description: Response for File Upload request
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/FileUploadResponse'
-        application/yaml:
-          schema:
-            $ref: '#/components/schemas/FileUploadResponse'
     BackstageHarnessSyncEntitiesResponse:
       description: Response for backstage harness entities sync
       content:

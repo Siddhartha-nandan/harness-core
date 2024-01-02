@@ -57,6 +57,7 @@ enableElasticsearch: false
 elasticsearch:
   url: "https://localhost:9200"
   apiKey: "apiKey"
+  indexName: "harness-ssca"
 
 s3Config:
   accessKeyId: "access-key-id"
@@ -156,6 +157,11 @@ iteratorsConfig:
      threadPoolSize: 3
      enabled: true
      targetIntervalInSeconds: 1800
+
+ticketServiceRestClientConfig:
+  baseUrl: http://localhost:4444/api/
+  connectTimeOutSeconds: 15
+  readTimeOutSeconds: 15
 
 
 ngManagerServiceSecret: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM

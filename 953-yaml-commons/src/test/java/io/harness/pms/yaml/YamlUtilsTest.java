@@ -13,11 +13,14 @@ import static io.harness.rule.OwnerRule.BRIJESH;
 import static io.harness.rule.OwnerRule.DEV_MITTAL;
 import static io.harness.rule.OwnerRule.PRASHANTSHARMA;
 import static io.harness.rule.OwnerRule.SAHIL;
+import static io.harness.rule.OwnerRule.SANDESH_SALUNKHE;
 
 import static junit.framework.TestCase.assertEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 
 import io.harness.CategoryTest;
 import io.harness.annotations.dev.OwnedBy;
@@ -963,6 +966,8 @@ public class YamlUtilsTest extends CategoryTest {
         .isEqualTo("k: \"2014-10-01 20:30:00Z\"\n");
     assertThat(YamlUtils.writeYamlString(Map.of("k", new TextNode("2014-10-01 20:30:00"))))
         .isEqualTo("k: \"2014-10-01 20:30:00\"\n");
+    assertThat(YamlUtils.writeYamlString(Map.of("k", new TextNode("00:00:00.100")))).isEqualTo("k: \"00:00:00.100\"\n");
+    assertThat(YamlUtils.writeYamlString(Map.of("k", new TextNode("00:00:00")))).isEqualTo("k: 00:00:00\n");
   }
 
   @Test
@@ -1024,5 +1029,19 @@ public class YamlUtilsTest extends CategoryTest {
         .isEqualTo(expectedListNodeFirstEntryUuid);
     assertThat(currentYamlField.getNode().getField("someNode").getNode().getField("additionalNode").toString())
         .isEqualTo(expectedAdditionalNode);
+  }
+
+  @Test
+  @Owner(developers = SANDESH_SALUNKHE)
+  @Category(UnitTests.class)
+  public void testIsUUIDPresent() {
+    assertThat(YamlUtils.isUUIDPresent(null)).isFalse();
+    YamlField strategyField = mock(YamlField.class);
+    assertThat(YamlUtils.isUUIDPresent(strategyField)).isFalse();
+    YamlNode yamlNode = mock(YamlNode.class);
+    doReturn(yamlNode).when(strategyField).getNode();
+    assertThat(YamlUtils.isUUIDPresent(strategyField)).isFalse();
+    doReturn("uuid").when(yamlNode).getUuid();
+    assertThat(YamlUtils.isUUIDPresent(strategyField)).isTrue();
   }
 }

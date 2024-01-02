@@ -238,6 +238,10 @@ if [[ "" != "$MANAGER_CLIENT_BASEURL" ]]; then
   export MANAGER_CLIENT_BASEURL; yq -i '.managerClientConfig.baseUrl=env(MANAGER_CLIENT_BASEURL)' $CONFIG_FILE
 fi
 
+if [[ "" != "$TICKET_SERVICE_REST_CLIENT_BASEURL" ]]; then
+  export TICKET_SERVICE_REST_CLIENT_BASEURL; yq -i '.ticketServiceRestClientConfig.baseUrl=env(TICKET_SERVICE_REST_CLIENT_BASEURL)' $CONFIG_FILE
+fi
+
 replace_key_value eventsFramework.redis.sentinel $EVENTS_FRAMEWORK_USE_SENTINEL
 replace_key_value eventsFramework.redis.envNamespace $EVENTS_FRAMEWORK_ENV_NAMESPACE
 replace_key_value eventsFramework.redis.redisUrl $EVENTS_FRAMEWORK_REDIS_URL
@@ -278,7 +282,8 @@ replace_key_value iteratorsConfig.remediationTrackerUpdateIteratorConfig.enabled
 replace_key_value iteratorsConfig.remediationTrackerUpdateIteratorConfig.targetIntervalInSeconds "$REMEDIATION_TRACKER_ITERATOR_INTERVAL_SEC"
 replace_key_value iteratorsConfig.remediationTrackerUpdateIteratorConfig.threadPoolSize "$REMEDIATION_TRACKER_ITERATOR_THREAD_POOL_SIZE"
 
-replace_key_value elasticsearch.url "$ELK_URL"
-replace_key_value elasticsearch.apiKey "$ELK_API_KEY"
+replace_key_value elasticsearch.url "$ELASTIC_URL"
+replace_key_value elasticsearch.apiKey "$ELASTIC_API_KEY"
+replace_key_value elasticsearch.indexName "$ELASTIC_INDEX_NAME"
 
-replace_key_value enableElasticsearch "$ENABLE_ELK"
+replace_key_value enableElasticsearch "$ENABLE_ELASTIC"

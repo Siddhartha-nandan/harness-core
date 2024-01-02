@@ -72,6 +72,8 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
   private static CDStageSummary cdStageSummaryFinished2;
   private static CDStageSummaryResponseDTO cdStageSummaryResponseFinished1;
   private static CDStageSummaryResponseDTO cdStageSummaryResponseFinished2;
+  private static CDStageSummary cdMultiStageSummaryUpcoming1;
+  private static CDStageSummaryResponseDTO cdMultiStageSummaryResponseUpcoming1;
   private static GenericStageSummary genericStageSummaryUpcoming;
   private static GenericStageSummary genericStageSummaryFinished;
   private static TestStageSummary testStageSummary;
@@ -91,6 +93,17 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
 
     cdStageSummaryResponseUpcoming2 =
         CDStageSummaryResponseDTO.builder().service("s4 s name").environment("s4 e name").infra("s4 i name").build();
+
+    cdMultiStageSummaryUpcoming1 = CDStageSummary.builder().build();
+    cdMultiStageSummaryUpcoming1.setStageIdentifier("multiService_id");
+    cdMultiStageSummaryUpcoming1.setStageName("multiService name");
+
+    cdMultiStageSummaryResponseUpcoming1 = CDStageSummaryResponseDTO.builder()
+                                               .services("[<+pipeline.variables.ser1>, <+pipeline.variables.ser2>]")
+                                               .environments("[env name]")
+                                               .infras("[infra name]")
+                                               .envGroup("[env grp]")
+                                               .build();
 
     genericStageSummaryUpcoming = GenericStageSummary.builder().build();
     genericStageSummaryUpcoming.setStageIdentifier("g1_id");
@@ -402,8 +415,10 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
   @Owner(developers = NAMANG)
   @Category(UnitTests.class)
   public void testSetFormattedSummaryOfRunningStages() throws IOException {
-    Set<StageSummary> runningStages =
-        new LinkedHashSet<>(List.of(cdStageSummaryUpcoming1, cdStageSummaryUpcoming2, genericStageSummaryUpcoming));
+    // upcoming added to running set to check cases where running stages doesn't have execution identifiers
+    Set<StageSummary> runningStages = new LinkedHashSet<>(List.of(
+        cdStageSummaryFinished1, cdStageSummaryFinished2, genericStageSummaryFinished, genericStageSummaryUpcoming));
+
     // A: edge cases
     stageMetadataNotificationHelper.setFormattedSummaryOfRunningStages(
         new HashSet<>(), new HashSet<>(), scope, planExIdentifier);
@@ -412,108 +427,111 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
                            -> stageMetadataNotificationHelper.setFormattedSummaryOfRunningStages(
                                runningStages, null, scope, planExIdentifier))
         .isInstanceOf(InvalidRequestException.class)
-        .hasMessage("Formatted running stages and scope and planExecutionId is required");
+        .hasMessage("Formatted running stages and scope and plan id is required");
 
     assertThatThrownBy(()
                            -> stageMetadataNotificationHelper.setFormattedSummaryOfRunningStages(
                                runningStages, new HashSet<>(), null, planExIdentifier))
         .isInstanceOf(InvalidRequestException.class)
-        .hasMessage("Formatted running stages and scope and planExecutionId is required");
+        .hasMessage("Formatted running stages and scope and plan id is required");
 
     assertThatThrownBy(()
                            -> stageMetadataNotificationHelper.setFormattedSummaryOfRunningStages(
                                runningStages, new HashSet<>(), scope, "  "))
         .isInstanceOf(InvalidRequestException.class)
-        .hasMessage("Formatted running stages and scope and planExecutionId is required");
+        .hasMessage("Formatted running stages and scope and plan id is required");
 
     Set<String> formattedRunningStages = new LinkedHashSet<>();
-    when(cdngStageSummaryResourceClient.listStagePlanCreationFormattedSummary(
-             accountId, orgIdentifier, projectIdentifier, planExIdentifier, List.of("s3_id", "s4_id")))
+    when(cdngStageSummaryResourceClient.listStageExecutionFormattedSummary(
+             accountId, orgIdentifier, projectIdentifier, List.of("s1_ex_id", "s2_ex_id")))
         .thenReturn(mockExecutionCall);
-    when(cdngStageSummaryResourceClient.listStagePlanCreationFormattedSummary(
-             accountId, orgIdentifier, projectIdentifier, planExIdentifier, List.of("s4_id", "s3_id")))
+    when(cdngStageSummaryResourceClient.listStageExecutionFormattedSummary(
+             accountId, orgIdentifier, projectIdentifier, List.of("s2_ex_id", "s1_ex_id")))
         .thenReturn(mockExecutionCall);
     // B: when get complete CD response
 
     Map<String, CDStageSummaryResponseDTO> completeResponse = new HashMap<>();
-    completeResponse.put("s3_id", cdStageSummaryResponseUpcoming1);
-    completeResponse.put("s4_id", cdStageSummaryResponseUpcoming2);
+    completeResponse.put("s1_ex_id", cdStageSummaryResponseFinished1);
+    completeResponse.put("s2_ex_id", cdStageSummaryResponseFinished2);
     doReturn(getWrappedExecutionResponse(completeResponse)).when(mockExecutionCall).execute();
 
     stageMetadataNotificationHelper.setFormattedSummaryOfRunningStages(
         runningStages, formattedRunningStages, scope, planExIdentifier);
 
     assertThat(formattedRunningStages)
-        .hasSize(3)
-        .containsExactly("s3 name : \n"
-                + "     Environment  :  s3 e name\n"
-                + "     Service  :  s3 s name\n"
-                + "     Infrastructure Definition  :  s3 i name",
-            "s4_id : \n"
-                + "     Service  :  s4 s name\n"
-                + "     Environment  :  s4 e name\n"
-                + "     Infrastructure Definition  :  s4 i name",
-            "g1 name");
+        .hasSize(4)
+        .containsExactly("s1 name : \n"
+                + "     Service  :  s1 s name\n"
+                + "     Environment  :  s1 e name\n"
+                + "     Infrastructure Definition  :  s1 i name",
+            "s2_id : \n"
+                + "     Service  :  s2 s name\n"
+                + "     Infrastructure Definition  :  s2 i name\n"
+                + "     Environment  :  s2 e name",
+            "g2_id", "g1 name");
+
     // original set shouldn't be modified
-    assertThat(runningStages).hasSize(3);
+    assertThat(runningStages).hasSize(4);
     formattedRunningStages.clear();
 
     // C: when get partial CD response
     Map<String, CDStageSummaryResponseDTO> partialResponse = new HashMap<>();
-    partialResponse.put("s3_id", cdStageSummaryResponseUpcoming1);
+    partialResponse.put("s1_ex_id", cdStageSummaryResponseFinished1);
     doReturn(getWrappedExecutionResponse(partialResponse)).when(mockExecutionCall).execute();
 
     stageMetadataNotificationHelper.setFormattedSummaryOfRunningStages(
         runningStages, formattedRunningStages, scope, planExIdentifier);
 
     assertThat(formattedRunningStages)
-        .hasSize(3)
-        .contains("s3 name : \n"
-                + "     Environment  :  s3 e name\n"
-                + "     Service  :  s3 s name\n"
-                + "     Infrastructure Definition  :  s3 i name",
-            "s4_id", "g1 name");
+        .hasSize(4)
+        .containsExactly("s1 name : \n"
+                + "     Service  :  s1 s name\n"
+                + "     Environment  :  s1 e name\n"
+                + "     Infrastructure Definition  :  s1 i name",
+            "s2_id", "g2_id", "g1 name");
+
     // original set shouldn't be modified
-    assertThat(runningStages).hasSize(3);
+    assertThat(runningStages).hasSize(4);
     formattedRunningStages.clear();
 
     // D: when no CD stages
-    Set<StageSummary> runningStagesWithoutCDStages = Set.of(genericStageSummaryUpcoming);
+    Set<StageSummary> runningStagesWithoutCDStages =
+        new LinkedHashSet<>(List.of(genericStageSummaryFinished, genericStageSummaryUpcoming));
 
     stageMetadataNotificationHelper.setFormattedSummaryOfRunningStages(
         runningStagesWithoutCDStages, formattedRunningStages, scope, planExIdentifier);
 
-    assertThat(formattedRunningStages).hasSize(1).containsExactly("g1 name");
+    assertThat(formattedRunningStages).hasSize(2).containsExactly("g2_id", "g1 name");
     // original set shouldn't be modified
-    assertThat(runningStagesWithoutCDStages).hasSize(1);
+    assertThat(runningStagesWithoutCDStages).hasSize(2);
     formattedRunningStages.clear();
 
     // E: when only CD stages
     Set<StageSummary> runningStagesWithOnlyCDStages =
-        new LinkedHashSet<>(List.of(cdStageSummaryUpcoming1, cdStageSummaryUpcoming2));
+        new LinkedHashSet<>(List.of(cdStageSummaryFinished1, cdStageSummaryFinished2));
 
     stageMetadataNotificationHelper.setFormattedSummaryOfRunningStages(
         runningStagesWithOnlyCDStages, formattedRunningStages, scope, planExIdentifier);
 
     assertThat(formattedRunningStages)
         .hasSize(2)
-        .containsExactly("s3 name : \n"
-                + "     Environment  :  s3 e name\n"
-                + "     Service  :  s3 s name\n"
-                + "     Infrastructure Definition  :  s3 i name",
-            "s4_id");
+        .containsExactly("s1 name : \n"
+                + "     Service  :  s1 s name\n"
+                + "     Environment  :  s1 e name\n"
+                + "     Infrastructure Definition  :  s1 i name",
+            "s2_id");
     // original set shouldn't be modified
     assertThat(runningStagesWithOnlyCDStages).hasSize(2);
     formattedRunningStages.clear();
 
     // F: unprocessed stages left
-    Set<StageSummary> runningStagesWithUnknownStages = Set.of(testStageSummary);
+    Set<StageSummary> runningStagesWithUnknownStages = new LinkedHashSet<>(List.of(testStageSummary));
 
     assertThatThrownBy(()
                            -> stageMetadataNotificationHelper.setFormattedSummaryOfRunningStages(
                                runningStagesWithUnknownStages, formattedRunningStages, scope, planExIdentifier))
         .isInstanceOf(IllegalStateException.class)
-        .hasMessage("Error while formatting upcoming stages, unable to process [[TestStageSummary()]] stages");
+        .hasMessage("Error while formatting running stages, unable to process [[TestStageSummary()]] stages");
 
     // original set shouldn't be modified
     assertThat(runningStagesWithUnknownStages).hasSize(1);
@@ -522,19 +540,19 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
     // G: when failed CD response
     doThrow(new InvalidRequestException("dummy"))
         .when(cdngStageSummaryResourceClient)
-        .listStagePlanCreationFormattedSummary(
-            accountId, orgIdentifier, projectIdentifier, planExIdentifier, List.of("s3_id", "s4_id"));
+        .listStageExecutionFormattedSummary(
+            accountId, orgIdentifier, projectIdentifier, List.of("s1_ex_id", "s2_ex_id"));
     doThrow(new InvalidRequestException("dummy"))
         .when(cdngStageSummaryResourceClient)
-        .listStagePlanCreationFormattedSummary(
-            accountId, orgIdentifier, projectIdentifier, planExIdentifier, List.of("s4_id", "s3_id"));
+        .listStageExecutionFormattedSummary(
+            accountId, orgIdentifier, projectIdentifier, List.of("s2_ex_id", "s1_ex_id"));
 
     stageMetadataNotificationHelper.setFormattedSummaryOfRunningStages(
         runningStages, formattedRunningStages, scope, planExIdentifier);
 
-    assertThat(formattedRunningStages).hasSize(3).containsExactly("s3 name", "s4_id", "g1 name");
+    assertThat(formattedRunningStages).hasSize(4).containsExactly("s1 name", "s2_id", "g2_id", "g1 name");
     // original set shouldn't be modified
-    assertThat(runningStages).hasSize(3);
+    assertThat(runningStages).hasSize(4);
     formattedRunningStages.clear();
   }
 
@@ -549,7 +567,7 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
     assertThat(StageMetadataNotificationHelper.isGraphNodeOfCDDeploymentStageType(graphLayoutNodeDTO)).isFalse();
 
     graphLayoutNodeDTO.setNodeType("Deployment");
-    assertThat(StageMetadataNotificationHelper.isGraphNodeOfCDDeploymentStageType(graphLayoutNodeDTO)).isFalse();
+    assertThat(StageMetadataNotificationHelper.isGraphNodeOfCDDeploymentStageType(graphLayoutNodeDTO)).isTrue();
 
     graphLayoutNodeDTO.setModule("cd");
     assertThat(StageMetadataNotificationHelper.isGraphNodeOfCDDeploymentStageType(graphLayoutNodeDTO)).isTrue();
@@ -565,6 +583,11 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
                                         .nodeExecutionId("custom stage ex id")
                                         .nodeGroup("STAGE")
                                         .build();
+    GraphLayoutNodeDTO customLoopingNode = GraphLayoutNodeDTO.builder()
+                                               .name("custom stage<+strategy.identifierPostFix>")
+                                               .nodeIdentifier("custom_stage<+strategy.identifierPostFix>")
+                                               .nodeGroup("STAGE")
+                                               .build();
     assertThatThrownBy(() -> StageMetadataNotificationHelper.addStageNodeToStagesSummary(null, customNode))
         .isInstanceOf(InvalidRequestException.class)
         .hasMessage("Input stage node and stages set is required for adding details of stage node to a stages set");
@@ -585,15 +608,33 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
     cdStageSummary.setStageExecutionIdentifier("cd stage ex id");
     cdStageSummary.setStageName("cd stage name");
 
+    GraphLayoutNodeDTO cdMultiNode = GraphLayoutNodeDTO.builder()
+                                         .name("cd multi<+strategy.identifierPostFix>")
+                                         .nodeIdentifier("cd_multi<+strategy.identifierPostFix>")
+                                         .nodeGroup("STAGE")
+                                         .nodeType("Deployment")
+                                         .module(null)
+                                         .build();
+    CDStageSummary cdMultiStageSummary = CDStageSummary.builder().build();
+    cdMultiStageSummary.setStageIdentifier("cd_multi");
+    cdMultiStageSummary.setStageName("cd multi");
+
     GenericStageSummary genericStageSummary = GenericStageSummary.builder().build();
     genericStageSummary.setStageIdentifier("custom stage id");
     genericStageSummary.setStageExecutionIdentifier("custom stage ex id");
     genericStageSummary.setStageName("custom stage name");
 
-    Set<StageSummary> stages = new HashSet<>();
+    GenericStageSummary genericLoopingStageSummary = GenericStageSummary.builder().build();
+    genericLoopingStageSummary.setStageIdentifier("custom_stage");
+    genericLoopingStageSummary.setStageName("custom stage");
+
+    Set<StageSummary> stages = new LinkedHashSet<>();
     StageMetadataNotificationHelper.addStageNodeToStagesSummary(stages, customNode);
     StageMetadataNotificationHelper.addStageNodeToStagesSummary(stages, cdNode);
-    assertThat(stages).hasSize(2).containsExactly(genericStageSummary, cdStageSummary);
+    StageMetadataNotificationHelper.addStageNodeToStagesSummary(stages, cdMultiNode);
+    StageMetadataNotificationHelper.addStageNodeToStagesSummary(stages, customLoopingNode);
+    assertThat(stages).hasSize(4).containsExactly(
+        genericStageSummary, cdStageSummary, cdMultiStageSummary, genericLoopingStageSummary);
   }
 
   @Test
@@ -633,6 +674,13 @@ public class StageMetadataNotificationHelperImplTest extends CategoryTest {
             + "     Service  :  s2 s name\n"
             + "     Infrastructure Definition  :  s2 i name\n"
             + "     Environment  :  s2 e name");
+    assertThat(StageMetadataNotificationHelper.formatCDStageMetadata(
+                   cdMultiStageSummaryResponseUpcoming1, cdMultiStageSummaryUpcoming1))
+        .isEqualTo("multiService name : \n"
+            + "     Services  :  [<+pipeline.variables.ser1>, <+pipeline.variables.ser2>]\n"
+            + "     Infrastructure Definitions  :  [infra name]\n"
+            + "     Environments  :  [env name]\n"
+            + "     Environment Group  :  [env grp]");
   }
 
   @Test

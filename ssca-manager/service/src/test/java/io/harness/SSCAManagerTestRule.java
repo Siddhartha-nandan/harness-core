@@ -34,9 +34,10 @@ import io.harness.ssca.api.EnforcementApiImpl;
 import io.harness.ssca.api.OrchestrationApiImpl;
 import io.harness.ssca.api.SbomProcessorApiImpl;
 import io.harness.ssca.api.TokenApiImpl;
+import io.harness.ssca.beans.ElasticSearchConfig;
 import io.harness.ssca.beans.PolicyType;
 import io.harness.ssca.search.ElasticSearchIndexManager;
-import io.harness.ssca.search.ElasticSearchIndexManagerImpl;
+import io.harness.ssca.search.SSCAIndexManager;
 import io.harness.ssca.search.SearchService;
 import io.harness.ssca.search.SearchServiceImpl;
 import io.harness.ssca.services.ArtifactService;
@@ -76,11 +77,13 @@ import io.harness.ssca.services.drift.SbomDriftService;
 import io.harness.ssca.services.drift.SbomDriftServiceImpl;
 import io.harness.ssca.services.remediation_tracker.RemediationTrackerService;
 import io.harness.ssca.services.remediation_tracker.RemediationTrackerServiceImpl;
+import io.harness.ssca.ticket.TicketServiceRestClientService;
 import io.harness.testlib.module.MongoRuleMixin;
 import io.harness.testlib.module.TestMongoModule;
 import io.harness.threading.CurrentThreadExecutor;
 import io.harness.threading.ExecutorModule;
 import io.harness.time.TimeModule;
+import io.harness.user.remote.UserClient;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import com.amazonaws.services.s3.AmazonS3;
@@ -94,6 +97,7 @@ import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 import com.google.inject.multibindings.MapBinder;
 import com.google.inject.name.Named;
+import com.google.inject.name.Names;
 import dev.morphia.converters.TypeConverter;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
@@ -197,6 +201,20 @@ public class SSCAManagerTestRule implements InjectorRuleMixin, MethodRule, Mongo
       public boolean isElasticSearchEnabled() {
         return false;
       }
+
+      @Provides
+      @Singleton
+      @Named("elasticsearch")
+      public ElasticSearchConfig elasticSearchConfig() {
+        return ElasticSearchConfig.builder().url("url").apiKey("apiKey").indexName("harness-ssca").build();
+      }
+
+      @Provides
+      @Singleton
+      @Named("sscaManagerServiceSecret")
+      public String sscaManagerServiceSecret() {
+        return "sscaManagerServiceSecret";
+      }
     });
 
     modules.add(new AbstractModule() {
@@ -227,11 +245,13 @@ public class SSCAManagerTestRule implements InjectorRuleMixin, MethodRule, Mongo
         bind(PolicyMgmtService.class).toInstance(mock(PolicyMgmtServiceImpl.class));
         bind(FeatureFlagService.class).toInstance(mock(FeatureFlagServiceImpl.class));
         bind(AccountClient.class).toInstance(mock(AccountClient.class));
+        bind(UserClient.class).toInstance(mock(UserClient.class));
         bind(SearchService.class).to(SearchServiceImpl.class);
         bind(ElasticsearchClient.class).toInstance(mock(ElasticsearchClient.class));
-        bind(ElasticSearchIndexManager.class).to(ElasticSearchIndexManagerImpl.class);
+        bind(ElasticSearchIndexManager.class).annotatedWith(Names.named("SSCA")).to(SSCAIndexManager.class);
 
         bind(RemediationTrackerService.class).to(RemediationTrackerServiceImpl.class);
+        bind(TicketServiceRestClientService.class).toInstance(mock(TicketServiceRestClientService.class));
         MapBinder<PolicyType, PolicyEvaluationService> policyEvaluationServiceMapBinder =
             MapBinder.newMapBinder(binder(), PolicyType.class, PolicyEvaluationService.class);
         policyEvaluationServiceMapBinder.addBinding(PolicyType.OPA)
