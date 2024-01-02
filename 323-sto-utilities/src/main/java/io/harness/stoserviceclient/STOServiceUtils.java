@@ -41,7 +41,7 @@ import java.util.Map;
 @OwnedBy(HarnessTeam.STO)
 public class STOServiceUtils {
   private static final String TOKEN = "token";
-  private static final String API_TOKEN = "ApiKey ";
+  private static final String API_TOKEN_PREFIX = "ApiKey ";
   private static final int MAX_ATTEMPTS = 3;
   private static final long INITIAL_DELAY_MS = 1000;
   private static final long MAX_DELAY_MS = 5000;
@@ -88,7 +88,7 @@ public class STOServiceUtils {
 
     Map<String, String> result = new HashMap<>();
     String token = getSTOServiceToken(accountId);
-    String accessToken = API_TOKEN + token;
+    String accessToken = API_TOKEN_PREFIX + token;
 
     if ("".equals(token)) {
       result.put("ERROR_MESSAGE", "Failed to authenticate with STO");
@@ -172,7 +172,7 @@ public class STOServiceUtils {
   @NotNull
   public String deleteAccountData(String accountId) {
     String token = getSTOServiceToken(null);
-    String accessToken = API_TOKEN + token;
+    String accessToken = API_TOKEN_PREFIX + token;
 
     return makeAPICallWithRetry(stoServiceClient.deleteAccountData(accessToken, accountId)).get("status").toString();
   }
@@ -180,7 +180,7 @@ public class STOServiceUtils {
   @NotNull
   public String getUsageAllAccounts(long timestamp) {
     String token = getSTOServiceToken(null);
-    String accessToken = API_TOKEN + token;
+    String accessToken = API_TOKEN_PREFIX + token;
 
     return makeAPICallWithRetry(stoServiceClient.getUsageAllAccounts(accessToken, String.valueOf(timestamp)))
         .get("usage")
@@ -192,7 +192,7 @@ public class STOServiceUtils {
     responseBody = Failsafe.with(TOKEN_RETRY_POLICY).get(() -> {
       JsonObject tokenResponseBody = makeAPICall(apiCall);
       if (tokenResponseBody.has(TOKEN)) {
-        String token = API_TOKEN + tokenResponseBody.get(TOKEN).getAsString();
+        String token = API_TOKEN_PREFIX + tokenResponseBody.get(TOKEN).getAsString();
         JsonObject productsResponseBody = makeAPICall(stoServiceClient.getAllProducts(token, DEFAULT_PAGE, DEFAULT_PAGE, DEFAULT_NAME));
         if (productsResponseBody.has("status") && productsResponseBody.get("status").getAsInt() == HttpStatusCodes.STATUS_CODE_UNAUTHORIZED)
           throw new GeneralException("Invalid Token");
