@@ -297,18 +297,26 @@ public class ServiceAccountResource {
   }
 
   @GET
-  @Path("{identifier}")
+  @Path("/internal")
   @Hidden
   @InternalApi
   @ApiOperation(value = "Get service account by identifier", nickname = "getServiceAccountByIdentifier")
-  public ResponseDTO<ServiceAccountDTOInternal> getServiceAccount(
-      @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) @NotNull String accountIdentifier,
-      @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
-      @QueryParam(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
-      @PathParam(IDENTIFIER) @NotNull String identifier) {
-    ServiceAccountDTO serviceAccountDTO =
-        serviceAccountService.getServiceAccountDTO(accountIdentifier, orgIdentifier, projectIdentifier, identifier);
+  public ResponseDTO<List<ServiceAccountDTOInternal>> listServiceAccountsInternal(
+      @Parameter(description = ACCOUNT_PARAM_MESSAGE, required = true) @NotBlank @QueryParam(
+          NGCommonEntityConstants.ACCOUNT_KEY) @AccountIdentifier String accountIdentifier,
+      @Parameter(description = ORG_PARAM_MESSAGE) @OrgIdentifier @QueryParam(
+          NGCommonEntityConstants.ORG_KEY) @io.harness.accesscontrol.OrgIdentifier String orgIdentifier,
+      @Parameter(description = PROJECT_PARAM_MESSAGE) @ProjectIdentifier @QueryParam(
+          NGCommonEntityConstants.PROJECT_KEY) @io.harness.accesscontrol.ProjectIdentifier String projectIdentifier,
+      @Parameter(
+          description = "This is the list of Service Account IDs. Details specific to these IDs would be fetched.")
+      @Optional @QueryParam(IDENTIFIERS) List<String> identifiers) {
+    ResponseDTO<List<ServiceAccountDTO>> serviceAccountDTO =
+        listServiceAccounts(accountIdentifier, orgIdentifier, projectIdentifier, identifiers);
 
-    return ResponseDTO.newResponse(ServiceAccountDTOMapper.getDTOFromServiceAccountInternal(serviceAccountDTO));
+    return ResponseDTO.newResponse(serviceAccountDTO.getData()
+                                       .stream()
+                                       .map(ServiceAccountDTOMapper::getDTOFromServiceAccountInternal)
+                                       .collect(Collectors.toList()));
   }
 }

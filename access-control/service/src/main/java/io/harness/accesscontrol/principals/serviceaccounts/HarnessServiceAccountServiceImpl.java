@@ -7,6 +7,7 @@
 
 package io.harness.accesscontrol.principals.serviceaccounts;
 
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.remote.client.NGRestUtils.getResponse;
 
 import io.harness.accesscontrol.scopes.core.Scope;
@@ -19,6 +20,8 @@ import io.harness.serviceaccount.remote.ServiceAccountClient;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -37,19 +40,23 @@ public class HarnessServiceAccountServiceImpl implements HarnessServiceAccountSe
   @Override
   public void sync(String identifier, Scope scope, String uniqueId) {
     HarnessScopeParams scopeParams = ScopeMapper.toParams(scope);
+    List<String> resourceIds = new ArrayList<>();
+    resourceIds.add(identifier);
 
-    ServiceAccountDTOInternal serviceAccountDTO = getResponse(serviceAccountClient.gerServiceAccountInternal(identifier,
-        scopeParams.getAccountIdentifier(), scopeParams.getOrgIdentifier(), scopeParams.getProjectIdentifier()));
+    List<ServiceAccountDTOInternal> serviceAccountDTOs =
+        getResponse(serviceAccountClient.listServiceAccountsInternal(scopeParams.getAccountIdentifier(),
+            scopeParams.getOrgIdentifier(), scopeParams.getProjectIdentifier(), resourceIds));
 
-    if (serviceAccountDTO != null) {
+    if (isNotEmpty(serviceAccountDTOs)) {
+      String existingUniqueId = serviceAccountDTOs.get(0).getUniqueId();
       ServiceAccount serviceAccount = ServiceAccount.builder()
                                           .identifier(identifier)
                                           .scopeIdentifier(scope.toString())
-                                          .uniqueId(serviceAccountDTO.getUniqueId())
+                                          .uniqueId(serviceAccountDTOs.get(0).getUniqueId())
                                           .build();
       ServiceAccount savedServiceAccount = serviceAccountService.createIfNotPresent(serviceAccount);
-      if (savedServiceAccount.getUniqueId() == null && serviceAccountDTO.getUniqueId() != null) {
-        savedServiceAccount.setUniqueId(serviceAccountDTO.getUniqueId());
+      if (savedServiceAccount.getUniqueId() == null && existingUniqueId != null) {
+        savedServiceAccount.setUniqueId(existingUniqueId);
         serviceAccountService.update(savedServiceAccount);
       }
     } else {

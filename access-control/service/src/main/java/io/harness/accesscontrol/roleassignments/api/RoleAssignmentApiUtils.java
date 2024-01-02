@@ -66,6 +66,7 @@ import javax.validation.Validator;
 import javax.validation.constraints.NotNull;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.EnumUtils;
+import org.apache.commons.lang3.StringUtils;
 
 @OwnedBy(PL)
 @Singleton
@@ -333,7 +334,7 @@ public class RoleAssignmentApiUtils {
     if (roleAssignment.getPrincipalType().equals(SERVICE_ACCOUNT)) {
       Scope principalScope = fromParams(toParentScopeParams(toParams(scope), roleAssignment.getPrincipalScopeLevel()));
       if (!serviceAccountService.get(roleAssignment.getPrincipalIdentifier(), principalScope.toString()).isPresent()) {
-        harnessServiceAccountService.sync(roleAssignment.getPrincipalIdentifier(), principalScope, "");
+        harnessServiceAccountService.sync(roleAssignment.getPrincipalIdentifier(), principalScope, StringUtils.EMPTY);
       }
     }
   }

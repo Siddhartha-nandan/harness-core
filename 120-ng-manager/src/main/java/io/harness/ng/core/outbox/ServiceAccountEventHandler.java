@@ -177,7 +177,7 @@ public class ServiceAccountEventHandler implements OutboxEventHandler {
                            .setOrgIdentifier(orgIdentifier)
                            .setAccountIdentifier(accountIdentifier)
                            .setProjectIdentifier(projectIdentifier)
-                           .setUniqueId(resource.getUniqueId())
+                           .setUniqueId(resource != null ? resource.getUniqueId() : null)
                            .build()
                            .toByteString())
               .build());
