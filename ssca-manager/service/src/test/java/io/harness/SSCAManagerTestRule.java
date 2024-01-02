@@ -75,13 +75,19 @@ import io.harness.ssca.services.ScorecardServiceImpl;
 import io.harness.ssca.services.SscaPolicyEvaluationService;
 import io.harness.ssca.services.drift.SbomDriftService;
 import io.harness.ssca.services.drift.SbomDriftServiceImpl;
+import io.harness.ssca.services.exemption.ExemptionService;
+import io.harness.ssca.services.exemption.ExemptionServiceImpl;
 import io.harness.ssca.services.remediation_tracker.RemediationTrackerService;
 import io.harness.ssca.services.remediation_tracker.RemediationTrackerServiceImpl;
+import io.harness.ssca.services.user.UserService;
+import io.harness.ssca.services.user.UserServiceImpl;
+import io.harness.ssca.ticket.TicketServiceRestClientService;
 import io.harness.testlib.module.MongoRuleMixin;
 import io.harness.testlib.module.TestMongoModule;
 import io.harness.threading.CurrentThreadExecutor;
 import io.harness.threading.ExecutorModule;
 import io.harness.time.TimeModule;
+import io.harness.user.remote.UserClient;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import com.amazonaws.services.s3.AmazonS3;
@@ -206,6 +212,13 @@ public class SSCAManagerTestRule implements InjectorRuleMixin, MethodRule, Mongo
       public ElasticSearchConfig elasticSearchConfig() {
         return ElasticSearchConfig.builder().url("url").apiKey("apiKey").indexName("harness-ssca").build();
       }
+
+      @Provides
+      @Singleton
+      @Named("sscaManagerServiceSecret")
+      public String sscaManagerServiceSecret() {
+        return "sscaManagerServiceSecret";
+      }
     });
 
     modules.add(new AbstractModule() {
@@ -236,11 +249,14 @@ public class SSCAManagerTestRule implements InjectorRuleMixin, MethodRule, Mongo
         bind(PolicyMgmtService.class).toInstance(mock(PolicyMgmtServiceImpl.class));
         bind(FeatureFlagService.class).toInstance(mock(FeatureFlagServiceImpl.class));
         bind(AccountClient.class).toInstance(mock(AccountClient.class));
+        bind(UserClient.class).toInstance(mock(UserClient.class));
         bind(SearchService.class).to(SearchServiceImpl.class);
         bind(ElasticsearchClient.class).toInstance(mock(ElasticsearchClient.class));
         bind(ElasticSearchIndexManager.class).annotatedWith(Names.named("SSCA")).to(SSCAIndexManager.class);
-
         bind(RemediationTrackerService.class).to(RemediationTrackerServiceImpl.class);
+        bind(TicketServiceRestClientService.class).toInstance(mock(TicketServiceRestClientService.class));
+        bind(ExemptionService.class).toInstance(mock(ExemptionServiceImpl.class));
+        bind(UserService.class).toInstance(mock(UserServiceImpl.class));
         MapBinder<PolicyType, PolicyEvaluationService> policyEvaluationServiceMapBinder =
             MapBinder.newMapBinder(binder(), PolicyType.class, PolicyEvaluationService.class);
         policyEvaluationServiceMapBinder.addBinding(PolicyType.OPA)
