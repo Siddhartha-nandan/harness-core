@@ -171,17 +171,7 @@ public class NormalisedSbomComponentServiceImpl implements NormalisedSbomCompone
       }
       return new Criteria().orOperator(patchCriteria, minorCriteria, majorCriteria);
     }
-    return getEqualVersionCriteria(versions);
-  }
-
-  private Criteria getEqualVersionCriteria(List<Integer> versions) {
-    return new Criteria()
-        .where(NormalizedSBOMEntityKeys.majorVersion)
-        .is(versions.get(0))
-        .and(NormalizedSBOMEntityKeys.minorVersion)
-        .is(versions.get(1))
-        .and(NormalizedSBOMEntityKeys.patchVersion)
-        .is(versions.get(2));
+    return new Criteria().where(NormalizedSBOMEntityKeys.packageVersion).is(filter.getValue());
   }
 
   private Criteria getPatchVersionCriteria(int majorVersion, int minorVersion, int patchVersion, Operator operator) {

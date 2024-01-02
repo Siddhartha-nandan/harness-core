@@ -7,6 +7,8 @@
 
 package io.harness.ssca.search;
 
+import static io.harness.spec.server.ssca.v1.model.Operator.EQUALS;
+
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.exception.InvalidArgumentsException;
@@ -59,6 +61,10 @@ public class ComponentVersionQueryBuilder {
   }
 
   public Query buildComponentVersionQuery(ComponentFilter filter) {
+    if (filter.getOperator() == EQUALS) {
+      return ElasticSearchQueryBuilder.matchFieldValue(ComponentKeys.packageVersion, filter.getValue());
+    }
+
     List<Integer> versions = VersionField.getVersion(filter.getValue());
     if (versions.size() != 3 || versions.get(0) == -1) {
       throw new InvalidArgumentsException("Unsupported Version Format");
@@ -68,8 +74,6 @@ public class ComponentVersionQueryBuilder {
     Integer patchVersion = versions.get(2);
 
     switch (filter.getOperator()) {
-      case EQUALS:
-        return buildEqualsQuery(majorVersion, minorVersion, patchVersion);
       case NOTEQUALS:
         return buildNotEqualsQuery(majorVersion, minorVersion, patchVersion);
       case GREATERTHAN:
