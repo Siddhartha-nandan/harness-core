@@ -48,7 +48,6 @@ public class EnforcementSummaryEntity implements PersistentEntity {
   @Field("orchestrationid") String orchestrationId;
   @Field("denylistviolationcount") int denyListViolationCount;
   @Field("allowlistviolationcount") int allowListViolationCount;
-  Integer exemptedComponentCount;
   String status;
   String pipelineExecutionId;
   @NonFinal @Setter Long createdAt;

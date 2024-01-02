@@ -7,7 +7,7 @@
 
 package io.harness.ssca.beans.remediation_tracker;
 
-import io.harness.ssca.entities.artifact.ArtifactEntity;
+import io.harness.ssca.entities.ArtifactEntity;
 
 import java.util.List;
 import lombok.Builder;

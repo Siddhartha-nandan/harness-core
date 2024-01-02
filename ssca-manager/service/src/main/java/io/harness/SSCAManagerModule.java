@@ -39,7 +39,6 @@ import io.harness.spec.server.ssca.v1.ArtifactApi;
 import io.harness.spec.server.ssca.v1.BaselineApi;
 import io.harness.spec.server.ssca.v1.ConfigApi;
 import io.harness.spec.server.ssca.v1.EnforcementApi;
-import io.harness.spec.server.ssca.v1.ExemptionsApi;
 import io.harness.spec.server.ssca.v1.OrchestrationApi;
 import io.harness.spec.server.ssca.v1.RemediationApi;
 import io.harness.spec.server.ssca.v1.SbomProcessorApi;
@@ -50,7 +49,6 @@ import io.harness.ssca.api.ArtifactApiImpl;
 import io.harness.ssca.api.BaselineApiImpl;
 import io.harness.ssca.api.ConfigApiImpl;
 import io.harness.ssca.api.EnforcementApiImpl;
-import io.harness.ssca.api.ExemptionsApiImpl;
 import io.harness.ssca.api.OrchestrationApiImpl;
 import io.harness.ssca.api.RemediationTrackerApiImpl;
 import io.harness.ssca.api.SbomProcessorApiImpl;
@@ -100,17 +98,12 @@ import io.harness.ssca.services.ScorecardServiceImpl;
 import io.harness.ssca.services.SscaPolicyEvaluationService;
 import io.harness.ssca.services.drift.SbomDriftService;
 import io.harness.ssca.services.drift.SbomDriftServiceImpl;
-import io.harness.ssca.services.exemption.ExemptionService;
-import io.harness.ssca.services.exemption.ExemptionServiceImpl;
 import io.harness.ssca.services.remediation_tracker.RemediationTrackerService;
 import io.harness.ssca.services.remediation_tracker.RemediationTrackerServiceImpl;
-import io.harness.ssca.services.user.UserService;
-import io.harness.ssca.services.user.UserServiceImpl;
 import io.harness.ssca.ticket.TicketServiceRestClientService;
 import io.harness.ssca.ticket.TicketServiceRestClientServiceImpl;
 import io.harness.time.TimeModule;
 import io.harness.token.TokenClientModule;
-import io.harness.user.UserClientModule;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
@@ -194,9 +187,6 @@ public class SSCAManagerModule extends AbstractModule {
     bind(RemediationApi.class).to(RemediationTrackerApiImpl.class);
     bind(ElasticSearchIndexManager.class).annotatedWith(Names.named("SSCA")).to(SSCAIndexManager.class);
     bind(TicketServiceRestClientService.class).to(TicketServiceRestClientServiceImpl.class);
-    bind(ExemptionService.class).to(ExemptionServiceImpl.class);
-    bind(ExemptionsApi.class).to(ExemptionsApiImpl.class);
-    bind(UserService.class).to(UserServiceImpl.class);
     MapBinder<PolicyType, PolicyEvaluationService> policyEvaluationServiceMapBinder =
         MapBinder.newMapBinder(binder(), PolicyType.class, PolicyEvaluationService.class);
     policyEvaluationServiceMapBinder.addBinding(PolicyType.OPA)
@@ -222,8 +212,6 @@ public class SSCAManagerModule extends AbstractModule {
         SSCA_SERVICE.getServiceId()));
     install(AccessControlClientModule.getInstance(
         this.configuration.getAccessControlClientConfiguration(), SSCA_SERVICE.getServiceId()));
-    install(UserClientModule.getInstance(this.configuration.getManagerClientConfig(),
-        this.configuration.getNgManagerServiceSecret(), SSCA_SERVICE.getServiceId()));
   }
 
   @Provides

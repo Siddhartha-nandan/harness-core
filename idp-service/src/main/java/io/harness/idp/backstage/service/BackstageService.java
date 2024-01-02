@@ -15,6 +15,4 @@ public interface BackstageService {
   void sync();
   boolean sync(String accountIdentifier);
   boolean sync(String accountIdentifier, String entityUid, String action, String syncMode);
-  void syncScaffolderTasks();
-  boolean syncScaffolderTasks(String accountIdentifier, long syncFrom);
 }

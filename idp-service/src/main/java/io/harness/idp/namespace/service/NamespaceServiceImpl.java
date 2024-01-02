@@ -84,9 +84,4 @@ public class NamespaceServiceImpl implements NamespaceService {
     }
     return existingMappingEntry;
   }
-
-  @Override
-  public List<NamespaceEntity> getActiveAccounts() {
-    return namespaceRepository.findAllByIsDeleted(false);
-  }
 }

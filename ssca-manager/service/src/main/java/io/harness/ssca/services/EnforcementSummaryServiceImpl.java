@@ -11,10 +11,10 @@ import io.harness.repositories.EnforcementSummaryRepo;
 import io.harness.spec.server.ssca.v1.model.EnforcementSummaryDTO;
 import io.harness.ssca.beans.Artifact;
 import io.harness.ssca.enforcement.constants.EnforcementStatus;
+import io.harness.ssca.entities.ArtifactEntity;
 import io.harness.ssca.entities.EnforcementResultEntity;
 import io.harness.ssca.entities.EnforcementSummaryEntity;
 import io.harness.ssca.entities.EnforcementSummaryEntity.EnforcementSummaryEntityKeys;
-import io.harness.ssca.entities.artifact.ArtifactEntity;
 import io.harness.ssca.transformers.EnforcementSummaryTransformer;
 
 import com.google.inject.Inject;
@@ -27,14 +27,9 @@ public class EnforcementSummaryServiceImpl implements EnforcementSummaryService 
   @Inject EnforcementSummaryRepo enforcementSummaryRepo;
   @Override
   public String persistEnforcementSummary(String enforcementId, List<EnforcementResultEntity> denyListResult,
-      List<EnforcementResultEntity> allowListResult, ArtifactEntity artifact, String pipelineExecutionId,
-      int exemptedComponentCount) {
+      List<EnforcementResultEntity> allowListResult, ArtifactEntity artifact, String pipelineExecutionId) {
     String status = EnforcementStatus.ENFORCEMENT_STATUS_PASS.getValue();
-    List<EnforcementResultEntity> activeDenyResultViolations =
-        denyListResult.stream().filter(violation -> !violation.isExempted()).toList();
-    List<EnforcementResultEntity> activeAllowResultViolations =
-        allowListResult.stream().filter(violation -> !violation.isExempted()).toList();
-    if (!activeDenyResultViolations.isEmpty() || !activeAllowResultViolations.isEmpty()) {
+    if (!denyListResult.isEmpty() || !allowListResult.isEmpty()) {
       status = EnforcementStatus.ENFORCEMENT_STATUS_FAIL.getValue();
     }
     EnforcementSummaryEntity summary = EnforcementSummaryEntity.builder()
@@ -51,9 +46,8 @@ public class EnforcementSummaryServiceImpl implements EnforcementSummaryService 
                                                          .url(artifact.getUrl())
                                                          .build())
                                            .orchestrationId(artifact.getOrchestrationId())
-                                           .denyListViolationCount(activeDenyResultViolations.size())
-                                           .allowListViolationCount(activeAllowResultViolations.size())
-                                           .exemptedComponentCount(exemptedComponentCount)
+                                           .denyListViolationCount(denyListResult.size())
+                                           .allowListViolationCount(allowListResult.size())
                                            .status(status)
                                            .createdAt(Instant.now().toEpochMilli())
                                            .build();

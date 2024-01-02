@@ -7,7 +7,7 @@
 
 package io.harness.ssca.beans;
 
-import io.harness.ssca.entities.artifact.ArtifactEntity;
+import io.harness.ssca.entities.ArtifactEntity;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;

@@ -7,6 +7,7 @@
 
 package io.harness.ssca.enforcement.executors.mongo;
 
+import io.harness.repositories.EnforcementResultRepo;
 import io.harness.repositories.SBOMComponentRepo;
 import io.harness.ssca.beans.DenyList;
 import io.harness.ssca.beans.DenyList.DenyListItem;
@@ -30,6 +31,7 @@ public class MongoDenyListExecutor implements IRuleExecutor<DenyList> {
   IRuleInterpreter mongoInterpreter = new MongoInterpreter();
   @Inject SBOMComponentRepo sbomComponentRepo;
 
+  @Inject EnforcementResultRepo enforcementResultRepo;
   @Inject EnforcementResultService enforcementResultService;
 
   @Override
@@ -51,6 +53,8 @@ public class MongoDenyListExecutor implements IRuleExecutor<DenyList> {
                 engine.getEnforcementId()));
       }
     }
+
+    enforcementResultRepo.saveAll(result);
 
     return result;
   }

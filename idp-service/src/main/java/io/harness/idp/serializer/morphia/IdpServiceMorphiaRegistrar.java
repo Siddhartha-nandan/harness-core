@@ -19,7 +19,6 @@ import io.harness.idp.backstage.entities.BackstageCatalogResourceEntity;
 import io.harness.idp.backstage.entities.BackstageCatalogSystemEntity;
 import io.harness.idp.backstage.entities.BackstageCatalogTemplateEntity;
 import io.harness.idp.backstage.entities.BackstageCatalogUserEntity;
-import io.harness.idp.backstage.entities.BackstageScaffolderTaskEntity;
 import io.harness.idp.configmanager.beans.entity.AppConfigEntity;
 import io.harness.idp.configmanager.beans.entity.MergedAppConfigEntity;
 import io.harness.idp.configmanager.beans.entity.PluginConfigEnvVariablesEntity;
@@ -101,7 +100,6 @@ public class IdpServiceMorphiaRegistrar implements MorphiaRegistrar {
     set.add(BackstageCatalogTemplateEntity.class);
     set.add(BackstageCatalogUserEntity.class);
     set.add(LayoutEntity.class);
-    set.add(BackstageScaffolderTaskEntity.class);
   }
 
   @Override
