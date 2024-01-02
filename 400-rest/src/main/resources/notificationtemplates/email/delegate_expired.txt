@@ -1,5 +1,5 @@
 subject: >-
-  Harness Delegate ${delegateId} expired
+  Harness Delegate ${DELEGATE_ID} expired
 body: >-
   <html xmlns="http://www.w3.org/1999/xhtml">
 

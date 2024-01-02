@@ -39,7 +39,6 @@ public class NotificationRuleRepositoryCustomImpl implements NotificationRuleRep
   @Override
   public Page<NotificationRule> findAll(Criteria criteria, Pageable pageable) {
     Query query = new Query(criteria);
-    query.with(pageable);
     List<NotificationRule> notificationList = mongoTemplate.find(query, NotificationRule.class);
     return PageableExecutionUtils.getPage(notificationList, pageable,
         () -> mongoTemplate.count(Query.of(query).limit(-1).skip(-1), NotificationRule.class));

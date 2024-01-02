@@ -130,7 +130,7 @@ public class NotificationChannelApiImpl implements NotificationChannelsApi {
     accessControlClient.checkForAccessOrThrow(ResourceScope.of(accountId, orgId, projectId),
         Resource.of(NOTIFICATION_MANAGEMENT, null), EDIT_NOTIFICATION_MANAGEMENT_PERMISSION);
     NotificationChannel notificationChannel = notificationChannelManagementService.create(
-        notificationServiceManagementMapper.toNotificationChannelEntity(notificationChannelDTO, accountId));
+        notificationServiceManagementMapper.toNotificationChannelEntity(notificationChannelDTO));
     return Response.status(Response.Status.CREATED)
         .entity(notificationServiceManagementMapper.toNotificationChannelDTO(notificationChannel))
         .build();
@@ -166,8 +166,7 @@ public class NotificationChannelApiImpl implements NotificationChannelsApi {
         Resource.of(NOTIFICATION_MANAGEMENT, null), VIEW_NOTIFICATION_MANAGEMENT_PERMISSION);
     NotificationChannel existingEntity =
         notificationChannelManagementService.get(accountId, orgId, projectId, notificationChannelIdentifier);
-    NotificationChannel entityToUpdate =
-        notificationServiceManagementMapper.toNotificationChannelEntity(body, accountId);
+    NotificationChannel entityToUpdate = notificationServiceManagementMapper.toNotificationChannelEntity(body);
     entityToUpdate.setUuid(existingEntity.getUuid());
     NotificationChannel notificationChannel = notificationChannelManagementService.update(entityToUpdate);
     return Response.status(Response.Status.OK)

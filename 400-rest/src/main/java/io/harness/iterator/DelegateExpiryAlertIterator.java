@@ -47,6 +47,9 @@ public class DelegateExpiryAlertIterator
                 MongoPersistenceIterator.<DelegateGroup, MorphiaFilterExpander<DelegateGroup>>builder()
                     .clazz(DelegateGroup.class)
                     .fieldName(DelegateGroupKeys.delegateExpiryAlertNextIteration)
+                    .filterExpander(q
+                        -> q.field(DelegateGroupKeys.delegatesExpireOn)
+                               .lessThan(System.currentTimeMillis()))
                     .targetInterval(targetInterval)
                     .acceptableNoAlertDelay(Duration.ofMinutes(2))
                     .handler(this)
@@ -64,6 +67,9 @@ public class DelegateExpiryAlertIterator
                        MongoPersistenceIterator.<DelegateGroup, MorphiaFilterExpander<DelegateGroup>>builder()
                            .clazz(DelegateGroup.class)
                            .fieldName(DelegateGroupKeys.delegateExpiryAlertNextIteration)
+                           .filterExpander(q
+                               -> q.field(DelegateGroupKeys.delegatesExpireOn)
+                                      .lessThan(System.currentTimeMillis()))
                            .targetInterval(targetInterval)
                            .acceptableNoAlertDelay(Duration.ofMinutes(2))
                            .handler(this)
@@ -85,10 +91,13 @@ public class DelegateExpiryAlertIterator
     String projectId = delegateGroup.getOwner() != null
         ? DelegateEntityOwnerHelper.extractProjectIdFromOwnerIdentifier(delegateGroup.getOwner().getIdentifier())
         : "";
+   //NotificationEvent notificationEvent =
 
     Map<String, String> templateData = new HashMap<>();
     templateData.put("TEMPLATE_IDENTIFIER", "delegate_expired");
     templateData.put("DELEGATE_NAME", delegateGroup.getIdentifier());
+    templateData.put("DELEGATE_ID", delegateGroup.getName());
+    templateData.put("EXPIRY_TIME", String.valueOf(delegateGroup.getDelegatesExpireOn()));
     NotificationTriggerRequest.Builder notificationTriggerRequestBuilder =
         NotificationTriggerRequest.newBuilder()
             .setId(notificationTriggerRequestId)

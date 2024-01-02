@@ -25,7 +25,6 @@ import io.harness.spec.server.notification.v1.model.ChannelDTO;
 import io.harness.spec.server.notification.v1.model.ChannelType;
 import io.harness.spec.server.notification.v1.model.NotificationChannelDTO;
 import io.harness.spec.server.notification.v1.model.NotificationRuleDTO;
-import io.harness.spec.server.notification.v1.model.NotificationRuleDTONotificationChannels;
 import io.harness.spec.server.notification.v1.model.NotificationRuleDTONotificationConditions;
 import io.harness.spec.server.notification.v1.model.NotificationRuleDTONotificationEventConfigs;
 import io.harness.spec.server.notification.v1.model.Status;
@@ -78,12 +77,11 @@ public class NotificationServiceManagementMapper {
         .status(getNotificationRuleDTOStatus(notificationRule));
   }
 
-  public NotificationChannel toNotificationChannelEntity(
-      NotificationChannelDTO notificationChannelDTO, String accountIdentifier) {
+  public NotificationChannel toNotificationChannelEntity(NotificationChannelDTO notificationChannelDTO) {
     NotificationChannelType notificationChannelType =
         notificationChannelTypeEnumMap.get(notificationChannelDTO.getNotificationChannelType());
     return NotificationChannel.builder()
-        .accountIdentifier(accountIdentifier)
+        .accountIdentifier(notificationChannelDTO.getAccount())
         .orgIdentifier(notificationChannelDTO.getOrg())
         .projectIdentifier(notificationChannelDTO.getProject())
         .identifier(notificationChannelDTO.getIdentifier())
@@ -151,9 +149,8 @@ public class NotificationServiceManagementMapper {
         .build();
   }
 
-  private List<NotificationChannel> getNotificationChannel(
-      List<NotificationRuleDTONotificationChannels> notificationRuleDTONotificationChannels) {
-    return Collections.emptyList();
+  private List<NotificationChannel> getNotificationChannel(List<NotificationChannelDTO> notificationChannelDTO) {
+    return notificationChannelDTO.stream().map(this::toNotificationChannelEntity).collect(Collectors.toList());
   }
 
   private NotificationRule.Status getNotificationRuleStatus(NotificationRuleDTO notificationRuleDTO) {
