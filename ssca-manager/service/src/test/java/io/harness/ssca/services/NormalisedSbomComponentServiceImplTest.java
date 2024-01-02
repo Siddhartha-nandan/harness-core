@@ -8,6 +8,7 @@
 package io.harness.ssca.services;
 
 import static io.harness.rule.OwnerRule.ARPITJ;
+import static io.harness.rule.OwnerRule.DHRUVX;
 import static io.harness.rule.OwnerRule.REETIKA;
 
 import static junit.framework.TestCase.assertEquals;
@@ -29,13 +30,14 @@ import io.harness.spec.server.ssca.v1.model.ComponentFilter;
 import io.harness.spec.server.ssca.v1.model.ComponentFilter.FieldNameEnum;
 import io.harness.spec.server.ssca.v1.model.LicenseFilter;
 import io.harness.spec.server.ssca.v1.model.Operator;
-import io.harness.ssca.entities.ArtifactEntity;
 import io.harness.ssca.entities.NormalizedSBOMComponentEntity;
 import io.harness.ssca.entities.NormalizedSBOMComponentEntity.NormalizedSBOMEntityKeys;
+import io.harness.ssca.entities.artifact.ArtifactEntity;
 
 import com.google.common.collect.Lists;
 import com.google.inject.Inject;
 import com.mongodb.BasicDBList;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -292,5 +294,47 @@ public class NormalisedSbomComponentServiceImplTest extends SSCAManagerTestBase 
         new ComponentFilter().fieldName(FieldNameEnum.COMPONENTVERSION).value("a.b.c").operator(Operator.EQUALS);
     assertThatThrownBy(() -> componentService.getComponentVersionFilterCriteria(filter))
         .hasMessage("Unsupported Version Format");
+  }
+
+  @Test
+  @Owner(developers = DHRUVX)
+  @Category(UnitTests.class)
+  public void testGetNormalizedSbomComponentsForOrchestrationId() {
+    ArgumentCaptor<Query> argumentCaptor = ArgumentCaptor.forClass(Query.class);
+    List<NormalizedSBOMComponentEntity> entitiesToBeReturned = getNormalizedSBOMComponentEntities();
+    when(sbomComponentRepo.findAllByQuery(any())).thenReturn(entitiesToBeReturned);
+    List<NormalizedSBOMComponentEntity> entities =
+        normalisedSbomComponentService.getNormalizedSbomComponentsForOrchestrationId(
+            "account", "org", "project", "orchestrationid", null);
+    assertEquals(entities.size(), entitiesToBeReturned.size());
+    verify(sbomComponentRepo, times(1)).findAllByQuery(argumentCaptor.capture());
+    Document document = argumentCaptor.getValue().getFieldsObject();
+    assertThat(document).isEmpty();
+  }
+
+  @Test
+  @Owner(developers = DHRUVX)
+  @Category(UnitTests.class)
+  public void testGetNormalizedSbomComponentsForOrchestrationId_withSelectedFieldsIncluded() {
+    ArgumentCaptor<Query> argumentCaptor = ArgumentCaptor.forClass(Query.class);
+    List<NormalizedSBOMComponentEntity> entitiesToBeReturned = getNormalizedSBOMComponentEntities();
+    when(sbomComponentRepo.findAllByQuery(any())).thenReturn(entitiesToBeReturned);
+    List<String> fieldsToBeIncluded = new ArrayList<>();
+    fieldsToBeIncluded.add(NormalizedSBOMEntityKeys.packageName);
+    List<NormalizedSBOMComponentEntity> entities =
+        normalisedSbomComponentService.getNormalizedSbomComponentsForOrchestrationId(
+            "account", "org", "project", "orchestrationid", fieldsToBeIncluded);
+    assertEquals(entities.size(), entitiesToBeReturned.size());
+    verify(sbomComponentRepo, times(1)).findAllByQuery(argumentCaptor.capture());
+    Document document = argumentCaptor.getValue().getFieldsObject();
+    assertThat(document).hasSize(fieldsToBeIncluded.size());
+    assertThat(document).containsKeys(fieldsToBeIncluded.toArray(new String[0]));
+  }
+
+  private static List<NormalizedSBOMComponentEntity> getNormalizedSBOMComponentEntities() {
+    List<NormalizedSBOMComponentEntity> entities = new ArrayList<>();
+    entities.add(NormalizedSBOMComponentEntity.builder().uuid("artifactId1").build());
+    entities.add(NormalizedSBOMComponentEntity.builder().uuid("artifactId2").build());
+    return entities;
   }
 }

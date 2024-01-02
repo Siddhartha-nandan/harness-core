@@ -123,6 +123,8 @@ import io.harness.pms.ngpipeline.inputset.resources.InputSetResourcePMS;
 import io.harness.pms.ngpipeline.inputset.resources.InputSetResourcePMSImpl;
 import io.harness.pms.ngpipeline.inputset.service.PMSInputSetService;
 import io.harness.pms.ngpipeline.inputset.service.PMSInputSetServiceImpl;
+import io.harness.pms.notification.WebhookNotificationService;
+import io.harness.pms.notification.WebhookNotificationServiceImpl;
 import io.harness.pms.opa.service.PMSOpaService;
 import io.harness.pms.opa.service.PMSOpaServiceImpl;
 import io.harness.pms.outbox.PMSOutboxEventHandler;
@@ -203,8 +205,6 @@ import io.harness.secrets.SecretNGManagerClientModule;
 import io.harness.secretusage.SecretRuntimeUsageService;
 import io.harness.secretusage.SecretRuntimeUsageServiceImpl;
 import io.harness.serializer.KryoRegistrar;
-import io.harness.serializer.NGTriggerRegistrars;
-import io.harness.serializer.OrchestrationStepsModuleRegistrars;
 import io.harness.serializer.PipelineServiceModuleRegistrars;
 import io.harness.service.DelegateServiceDriverModule;
 import io.harness.spec.server.pipeline.v1.ApprovalsApi;
@@ -455,6 +455,7 @@ public class PipelineServiceModule extends AbstractModule {
     bind(PMSYamlSchemaService.class).to(PMSYamlSchemaServiceImpl.class);
     bind(ApprovalNotificationHandler.class).to(ApprovalNotificationHandlerImpl.class);
     bind(PMSOpaService.class).to(PMSOpaServiceImpl.class);
+    bind(WebhookNotificationService.class).to(WebhookNotificationServiceImpl.class);
     bind(ShellScriptHelperServiceOld.class).to(ShellScriptHelperServiceImplOld.class);
     bind(ShellScriptHelperService.class).to(ShellScriptHelperServiceImpl.class);
     bind(ApprovalYamlSchemaService.class).to(ApprovalYamlSchemaServiceImpl.class).in(Singleton.class);
@@ -637,10 +638,7 @@ public class PipelineServiceModule extends AbstractModule {
   @Provides
   @Singleton
   List<YamlSchemaRootClass> yamlSchemaRootClasses() {
-    return ImmutableList.<YamlSchemaRootClass>builder()
-        .addAll(OrchestrationStepsModuleRegistrars.yamlSchemaRegistrars)
-        .addAll(NGTriggerRegistrars.yamlSchemaRegistrars)
-        .build();
+    return ImmutableList.<YamlSchemaRootClass>builder().build();
   }
 
   @Provides

@@ -1130,6 +1130,7 @@ io.harness.delegate.beans.connector.awsconnector.AwsCredentialDTO
 io.harness.delegate.task.helm.HelmFetchFileResult
 io.harness.steps.matrix.StrategyStepParameters
 io.harness.delegate.beans.connector.awsconnector.AwsManualConfigSpecDTO
+io.harness.delegate.beans.connector.awsconnector.AwsOidcSpecDTO
 io.harness.cdng.azure.webapp.steps.NgConnectionStringsSweepingOutput
 io.harness.cdng.manifest.yaml.HelmManifestCommandFlag
 io.harness.ng.core.dto.secrets.NTLMConfigDTO
@@ -1325,3 +1326,6 @@ io.harness.cdng.containerStepGroup.DownloadAwsS3StepInfo
 io.harness.cdng.containerStepGroup.DownloadHarnessStoreStepNode
 io.harness.cdng.containerStepGroup.DownloadHarnessStoreStepParameters
 io.harness.cdng.containerStepGroup.DownloadHarnessStoreStepInfo
+io.harness.cdng.k8s.K8sTrafficRoutingStepParameters
+io.harness.cdng.k8s.K8sTrafficRoutingStepNode
+io.harness.cdng.k8s.K8sTrafficRoutingStepInfo

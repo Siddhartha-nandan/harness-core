@@ -14,11 +14,12 @@ import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewResponse;
 import io.harness.spec.server.ssca.v1.model.ArtifactDetailResponse;
 import io.harness.spec.server.ssca.v1.model.ArtifactListingRequestBody;
 import io.harness.spec.server.ssca.v1.model.ArtifactListingResponse;
+import io.harness.spec.server.ssca.v1.model.PipelineInfo;
 import io.harness.spec.server.ssca.v1.model.SbomProcessRequestBody;
 import io.harness.ssca.beans.EnvType;
 import io.harness.ssca.beans.SbomDTO;
 import io.harness.ssca.beans.remediation_tracker.PatchedPendingArtifactEntitiesResult;
-import io.harness.ssca.entities.ArtifactEntity;
+import io.harness.ssca.entities.artifact.ArtifactEntity;
 
 import java.time.Instant;
 import java.util.List;
@@ -44,15 +45,24 @@ public interface ArtifactService {
   ArtifactEntity getArtifactByCorrelationId(
       String accountId, String orgIdentifier, String projectIdentifier, String artifactCorrelationId);
 
+  ArtifactEntity getLatestArtifactByImageNameAndTag(
+      String accountId, String orgIdentifier, String projectIdentifier, String imageName, String tag);
+
   ArtifactEntity getLatestArtifact(
       String accountId, String orgIdentifier, String projectIdentifier, String artifactId, String tag);
+
+  ArtifactEntity getLatestArtifact(String accountId, String orgIdentifier, String projectIdentifier, String artifactId);
 
   ArtifactDetailResponse getArtifactDetails(
       String accountId, String orgIdentifier, String projectIdentifier, String artifactId, String tag);
 
+  PipelineInfo getPipelineInfo(
+      String accountId, String orgIdentifier, String projectIdentifier, ArtifactEntity artifact);
   String generateArtifactId(String registryUrl, String name);
 
   void saveArtifactAndInvalidateOldArtifact(ArtifactEntity artifact);
+
+  void saveArtifact(ArtifactEntity artifact);
 
   Page<ArtifactListingResponse> listLatestArtifacts(
       String accountId, String orgIdentifier, String projectIdentifier, Pageable pageable);

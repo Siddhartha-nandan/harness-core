@@ -13,6 +13,8 @@ import static io.harness.authorization.AuthorizationServiceHeader.SSCA_SERVICE;
 import static io.harness.lock.DistributedLockImplementation.REDIS;
 import static io.harness.outbox.OutboxSDKConstants.DEFAULT_OUTBOX_POLL_CONFIGURATION;
 
+import static io.serializer.HObjectMapper.NG_DEFAULT_OBJECT_MAPPER;
+
 import io.harness.account.AccountClientModule;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.app.PrimaryVersionManagerModule;
@@ -37,6 +39,7 @@ import io.harness.spec.server.ssca.v1.ArtifactApi;
 import io.harness.spec.server.ssca.v1.BaselineApi;
 import io.harness.spec.server.ssca.v1.ConfigApi;
 import io.harness.spec.server.ssca.v1.EnforcementApi;
+import io.harness.spec.server.ssca.v1.ExemptionsApi;
 import io.harness.spec.server.ssca.v1.OrchestrationApi;
 import io.harness.spec.server.ssca.v1.RemediationApi;
 import io.harness.spec.server.ssca.v1.SbomProcessorApi;
@@ -47,6 +50,7 @@ import io.harness.ssca.api.ArtifactApiImpl;
 import io.harness.ssca.api.BaselineApiImpl;
 import io.harness.ssca.api.ConfigApiImpl;
 import io.harness.ssca.api.EnforcementApiImpl;
+import io.harness.ssca.api.ExemptionsApiImpl;
 import io.harness.ssca.api.OrchestrationApiImpl;
 import io.harness.ssca.api.RemediationTrackerApiImpl;
 import io.harness.ssca.api.SbomProcessorApiImpl;
@@ -96,10 +100,17 @@ import io.harness.ssca.services.ScorecardServiceImpl;
 import io.harness.ssca.services.SscaPolicyEvaluationService;
 import io.harness.ssca.services.drift.SbomDriftService;
 import io.harness.ssca.services.drift.SbomDriftServiceImpl;
+import io.harness.ssca.services.exemption.ExemptionService;
+import io.harness.ssca.services.exemption.ExemptionServiceImpl;
 import io.harness.ssca.services.remediation_tracker.RemediationTrackerService;
 import io.harness.ssca.services.remediation_tracker.RemediationTrackerServiceImpl;
+import io.harness.ssca.services.user.UserService;
+import io.harness.ssca.services.user.UserServiceImpl;
+import io.harness.ssca.ticket.TicketServiceRestClientService;
+import io.harness.ssca.ticket.TicketServiceRestClientServiceImpl;
 import io.harness.time.TimeModule;
 import io.harness.token.TokenClientModule;
+import io.harness.user.UserClientModule;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
@@ -111,7 +122,6 @@ import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.AbstractModule;
@@ -183,6 +193,10 @@ public class SSCAManagerModule extends AbstractModule {
     bind(RemediationTrackerService.class).to(RemediationTrackerServiceImpl.class);
     bind(RemediationApi.class).to(RemediationTrackerApiImpl.class);
     bind(ElasticSearchIndexManager.class).annotatedWith(Names.named("SSCA")).to(SSCAIndexManager.class);
+    bind(TicketServiceRestClientService.class).to(TicketServiceRestClientServiceImpl.class);
+    bind(ExemptionService.class).to(ExemptionServiceImpl.class);
+    bind(ExemptionsApi.class).to(ExemptionsApiImpl.class);
+    bind(UserService.class).to(UserServiceImpl.class);
     MapBinder<PolicyType, PolicyEvaluationService> policyEvaluationServiceMapBinder =
         MapBinder.newMapBinder(binder(), PolicyType.class, PolicyEvaluationService.class);
     policyEvaluationServiceMapBinder.addBinding(PolicyType.OPA)
@@ -208,6 +222,8 @@ public class SSCAManagerModule extends AbstractModule {
         SSCA_SERVICE.getServiceId()));
     install(AccessControlClientModule.getInstance(
         this.configuration.getAccessControlClientConfiguration(), SSCA_SERVICE.getServiceId()));
+    install(UserClientModule.getInstance(this.configuration.getManagerClientConfig(),
+        this.configuration.getNgManagerServiceSecret(), SSCA_SERVICE.getServiceId()));
   }
 
   @Provides
@@ -296,9 +312,9 @@ public class SSCAManagerModule extends AbstractModule {
                                   .setDefaultHeaders(new Header[] {new BasicHeader(
                                       "Authorization", "ApiKey " + configuration.getElasticSearchConfig().getApiKey())})
                                   .build();
-      ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
-      ElasticsearchTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper(objectMapper));
+      ElasticsearchTransport transport =
+          new RestClientTransport(restClient, new JacksonJsonpMapper(NG_DEFAULT_OBJECT_MAPPER));
       return new ElasticsearchClient(transport);
     } catch (Exception e) {
       throw new GeneralException("Failed to create Elasticsearch client", e);
@@ -382,5 +398,11 @@ public class SSCAManagerModule extends AbstractModule {
     MapBinder<String, OutboxEventHandler> outboxEventHandlerMapBinder =
         MapBinder.newMapBinder(binder(), String.class, OutboxEventHandler.class);
     outboxEventHandlerMapBinder.addBinding(SSCA_ARTIFACT).to(SSCAArtifactEventHandler.class);
+  }
+
+  @Provides
+  @Singleton
+  public ObjectMapper getObjectMapper() {
+    return NG_DEFAULT_OBJECT_MAPPER;
   }
 }

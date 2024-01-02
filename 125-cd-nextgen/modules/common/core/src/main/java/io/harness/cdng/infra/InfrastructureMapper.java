@@ -11,6 +11,7 @@ import static io.harness.beans.FeatureName.CDS_ENABLE_NEW_PARAMETER_FIELD_PROCES
 import static io.harness.cdng.infra.beans.host.dto.HostFilterSpecDTO.HOSTS_SEPARATOR;
 import static io.harness.common.ParameterFieldHelper.getParameterFieldValue;
 import static io.harness.connector.ConnectorModule.DEFAULT_CONNECTOR_SERVICE;
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
 
 import static java.lang.String.format;
 
@@ -120,7 +121,7 @@ public class InfrastructureMapper {
       EnvironmentOutcome environmentOutcome, ServiceStepOutcome service, String accountIdentifier, String orgIdentifier,
       String projectIdentifier, Map<String, String> tags, String description) {
     Map<String, String> mergedTags = new HashMap<>();
-    Map<String, String> hostTags;
+    Map<String, String> hostTags = null;
 
     final boolean isDynamicallyProvisioned = infrastructure.isDynamicallyProvisioned();
 
@@ -247,12 +248,16 @@ public class InfrastructureMapper {
 
       case InfrastructureKind.SSH_WINRM_AWS:
         SshWinRmAwsInfrastructure sshWinRmAwsInfrastructure = (SshWinRmAwsInfrastructure) infrastructure;
-        if (sshWinRmAwsInfrastructure.getAwsInstanceFilter() != null) {
+
+        String asgName = getParameterFieldValue(sshWinRmAwsInfrastructure.getAsgName());
+
+        List<String> vpcIds = null;
+        if (isEmpty(asgName) && sshWinRmAwsInfrastructure.getAwsInstanceFilter() != null) {
           hostTags = getHostTags(
               sshWinRmAwsInfrastructure.getAwsInstanceFilter().getTags(), accountIdentifier, expressionEvaluator);
-        } else {
-          hostTags = null;
+          vpcIds = getParameterFieldValue(sshWinRmAwsInfrastructure.getAwsInstanceFilter().getVpcs());
         }
+
         SshWinRmAwsInfrastructureOutcome sshWinRmAwsInfrastructureOutcome =
             SshWinRmAwsInfrastructureOutcome.builder()
                 .connectorRef(getParameterFieldValue(sshWinRmAwsInfrastructure.getConnectorRef()))
@@ -262,6 +267,8 @@ public class InfrastructureMapper {
                 .infrastructureKey(InfrastructureKeyGenerator.createFullInfraKey(
                     service, environmentOutcome, infrastructure.getInfrastructureKeyValues()))
                 .hostTags(hostTags)
+                .vpcIds(vpcIds)
+                .asgName(asgName)
                 .hostConnectionType(getParameterFieldValue(sshWinRmAwsInfrastructure.getHostConnectionType()))
                 .build();
 

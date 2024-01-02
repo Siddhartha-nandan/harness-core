@@ -42,7 +42,7 @@ public class StringReplacer {
     }
 
     StringBuffer buf = new StringBuffer(source);
-    return substitute(buf, source, false, false).getFinalExpressionValue();
+    return substitute(buf, source, false).getFinalExpressionValue();
   }
 
   public StringReplacerResponse replaceWithRenderCheck(String source) {
@@ -51,20 +51,10 @@ public class StringReplacer {
     }
 
     StringBuffer buf = new StringBuffer(source);
-    return substitute(buf, source, true, false);
+    return substitute(buf, source, true);
   }
 
-  public StringReplacerResponse replaceWithRenderCheckAndNewMethodInvocation(String source) {
-    if (source == null) {
-      return null;
-    }
-
-    StringBuffer buf = new StringBuffer(source);
-    return substitute(buf, source, true, true);
-  }
-
-  private StringReplacerResponse substitute(
-      StringBuffer buf, String source, boolean checkRenderExpression, boolean isNewMethodInvocation) {
+  private StringReplacerResponse substitute(StringBuffer buf, String source, boolean checkRenderExpression) {
     boolean altered = false;
     boolean onlyRenderedExpressions = true;
     int bufEnd = buf.length();
@@ -125,8 +115,7 @@ public class StringReplacer {
         // Resolve the expression
         String expressionValue = expressionResolver.resolve(expression);
         if (checkRenderExpression
-            && checkIfExpressionValueCanBeConcatenated(
-                expressionValue, expressionStartPos, expressionEndPos, buf, isNewMethodInvocation)) {
+            && checkIfExpressionValueCanBeConcatenated(expressionValue, expressionStartPos, expressionEndPos, buf)) {
           expressionValue = (String) expressionResolver.getContextValue(expressionValue);
         } else {
           onlyRenderedExpressions = false;
@@ -158,8 +147,8 @@ public class StringReplacer {
    * @param buf
    * @return
    */
-  private boolean checkIfExpressionValueCanBeConcatenated(String expressionValue, int expressionStartPos,
-      int expressionEndPos, StringBuffer buf, boolean isNewMethodInvocation) {
+  private boolean checkIfExpressionValueCanBeConcatenated(
+      String expressionValue, int expressionStartPos, int expressionEndPos, StringBuffer buf) {
     Object contextValue = expressionResolver.getContextValue(expressionValue);
     if (expressionValue == null || contextValue == null) {
       return false;
@@ -174,7 +163,7 @@ public class StringReplacer {
     }
 
     // Check if right substring has method invocation, then return false
-    if (checkIfValueHasMethodInvocation(buf, expressionEndPos, isNewMethodInvocation)) {
+    if (checkIfValueHasMethodInvocation(buf, expressionEndPos)) {
       return false;
     }
 
@@ -204,8 +193,7 @@ public class StringReplacer {
       } else if (c == ':') {
         // Checking : belongs to ternary operator or not, if not concatenate it
         return !checkIfColonBelongsToTernaryOperator(buf);
-      } else if (checkIfStringMathematicalOperator(c) || checkBooleanOperators(buf, expressionStartPos, true)
-          || checkConditionalOrLoopOperators(buf, expressionStartPos)) {
+      } else if (checkIfStringMathematicalOperator(c) || checkBooleanOperators(buf, expressionStartPos, true)) {
         return false;
       } else if (!skipNonCriticalCharacters(c)) {
         return true;
@@ -242,15 +230,9 @@ public class StringReplacer {
     return false;
   }
 
-  private boolean checkIfValueHasMethodInvocation(
-      StringBuffer buf, int expressionEndPos, boolean isNewMethodInvocation) {
+  private boolean checkIfValueHasMethodInvocation(StringBuffer buf, int expressionEndPos) {
     // Right substring
     CharSequence charSequence = buf.subSequence(expressionEndPos, buf.length());
-    if (!isNewMethodInvocation) {
-      Pattern pattern = Pattern.compile("\\.\\w+\\(");
-      Matcher matcher = pattern.matcher(charSequence);
-      return matcher.find();
-    }
     // method invocation should be true for <+expr> in <+expr>.method()
     Pattern pattern = Pattern.compile("^\\.\\w+\\(");
     Matcher matcher = pattern.matcher(charSequence);
@@ -294,26 +276,6 @@ public class StringReplacer {
             && (s.charAt(currentPos - 1) == ' ' || s.charAt(currentPos - 1) == '\n')
             && (s.charAt(currentPos + i) == ' ' || s.charAt(currentPos + i) == '\n')) {
           return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  private boolean checkConditionalOrLoopOperators(StringBuffer s, int currentPos) {
-    String leftSubString = s.substring(0, currentPos + 1);
-    Set<String> jexlKeywordOperators =
-        Set.of("if (", "if(", "else {", "else{", "for(", "for (", "while (", "while(", "do {", "do{");
-    int minLength = 3;
-    int maxLength = 7;
-    // checking if any of the jexl operators are present in the left substring as the whole word
-    for (int i = 0; i < leftSubString.length(); i++) {
-      for (int j = minLength; j <= maxLength; j++) {
-        if (i + j <= leftSubString.length()) {
-          String substring = leftSubString.substring(i, i + j);
-          if (jexlKeywordOperators.contains(substring) && (i == 0 || s.charAt(i - 1) == ' ')) {
-            return true;
-          }
         }
       }
     }

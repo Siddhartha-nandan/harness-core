@@ -20,10 +20,10 @@ import io.harness.spec.server.ssca.v1.model.LicenseFilter;
 import io.harness.spec.server.ssca.v1.model.NormalizedSbomComponentDTO;
 import io.harness.spec.server.ssca.v1.model.Operator;
 import io.harness.ssca.enforcement.executors.mongo.filter.denylist.fields.VersionField;
-import io.harness.ssca.entities.ArtifactEntity;
-import io.harness.ssca.entities.ArtifactEntity.ArtifactEntityKeys;
 import io.harness.ssca.entities.NormalizedSBOMComponentEntity;
 import io.harness.ssca.entities.NormalizedSBOMComponentEntity.NormalizedSBOMEntityKeys;
+import io.harness.ssca.entities.artifact.ArtifactEntity;
+import io.harness.ssca.entities.artifact.ArtifactEntity.ArtifactEntityKeys;
 import io.harness.ssca.transformers.NormalisedSbomComponentTransformer;
 import io.harness.ssca.utils.OperatorUtils;
 import io.harness.utils.ApiUtils;
@@ -37,6 +37,7 @@ import java.util.regex.Pattern;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -51,6 +52,26 @@ public class NormalisedSbomComponentServiceImpl implements NormalisedSbomCompone
   Map<ComponentFilter.FieldNameEnum, String> componentFilterToFieldNameMap =
       Map.of(ComponentFilter.FieldNameEnum.COMPONENTNAME, NormalizedSBOMEntityKeys.packageName,
           ComponentFilter.FieldNameEnum.COMPONENTVERSION, NormalizedSBOMEntityKeys.packageVersion);
+
+  @Override
+  public List<NormalizedSBOMComponentEntity> getNormalizedSbomComponentsForOrchestrationId(String accountId,
+      String orgIdentifier, String projectIdentifier, String orchestrationId, List<String> fieldsToBeIncluded) {
+    Query query = new Query();
+    Criteria criteria = Criteria.where(NormalizedSBOMEntityKeys.accountId)
+                            .is(accountId)
+                            .and(NormalizedSBOMEntityKeys.orgIdentifier)
+                            .is(orgIdentifier)
+                            .and(NormalizedSBOMEntityKeys.projectIdentifier)
+                            .is(projectIdentifier)
+                            .and(NormalizedSBOMEntityKeys.orchestrationId)
+                            .is(orchestrationId);
+    query.addCriteria(criteria);
+    if (CollectionUtils.isNotEmpty(fieldsToBeIncluded)) {
+      query.fields().include(fieldsToBeIncluded.toArray(new String[0]));
+    }
+    return sbomComponentRepo.findAllByQuery(query);
+  }
+
   @Override
   public Response listNormalizedSbomComponent(
       String orgIdentifier, String projectIdentifier, Integer page, Integer limit, Artifact body, String accountId) {

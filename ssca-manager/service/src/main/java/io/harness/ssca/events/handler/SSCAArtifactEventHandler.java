@@ -19,8 +19,8 @@ import io.harness.exception.InvalidRequestException;
 import io.harness.outbox.OutboxEvent;
 import io.harness.outbox.api.OutboxEventHandler;
 import io.harness.repositories.SBOMComponentRepo;
-import io.harness.ssca.entities.ArtifactEntity.ArtifactEntityKeys;
 import io.harness.ssca.entities.NormalizedSBOMComponentEntity;
+import io.harness.ssca.entities.artifact.ArtifactEntity.ArtifactEntityKeys;
 import io.harness.ssca.events.SSCAArtifactCreatedEvent;
 import io.harness.ssca.events.SSCAArtifactUpdatedEvent;
 import io.harness.ssca.helpers.BatchProcessor;
@@ -84,7 +84,7 @@ public class SSCAArtifactEventHandler implements OutboxEventHandler {
       BatchProcessor<NormalizedSBOMComponentEntity> componentEntityBatchProcessor =
           new BatchProcessor<>(mongoTemplate, NormalizedSBOMComponentEntity.class);
       try {
-        searchService.saveArtifact(sscaArtifactCreatedEvent.getArtifact());
+        searchService.upsertArtifact(sscaArtifactCreatedEvent.getArtifact());
         componentEntityBatchProcessor.processBatch(
             new Query(Criteria.where(ArtifactEntityKeys.accountId)
                           .is(sscaArtifactCreatedEvent.getAccountIdentifier())

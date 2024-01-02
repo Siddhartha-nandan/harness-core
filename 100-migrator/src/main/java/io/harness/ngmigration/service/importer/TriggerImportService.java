@@ -10,6 +10,8 @@ package io.harness.ngmigration.service.importer;
 import static io.harness.ngmigration.utils.NGMigrationConstants.RUNTIME_INPUT;
 
 import static software.wings.ngmigration.NGMigrationEntityType.ARTIFACT_STREAM;
+import static software.wings.ngmigration.NGMigrationEntityType.CONNECTOR;
+import static software.wings.ngmigration.NGMigrationEntityType.MANIFEST;
 import static software.wings.ngmigration.NGMigrationEntityType.SERVICE;
 import static software.wings.ngmigration.NGMigrationEntityType.TRIGGER;
 
@@ -19,6 +21,7 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.beans.WorkflowType;
+import io.harness.connector.ConnectorDTO;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ng.core.utils.NGYamlUtils;
@@ -37,6 +40,8 @@ import io.harness.ngmigration.service.DiscoveryService;
 import io.harness.ngmigration.service.MigrationHelperService;
 import io.harness.ngmigration.service.artifactstream.ArtifactStreamFactory;
 import io.harness.ngmigration.service.artifactstream.ArtifactStreamMapper;
+import io.harness.ngmigration.service.manifestspec.ManifestSpecFactory;
+import io.harness.ngmigration.service.manifestspec.ManifestSpecMapper;
 import io.harness.ngmigration.utils.MigratorUtility;
 import io.harness.ngtriggers.beans.config.NGTriggerConfigV2;
 import io.harness.ngtriggers.beans.config.NgTriggerConfigSchemaWrapper;
@@ -48,6 +53,7 @@ import io.harness.ngtriggers.beans.source.NGTriggerType;
 import io.harness.ngtriggers.beans.source.WebhookTriggerType;
 import io.harness.ngtriggers.beans.source.artifact.ArtifactTriggerConfig;
 import io.harness.ngtriggers.beans.source.artifact.ManifestTriggerConfig;
+import io.harness.ngtriggers.beans.source.artifact.ManifestTypeSpec;
 import io.harness.ngtriggers.beans.source.scheduled.CronTriggerSpec;
 import io.harness.ngtriggers.beans.source.scheduled.ScheduledTriggerConfig;
 import io.harness.ngtriggers.beans.source.webhook.v2.WebhookTriggerConfigV2;
@@ -422,9 +428,23 @@ public class TriggerImportService implements ImportService {
                    .build();
         break;
       case NEW_MANIFEST:
-        // TODO
+        Set<CgEntityId> manifestChildren = discoveryResult.getLinks().get(
+            CgEntityId.builder().id(trigger.getManifestSelections().get(0).getAppManifestId()).type(MANIFEST).build());
+        CgEntityId helmConnectorId =
+            manifestChildren.stream().filter(child -> CONNECTOR == child.getType()).findFirst().get();
+        NGYamlFile ngConnectorFile = yamlFileMap.get(helmConnectorId);
+        ConnectorDTO connectorDTO = (ConnectorDTO) ngConnectorFile.getYaml();
         type = NGTriggerType.MANIFEST;
-        spec = ManifestTriggerConfig.builder().type(ManifestType.HELM_MANIFEST).spec(null).build();
+        ManifestSpecMapper manifestSpecMapper =
+            ManifestSpecFactory.getManifestSpecMapper(connectorDTO.getConnectorInfo().getConnectorType());
+        ManifestTypeSpec helmSpec = null;
+
+        if (manifestSpecMapper != null) {
+          helmSpec = manifestSpecMapper.getTriggerSpec(
+              discoveryResult.getEntities(), connectorDTO.getConnectorInfo(), yamlFileMap, trigger);
+        }
+
+        spec = ManifestTriggerConfig.builder().type(ManifestType.HELM_MANIFEST).spec(helmSpec).build();
         break;
       case PIPELINE_COMPLETION:
       case NEW_INSTANCE:

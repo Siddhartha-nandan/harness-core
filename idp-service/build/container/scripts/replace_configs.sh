@@ -478,6 +478,8 @@ replace_key_value segmentConfiguration.apiKey "$SEGMENT_APIKEY"
 replace_key_value segmentConfiguration.certValidationRequired "$SEGMENT_VERIFY_CERT"
 replace_key_value delegateSelectorsCacheMode "$DELEGATE_SELECTORS_CACHE_MODE"
 replace_key_value enableMetrics "$ENABLE_METRICS"
+replace_key_value customPlugins.triggerPipelineUrl "$CUSTOM_PLUGINS_TRIGGER_PIPELINE_URL"
+replace_key_value enforcementClientConfiguration.enforcementCheckEnabled "$ENFORCEMENT_CHECK_ENABLED"
 
 if [[ "" != "$LOCK_CONFIG_REDIS_URL" ]]; then
   export LOCK_CONFIG_REDIS_URL; yq -i '.singleServerConfig.address=env(LOCK_CONFIG_REDIS_URL)' $REDISSON_CACHE_FILE
@@ -624,4 +626,9 @@ fi
 if [[ "" != "$INTERNAL_ACCOUNTS" ]]; then
   yq -i 'del(.internalAccounts)' $CONFIG_FILE
   export INTERNAL_ACCOUNTS; yq -i '.internalAccounts=(env(INTERNAL_ACCOUNTS) | split(",") | map(trim))' $CONFIG_FILE
+fi
+
+if [[ "" != "$ALLOWED_KINDS_FOR_CATALOG_SYNC" ]]; then
+  yq -i 'del(.allowedKindsForCatalogSync)' $CONFIG_FILE
+  export ALLOWED_KINDS_FOR_CATALOG_SYNC; yq -i '.allowedKindsForCatalogSync=(env(ALLOWED_KINDS_FOR_CATALOG_SYNC) | split(",") | map(trim))' $CONFIG_FILE
 fi

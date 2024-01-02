@@ -15,6 +15,7 @@ import io.harness.annotations.dev.ProductModule;
 import io.harness.delegate.task.k8s.ReleaseMetadata;
 import io.harness.k8s.model.KubernetesResource;
 import io.harness.k8s.model.KubernetesResourceId;
+import io.harness.k8s.trafficrouting.TrafficRoutingInfoDTO;
 
 import java.util.List;
 import javax.validation.constraints.NotNull;
@@ -43,4 +44,6 @@ public interface IK8sRelease {
   void setManifestHash(@NotNull String manifestHash);
   void setHelmChartInfo(@NotNull HelmChartInfoDTO helmChartInfo);
   HelmChartInfoDTO getHelmChartInfo();
+  void setTrafficRoutingInfo(TrafficRoutingInfoDTO trafficRoutingInfo);
+  TrafficRoutingInfoDTO getTrafficRoutingInfo();
 }
