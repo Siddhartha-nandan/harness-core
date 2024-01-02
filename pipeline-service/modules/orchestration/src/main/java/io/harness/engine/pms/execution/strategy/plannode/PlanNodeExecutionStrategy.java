@@ -16,6 +16,7 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.beans.FeatureName;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.engine.ExecutionCheck;
 import io.harness.engine.OrchestrationEngine;
@@ -118,8 +119,9 @@ public class PlanNodeExecutionStrategy extends AbstractNodeExecutionStrategy<Pla
     String name = node.getName();
     String identifier = node.getIdentifier();
     if (metadata != null && metadata.getStrategyMetadata() != null) {
-      name = AmbianceUtils.modifyIdentifier(metadata.getStrategyMetadata(), node.getName(), ambiance);
-      identifier = AmbianceUtils.modifyIdentifier(metadata.getStrategyMetadata(), node.getIdentifier(), ambiance);
+      boolean useNewStrategyPostFixTruncation = AmbianceUtils.checkIfFeatureFlagEnabled(ambiance, FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name());
+      name = AmbianceUtils.modifyIdentifier(metadata.getStrategyMetadata(), node.getName(), ambiance, useNewStrategyPostFixTruncation);
+      identifier = AmbianceUtils.modifyIdentifier(metadata.getStrategyMetadata(), node.getIdentifier(), ambiance, useNewStrategyPostFixTruncation);
     }
     NodeExecution nodeExecution =
         NodeExecution.builder()

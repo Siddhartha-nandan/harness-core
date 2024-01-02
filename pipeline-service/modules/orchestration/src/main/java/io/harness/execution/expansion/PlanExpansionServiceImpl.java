@@ -9,6 +9,7 @@ import io.harness.OrchestrationModuleConfig;
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.beans.FeatureName;
 import io.harness.execution.PlanExecutionExpansion;
 import io.harness.execution.PlanExecutionExpansion.PlanExecutionExpansionKeys;
 import io.harness.graph.stepDetail.service.NodeExecutionInfoService;
@@ -64,7 +65,7 @@ public class PlanExpansionServiceImpl implements PlanExpansionService {
     Level currentLevel = AmbianceUtils.obtainCurrentLevel(ambiance);
     if (currentLevel != null && AmbianceUtils.hasStrategyMetadata(currentLevel)) {
       Map<String, Object> strategyMap = nodeExecutionInfoService.fetchStrategyObjectMap(
-          currentLevel.getRuntimeId(), AmbianceUtils.shouldUseMatrixFieldName(ambiance), ambiance);
+          currentLevel.getRuntimeId(), AmbianceUtils.shouldUseMatrixFieldName(ambiance), AmbianceUtils.checkIfFeatureFlagEnabled(ambiance, FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name()));
       for (Map.Entry<String, Object> entry : strategyMap.entrySet()) {
         String strategyKey = String.format("%s.%s", getExpansionPathUsingLevels(ambiance), entry.getKey());
         if (ClassUtils.isPrimitiveOrWrapper(entry.getValue().getClass())) {

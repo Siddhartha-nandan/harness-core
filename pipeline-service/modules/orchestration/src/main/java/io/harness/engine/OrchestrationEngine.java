@@ -9,6 +9,7 @@ package io.harness.engine;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.FeatureName;
 import io.harness.engine.executions.plan.PlanService;
 import io.harness.engine.pms.execution.strategy.NodeExecutionStrategy;
 import io.harness.engine.pms.execution.strategy.NodeExecutionStrategyFactory;
@@ -66,7 +67,7 @@ public class OrchestrationEngine {
       InitiateMode initiateMode) {
     Node node = planService.fetchNode(ambiance.getPlanId(), nodeId);
     Ambiance clonedAmbiance = AmbianceUtils.cloneForChild(
-        ambiance, PmsLevelUtils.buildLevelFromNode(runtimeId, node, strategyMetadata, ambiance));
+        ambiance, PmsLevelUtils.buildLevelFromNode(runtimeId, node, strategyMetadata, AmbianceUtils.shouldUseMatrixFieldName(ambiance), AmbianceUtils.checkIfFeatureFlagEnabled(ambiance, FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name())));
     NodeExecutionStrategy strategy = strategyFactory.obtainStrategy(node.getNodeType());
     if (metadata == null) {
       metadata = strategy.createMetadata(strategyMetadata);

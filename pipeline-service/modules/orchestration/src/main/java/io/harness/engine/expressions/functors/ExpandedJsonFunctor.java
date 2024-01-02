@@ -11,6 +11,7 @@ import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.beans.FeatureName;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.execution.expansion.PlanExpansionService;
 import io.harness.graph.stepDetail.service.NodeExecutionInfoService;
@@ -44,13 +45,14 @@ public class ExpandedJsonFunctor {
     List<Level> levelsWithStrategyMetadata =
         ambiance.getLevelsList().stream().filter(AmbianceUtils::hasStrategyMetadata).collect(Collectors.toList());
     boolean useMatrixFieldName = AmbianceUtils.shouldUseMatrixFieldName(ambiance);
+    boolean useNewStrategyPostFixTruncation = AmbianceUtils.checkIfFeatureFlagEnabled(ambiance, FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name());
     if (EmptyPredicate.isNotEmpty(levelsWithStrategyMetadata)) {
       response.put("strategy",
-          nodeExecutionInfoService.fetchStrategyObjectMap(levelsWithStrategyMetadata, useMatrixFieldName, ambiance));
+          nodeExecutionInfoService.fetchStrategyObjectMap(levelsWithStrategyMetadata, useMatrixFieldName, useNewStrategyPostFixTruncation));
     } else {
       response.put("strategy",
           nodeExecutionInfoService.fetchStrategyObjectMap(
-              AmbianceUtils.obtainCurrentLevel(ambiance).getRuntimeId(), useMatrixFieldName, ambiance));
+              AmbianceUtils.obtainCurrentLevel(ambiance).getRuntimeId(), useMatrixFieldName, useNewStrategyPostFixTruncation));
     }
     return response;
   }

@@ -16,6 +16,7 @@ import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.beans.FeatureName;
 import io.harness.engine.expressions.NodeExecutionsCache;
 import io.harness.engine.expressions.OrchestrationConstants;
 import io.harness.engine.pms.data.OutcomeException;
@@ -281,7 +282,7 @@ public class NodeExecutionMap extends LateBindingMap {
   private Map<String, Object> extractStrategyMetadata(NodeExecution nodeExecution) {
     if (nodeExecution.getUuid() != null) {
       return nodeExecutionInfoService.fetchStrategyObjectMap(
-          nodeExecution.getUuid(), AmbianceUtils.shouldUseMatrixFieldName(ambiance), ambiance);
+          nodeExecution.getUuid(), AmbianceUtils.shouldUseMatrixFieldName(ambiance), AmbianceUtils.checkIfFeatureFlagEnabled(ambiance, FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name()));
     }
     return new HashMap<>();
   }

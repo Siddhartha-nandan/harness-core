@@ -15,6 +15,7 @@ import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
+import io.harness.beans.FeatureName;
 import io.harness.data.structure.UUIDGenerator;
 import io.harness.delay.DelayEventHelper;
 import io.harness.engine.OrchestrationEngine;
@@ -87,7 +88,7 @@ public class RetryHelper {
     int newRetryIndex = currentLevel != null ? currentLevel.getRetryIndex() + 1 : 0;
     Ambiance finalAmbiance =
         ambiance.toBuilder()
-            .addLevels(PmsLevelUtils.buildLevelFromNode(newUuid, newRetryIndex, node, strategyMetadata, ambiance))
+            .addLevels(PmsLevelUtils.buildLevelFromNode(newUuid, newRetryIndex, node, strategyMetadata, AmbianceUtils.shouldUseMatrixFieldName(ambiance), AmbianceUtils.checkIfFeatureFlagEnabled(ambiance, FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name())))
             .build();
     // TODO: Move nodeExecution creation to AbstractNodeExecutionStrategy
     // ambiance could be modified by this clone method

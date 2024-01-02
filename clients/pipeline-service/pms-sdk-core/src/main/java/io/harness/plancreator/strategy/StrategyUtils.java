@@ -363,7 +363,7 @@ public class StrategyUtils {
   @Deprecated
   // pass flag
   public Map<String, Object> fetchStrategyObjectMap(
-      List<Level> levelsWithStrategyMetadata, boolean useMatrixFieldName, Ambiance ambiance) {
+      List<Level> levelsWithStrategyMetadata, boolean useMatrixFieldName, boolean useNewStrategyPostFixTruncation) {
     Map<String, Object> strategyObjectMap = new HashMap<>();
     Map<String, Object> matrixValuesMap = new HashMap<>();
     Map<String, Object> repeatValuesMap = new HashMap<>();
@@ -392,8 +392,7 @@ public class StrategyUtils {
       strategyObjectMap.put(ITERATION, level.getStrategyMetadata().getCurrentIteration());
       strategyObjectMap.put(ITERATIONS, level.getStrategyMetadata().getTotalIterations());
       strategyObjectMap.put(TOTAL_ITERATIONS, level.getStrategyMetadata().getTotalIterations());
-      if (AmbianceUtils.checkIfFeatureFlagEnabled(
-              ambiance, CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name())) {
+      if (useNewStrategyPostFixTruncation) {
         strategyObjectMap.put(IDENTIFIER_POSTFIX, level.getStrategyMetadata().getIdentifierPostFix());
       } else {
         strategyObjectMap.put(IDENTIFIER_POSTFIX,

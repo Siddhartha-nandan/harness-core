@@ -34,7 +34,6 @@ import io.harness.concurrency.ConcurrentChildInstance;
 import io.harness.engine.observers.StepDetailsUpdateObserver;
 import io.harness.observer.Subject;
 import io.harness.plancreator.strategy.StrategyConstants;
-import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.contracts.execution.MatrixMetadata;
 import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.contracts.execution.StrategyMetadata;
@@ -394,7 +393,7 @@ public class NodeExecutionInfoServiceImplTest extends OrchestrationTestBase {
     assertThat(byNodeExecutionId).isPresent();
 
     Map<String, Object> result =
-        pmsGraphStepDetailsService.fetchStrategyObjectMap(nodeExecutionId, false, Ambiance.newBuilder().build());
+        pmsGraphStepDetailsService.fetchStrategyObjectMap(nodeExecutionId, false, false);
     assertThat(result.keySet().size()).isEqualTo(3);
     assertThat(result.get(StrategyConstants.TOTAL_ITERATIONS)).isEqualTo(1);
     assertThat(result.get(StrategyConstants.ITERATION)).isEqualTo(0);
@@ -427,7 +426,7 @@ public class NodeExecutionInfoServiceImplTest extends OrchestrationTestBase {
     assertThat(byNodeExecutionId).isPresent();
 
     Map<String, Object> result =
-        pmsGraphStepDetailsService.fetchStrategyObjectMap(nodeExecutionId, false, Ambiance.newBuilder().build());
+        pmsGraphStepDetailsService.fetchStrategyObjectMap(nodeExecutionId, false, false);
     assertThat(result.keySet().size()).isEqualTo(6);
     assertThat(result.get(StrategyConstants.TOTAL_ITERATIONS)).isEqualTo(1);
     assertThat(result.get(StrategyConstants.ITERATION)).isEqualTo(0);
@@ -463,7 +462,7 @@ public class NodeExecutionInfoServiceImplTest extends OrchestrationTestBase {
     assertThat(byNodeExecutionId).isPresent();
 
     Map<String, Object> result =
-        pmsGraphStepDetailsService.fetchStrategyObjectMap(nodeExecutionId, true, Ambiance.newBuilder().build());
+        pmsGraphStepDetailsService.fetchStrategyObjectMap(nodeExecutionId, true, false);
     assertThat(result.keySet().size()).isEqualTo(6);
     assertThat(result.get(StrategyConstants.TOTAL_ITERATIONS)).isEqualTo(1);
     assertThat(result.get(StrategyConstants.ITERATION)).isEqualTo(0);
@@ -497,7 +496,7 @@ public class NodeExecutionInfoServiceImplTest extends OrchestrationTestBase {
     assertThat(byNodeExecutionId).isPresent();
 
     Map<String, Object> result =
-        pmsGraphStepDetailsService.fetchStrategyObjectMap(nodeExecutionId, true, Ambiance.newBuilder().build());
+        pmsGraphStepDetailsService.fetchStrategyObjectMap(nodeExecutionId, true, false);
     assertThat(result.keySet().size()).isEqualTo(6);
     assertThat(result.get(StrategyConstants.TOTAL_ITERATIONS)).isEqualTo(1);
     assertThat(result.get(StrategyConstants.ITERATION)).isEqualTo(0);

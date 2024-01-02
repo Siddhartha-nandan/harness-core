@@ -8,7 +8,6 @@
 package io.harness.pms.execution.utils;
 
 import static io.harness.annotations.dev.HarnessTeam.PIPELINE;
-import static io.harness.beans.FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.logging.AutoLogContext.OverrideBehavior.OVERRIDE_NESTS;
@@ -307,14 +306,24 @@ public class AmbianceUtils {
     return ambiance.getLevels(ambiance.getLevelsCount() - 2).getRuntimeId();
   }
 
-  public static String modifyIdentifier(StrategyMetadata metadata, String identifier, Ambiance ambiance) {
+  public static String modifyIdentifier(StrategyMetadata metadata, String identifier, Ambiance ambiance, boolean useNewStrategyPostFixTruncation) {
     String strategyPostFix;
-    if (ambiance != null
-        && checkIfFeatureFlagEnabled(ambiance, CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name())) {
+    if (useNewStrategyPostFixTruncation) {
       strategyPostFix = metadata.getIdentifierPostFix();
     } else {
       strategyPostFix =
           getStrategyPostFixUsingMetadata(metadata, ambiance != null && shouldUseMatrixFieldName(ambiance));
+    }
+    return identifier.replaceAll(StrategyValidationUtils.STRATEGY_IDENTIFIER_POSTFIX_ESCAPED, strategyPostFix);
+  }
+
+  public static String modifyIdentifier(
+          StrategyMetadata strategyMetadata, String identifier, boolean useMatrixFieldName, boolean useNewStrategyPostFixTruncation) {
+    String strategyPostFix;
+    if (useNewStrategyPostFixTruncation) {
+      strategyPostFix = strategyMetadata.getIdentifierPostFix();
+    } else {
+      strategyPostFix = getStrategyPostFixUsingMetadata(strategyMetadata, useMatrixFieldName);
     }
     return identifier.replaceAll(StrategyValidationUtils.STRATEGY_IDENTIFIER_POSTFIX_ESCAPED, strategyPostFix);
   }

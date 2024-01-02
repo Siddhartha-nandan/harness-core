@@ -115,25 +115,7 @@ public class MatrixConfigServiceHelper {
               .build();
 
       String modifiedIdentifier = AmbianceUtils.getStrategyPostFixUsingMetadata(strategyMetadata, useMatrixFieldName);
-      if (modifiedIdentifierStringMap.containsKey(modifiedIdentifier)) {
-        /* If this modifiedIdentifier is a duplicate (it can happen for long identifiers which are truncated),
-         we need deduplicate it by appending a counter at the end: */
-        int cnt = modifiedIdentifierStringMap.getOrDefault(modifiedIdentifier, 0);
-        modifiedIdentifierStringMap.put(modifiedIdentifier, cnt + 1);
-        /* Concatenate identifier with deduplication suffix, but keep the identifier length equal or less
-            than MAX_CHARACTERS_FOR_IDENTIFIER_POSTFIX */
-        String modifiedIdentifierWithTruncationFix =
-            concatWithMaxLength(modifiedIdentifier, "_" + cnt, AmbianceUtils.MAX_CHARACTERS_FOR_IDENTIFIER_POSTFIX);
-        if (!modifiedIdentifier.equals(modifiedIdentifierWithTruncationFix)) {
-          log.warn(String.format(
-              "modifiedIdentifier mismatch for matrix combination: modifiedIdentifier is %s while modifiedIdentifierWithTruncationFix is %s",
-              modifiedIdentifier, modifiedIdentifierWithTruncationFix));
-        }
-        if (AmbianceUtils.checkIfFeatureFlagEnabled(
-                ambiance, CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name())) {
-          modifiedIdentifier = modifiedIdentifierWithTruncationFix;
-        }
-      }
+      modifiedIdentifier = getUniqueModifiedIdentifier(ambiance, modifiedIdentifierStringMap, modifiedIdentifier);
       modifiedIdentifierStringMap.putIfAbsent(modifiedIdentifier, 0);
 
       strategyMetadata = strategyMetadata.toBuilder().setIdentifierPostFix(modifiedIdentifier).build();
@@ -148,6 +130,29 @@ public class MatrixConfigServiceHelper {
     }
 
     return children;
+  }
+
+  private String getUniqueModifiedIdentifier(Ambiance ambiance, Map<String, Integer> modifiedIdentifierStringMap, String modifiedIdentifier) {
+    if (modifiedIdentifierStringMap.containsKey(modifiedIdentifier)) {
+      /* If this modifiedIdentifier is a duplicate (it can happen for long identifiers which are truncated),
+       we need deduplicate it by appending a counter at the end: */
+      int cnt = modifiedIdentifierStringMap.getOrDefault(modifiedIdentifier, 0);
+      modifiedIdentifierStringMap.put(modifiedIdentifier, cnt + 1);
+      /* Concatenate identifier with deduplication suffix, but keep the identifier length equal or less
+          than MAX_CHARACTERS_FOR_IDENTIFIER_POSTFIX */
+      String modifiedIdentifierWithTruncationFix =
+          concatWithMaxLength(modifiedIdentifier, "_" + cnt, AmbianceUtils.MAX_CHARACTERS_FOR_IDENTIFIER_POSTFIX);
+      if (!modifiedIdentifier.equals(modifiedIdentifierWithTruncationFix)) {
+        log.warn(String.format(
+            "modifiedIdentifier mismatch for matrix combination: modifiedIdentifier is %s while modifiedIdentifierWithTruncationFix is %s",
+                modifiedIdentifier, modifiedIdentifierWithTruncationFix));
+      }
+      if (AmbianceUtils.checkIfFeatureFlagEnabled(
+              ambiance, CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name())) {
+        modifiedIdentifier = modifiedIdentifierWithTruncationFix;
+      }
+    }
+    return modifiedIdentifier;
   }
 
   private String concatWithMaxLength(String prefix, String suffix, int maxLength) {

@@ -165,7 +165,7 @@ public class NodeExecutionValueTest extends OrchestrationTestBase {
                                   .setMatrixMetadata(MatrixMetadata.newBuilder().putMatrixValues("os", "test").build())
                                   .setCurrentIteration(2)
                                   .build(),
-                              null))
+                              false, false))
                           .build())
             .nodeId(node4.getUuid())
             .name(node4.getName())
@@ -393,7 +393,7 @@ public class NodeExecutionValueTest extends OrchestrationTestBase {
             .engine(engine)
             .groupAliases(ImmutableMap.of("stage", "STAGE"))
             .build();
-    when(nodeExecutionInfoService.fetchStrategyObjectMap(nodeExecution4.getUuid(), false, newAmbiance))
+    when(nodeExecutionInfoService.fetchStrategyObjectMap(nodeExecution4.getUuid(), false, false))
         .thenReturn(Map.of("matrix", Map.of("os", "test"), "iteration", 2));
     assertThat(engine.getProperty(functor, "stage.matrix.os")).isEqualTo("test");
     assertThat(engine.getProperty(functor, "stage.iteration")).isEqualTo(2);
