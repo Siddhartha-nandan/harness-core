@@ -34,8 +34,8 @@ import io.harness.ssca.beans.Violation;
 import io.harness.ssca.enforcement.constants.ViolationType;
 import io.harness.ssca.entities.EnforcementResultEntity;
 import io.harness.ssca.entities.NormalizedSBOMComponentEntity;
-import io.harness.ssca.entities.artifact.ArtifactEntity;
 import io.harness.ssca.entities.OperatorEntity;
+import io.harness.ssca.entities.artifact.ArtifactEntity;
 import io.harness.ssca.entities.exemption.Exemption;
 import io.harness.ssca.services.exemption.ExemptionService;
 
