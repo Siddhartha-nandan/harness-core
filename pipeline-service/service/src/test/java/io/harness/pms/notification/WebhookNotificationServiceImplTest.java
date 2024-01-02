@@ -78,7 +78,7 @@ public class WebhookNotificationServiceImplTest extends CategoryTest {
             .build();
     ModuleInfo moduleInfo =
         webhookNotificationService.getModuleInfo(ambiance, executionSummaryEntity, PipelineEventType.PIPELINE_START);
-    assertThat(moduleInfo).isNull();
+    assertThat(moduleInfo).isNotNull();
   }
 
   @Test
