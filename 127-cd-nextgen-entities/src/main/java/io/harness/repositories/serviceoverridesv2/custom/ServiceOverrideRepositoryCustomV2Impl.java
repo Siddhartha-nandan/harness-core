@@ -54,16 +54,25 @@ public class ServiceOverrideRepositoryCustomV2Impl implements ServiceOverrideRep
   private final GitAwareEntityHelper gitAwareEntityHelper;
 
   @Override
-  public NGServiceOverridesEntity update(Criteria criteria, NGServiceOverridesEntity serviceOverridesEntity) {
+  public NGServiceOverridesEntity updateGitAware(Criteria criteria, NGServiceOverridesEntity serviceOverridesEntity) {
     Query query = new Query(criteria);
     Update updateOperations =
         ServiceOverrideRepositoryHelper.getUpdateOperationsForServiceOverrideV2(serviceOverridesEntity);
     RetryPolicy<Object> retryPolicy = getRetryPolicy("[Retrying]: Failed updating Service Override Entity; attempt: {}",
         "[Failed]: Failed updating Service Override Entity; attempt: {}");
-    return Failsafe.with(retryPolicy)
-        .get(()
-                 -> mongoTemplate.findAndModify(query, updateOperations, new FindAndModifyOptions().returnNew(true),
-                     NGServiceOverridesEntity.class));
+    NGServiceOverridesEntity updatedOverridesEntity =
+        Failsafe.with(retryPolicy)
+            .get(()
+                     -> mongoTemplate.findAndModify(query, updateOperations, new FindAndModifyOptions().returnNew(true),
+                         NGServiceOverridesEntity.class));
+    if (updatedOverridesEntity == null || !GitAwareContextHelper.isRemoteEntity()) {
+      return updatedOverridesEntity;
+    }
+
+    Scope scope = Scope.of(updatedOverridesEntity.getAccountId(), updatedOverridesEntity.getOrgIdentifier(),
+        updatedOverridesEntity.getProjectIdentifier());
+    gitAwareEntityHelper.updateEntityOnGit(updatedOverridesEntity, updatedOverridesEntity.getYamlV2(), scope);
+    return updatedOverridesEntity;
   }
 
   @Override

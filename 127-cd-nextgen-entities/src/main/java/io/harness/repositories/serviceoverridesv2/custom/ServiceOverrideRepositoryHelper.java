@@ -36,6 +36,7 @@ public class ServiceOverrideRepositoryHelper {
     update.set(NGServiceOverridesEntityKeys.lastModifiedAt, System.currentTimeMillis());
     update.set(NGServiceOverridesEntityKeys.isV2, Boolean.TRUE);
     update.set(NGServiceOverridesEntityKeys.yamlInternal, serviceOverridesEntity.getYamlInternal());
+    update.set(NGServiceOverridesEntityKeys.yamlV2, serviceOverridesEntity.getYamlV2());
     return update;
   }
 

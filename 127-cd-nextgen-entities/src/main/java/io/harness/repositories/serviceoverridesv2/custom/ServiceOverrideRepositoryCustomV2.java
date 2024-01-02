@@ -16,7 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.query.Criteria;
 
 public interface ServiceOverrideRepositoryCustomV2 {
-  NGServiceOverridesEntity update(Criteria criteria, NGServiceOverridesEntity serviceOverridesEntity);
+  NGServiceOverridesEntity updateGitAware(Criteria criteria, NGServiceOverridesEntity serviceOverridesEntity);
 
   DeleteResult delete(Criteria criteria);
 

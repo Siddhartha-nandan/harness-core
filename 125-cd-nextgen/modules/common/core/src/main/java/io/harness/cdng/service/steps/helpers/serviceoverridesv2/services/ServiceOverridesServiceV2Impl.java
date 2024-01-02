@@ -554,11 +554,8 @@ public class ServiceOverridesServiceV2Impl implements ServiceOverridesServiceV2 
 
     if (GitAwareContextHelper.isRemoteEntity()) {
       // check if gitX is enabled
-      if (!cdGitXService.isNewGitXEnabled(requestedEntity.getAccountId(), requestedEntity.getOrgIdentifier(),
-              requestedEntity.getProjectIdentifier())) {
-        throw new InvalidRequestException(GitXUtils.getErrorMessageForGitSimplificationNotEnabled(
-            requestedEntity.getOrgIdentifier(), requestedEntity.getProjectIdentifier()));
-      }
+      cdGitXService.assertGitXIsEnabled(
+          requestedEntity.getAccountId(), requestedEntity.getOrgIdentifier(), requestedEntity.getProjectIdentifier());
       addGitParamsToOverrideEntity(requestedEntity);
     }
 
@@ -603,13 +600,19 @@ public class ServiceOverridesServiceV2Impl implements ServiceOverridesServiceV2 
 
   private NGServiceOverridesEntity updateAndSendOutboxEvent(@NonNull NGServiceOverridesEntity requestedEntity,
       Criteria equalityCriteria, ServiceOverrideAuditEventDTO oldOverrideAuditEventDTO) {
+    if (GitAwareContextHelper.isRemoteEntity()) {
+      cdGitXService.assertGitXIsEnabled(
+          requestedEntity.getAccountId(), requestedEntity.getOrgIdentifier(), requestedEntity.getProjectIdentifier());
+    }
+
     NGServiceOverridesEntity updatedServiceOverride =
-        serviceOverrideRepositoryV2.update(equalityCriteria, requestedEntity);
+        serviceOverrideRepositoryV2.updateGitAware(equalityCriteria, requestedEntity);
     if (updatedServiceOverride == null) {
       throw new InvalidRequestException(format(
           "ServiceOverride [%s] under Project [%s], Organization [%s] couldn't be updated or doesn't exist.",
           requestedEntity.getIdentifier(), requestedEntity.getProjectIdentifier(), requestedEntity.getOrgIdentifier()));
     }
+
     try {
       outboxService.save(
           EnvironmentUpdatedEvent.builder()
