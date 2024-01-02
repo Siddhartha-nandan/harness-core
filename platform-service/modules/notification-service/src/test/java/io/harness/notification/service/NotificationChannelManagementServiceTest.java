@@ -10,11 +10,13 @@ package io.harness.notification.service;
 import static io.harness.rule.OwnerRule.JENNY;
 
 import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertTrue;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.harness.CategoryTest;
+import io.harness.NGResourceFilterConstants;
 import io.harness.category.element.UnitTests;
 import io.harness.notification.NotificationChannelType;
 import io.harness.notification.entities.EmailChannel;
@@ -25,7 +27,9 @@ import io.harness.notification.entities.PagerDutyChannel;
 import io.harness.notification.entities.SlackChannel;
 import io.harness.notification.repositories.NotificationChannelRepository;
 import io.harness.notification.service.api.NotificationChannelManagementService;
+import io.harness.notification.utils.NotificationChannelFilterProperties;
 import io.harness.rule.Owner;
+import io.harness.utils.PageUtils;
 
 import com.google.common.collect.Lists;
 import java.util.Collections;
@@ -35,6 +39,10 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.query.Criteria;
 
 public class NotificationChannelManagementServiceTest extends CategoryTest {
@@ -140,6 +148,142 @@ public class NotificationChannelManagementServiceTest extends CategoryTest {
     List<NotificationChannel> nc = notificationChannelManagementService.getNotificationChannelList(
         ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER);
     assertEquals(2, nc.size());
+  }
+
+  @Test
+  @Owner(developers = JENNY)
+  @Category(UnitTests.class)
+  public void testListNotificationChannels() {
+    NotificationChannel notificationChannel1 = NotificationChannel.builder()
+                                                   .identifier("nc1")
+                                                   .accountIdentifier(ACCOUNT_IDENTIFIER)
+                                                   .orgIdentifier(ORG_IDENTIFIER)
+                                                   .projectIdentifier(PROJECT_IDENTIFIER)
+                                                   .notificationChannelType(NotificationChannelType.EMAIL)
+                                                   .channel(EmailChannel.builder().emailIds(List.of(EMAIL_ID)).build())
+                                                   .build();
+    NotificationChannel notificationChannel2 =
+        NotificationChannel.builder()
+            .identifier("nc2")
+            .accountIdentifier(ACCOUNT_IDENTIFIER)
+            .orgIdentifier(ORG_IDENTIFIER)
+            .projectIdentifier(PROJECT_IDENTIFIER)
+            .notificationChannelType(NotificationChannelType.SLACK)
+            .channel(SlackChannel.builder().slackWebHookUrls(Collections.emptyList()).build())
+            .build();
+    Criteria criteria = new Criteria();
+    criteria.and(NotificationChannelKeys.accountIdentifier).is(ACCOUNT_IDENTIFIER);
+    criteria.and(NotificationChannelKeys.orgIdentifier).is(ORG_IDENTIFIER);
+    criteria.and(NotificationChannelKeys.projectIdentifier).is(PROJECT_IDENTIFIER);
+    criteria.and(NotificationChannelKeys.notificationChannelType).is(NotificationChannelType.EMAIL.name());
+    NotificationChannelFilterProperties filterProperties =
+        NotificationChannelFilterProperties.builder().notificationChannelType(NotificationChannelType.EMAIL).build();
+    int page = 0;
+    int limit = 10;
+    Pageable pageable =
+        PageRequest.of(page, limit, Sort.by(Sort.Direction.DESC, NotificationChannelKeys.lastModifiedAt));
+    when(notificationChannelRepository.findAll(criteria, pageable))
+        .thenReturn(PageUtils.getPage(Lists.newArrayList(notificationChannel1, notificationChannel2), 0, 10));
+    Page<NotificationChannel> nc = notificationChannelManagementService.list(
+        ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, pageable, filterProperties);
+    assertTrue(nc.hasContent());
+  }
+
+  @Test
+  @Owner(developers = JENNY)
+  @Category(UnitTests.class)
+  public void testListNotificationChannelsWithSearchTerm() {
+    NotificationChannel notificationChannel1 = NotificationChannel.builder()
+                                                   .identifier("nc1")
+                                                   .accountIdentifier(ACCOUNT_IDENTIFIER)
+                                                   .orgIdentifier(ORG_IDENTIFIER)
+                                                   .projectIdentifier(PROJECT_IDENTIFIER)
+                                                   .notificationChannelType(NotificationChannelType.EMAIL)
+                                                   .channel(EmailChannel.builder().emailIds(List.of(EMAIL_ID)).build())
+                                                   .build();
+    NotificationChannel notificationChannel2 =
+        NotificationChannel.builder()
+            .identifier("nc2")
+            .accountIdentifier(ACCOUNT_IDENTIFIER)
+            .orgIdentifier(ORG_IDENTIFIER)
+            .projectIdentifier(PROJECT_IDENTIFIER)
+            .notificationChannelType(NotificationChannelType.SLACK)
+            .channel(SlackChannel.builder().slackWebHookUrls(Collections.emptyList()).build())
+            .build();
+    NotificationChannelFilterProperties filterProperties = NotificationChannelFilterProperties.builder()
+                                                               .notificationChannelType(NotificationChannelType.EMAIL)
+                                                               .searchTerm("n")
+                                                               .build();
+
+    Criteria criteria = new Criteria();
+    criteria.and(NotificationChannelKeys.accountIdentifier).is(ACCOUNT_IDENTIFIER);
+    criteria.and(NotificationChannelKeys.orgIdentifier).is(ORG_IDENTIFIER);
+    criteria.and(NotificationChannelKeys.projectIdentifier).is(PROJECT_IDENTIFIER);
+    criteria.orOperator(
+        Criteria.where(NotificationChannelKeys.name)
+            .regex(filterProperties.getSearchTerm(), NGResourceFilterConstants.CASE_INSENSITIVE_MONGO_OPTIONS),
+        Criteria.where(NotificationChannelKeys.identifier)
+            .regex(filterProperties.getSearchTerm(), NGResourceFilterConstants.CASE_INSENSITIVE_MONGO_OPTIONS));
+    criteria.and(NotificationChannelKeys.notificationChannelType).is(NotificationChannelType.EMAIL.name());
+
+    int page = 0;
+    int limit = 10;
+    Pageable pageable =
+        PageRequest.of(page, limit, Sort.by(Sort.Direction.DESC, NotificationChannelKeys.lastModifiedAt));
+    when(notificationChannelRepository.findAll(criteria, pageable))
+        .thenReturn(PageUtils.getPage(Lists.newArrayList(notificationChannel1, notificationChannel2), 0, 10));
+    Page<NotificationChannel> nc = notificationChannelManagementService.list(
+        ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, pageable, filterProperties);
+    assertTrue(nc.hasContent());
+  }
+
+  @Test
+  @Owner(developers = JENNY)
+  @Category(UnitTests.class)
+  public void testListNotificationChannelsWithLimit() {
+    NotificationChannel notificationChannel1 = NotificationChannel.builder()
+                                                   .identifier("nc1")
+                                                   .accountIdentifier(ACCOUNT_IDENTIFIER)
+                                                   .orgIdentifier(ORG_IDENTIFIER)
+                                                   .projectIdentifier(PROJECT_IDENTIFIER)
+                                                   .notificationChannelType(NotificationChannelType.EMAIL)
+                                                   .channel(EmailChannel.builder().emailIds(List.of(EMAIL_ID)).build())
+                                                   .build();
+    NotificationChannel notificationChannel2 =
+        NotificationChannel.builder()
+            .identifier("nc2")
+            .accountIdentifier(ACCOUNT_IDENTIFIER)
+            .orgIdentifier(ORG_IDENTIFIER)
+            .projectIdentifier(PROJECT_IDENTIFIER)
+            .notificationChannelType(NotificationChannelType.SLACK)
+            .channel(SlackChannel.builder().slackWebHookUrls(Collections.emptyList()).build())
+            .build();
+    NotificationChannelFilterProperties filterProperties = NotificationChannelFilterProperties.builder()
+                                                               .notificationChannelType(NotificationChannelType.EMAIL)
+                                                               .searchTerm("n")
+                                                               .build();
+
+    Criteria criteria = new Criteria();
+    criteria.and(NotificationChannelKeys.accountIdentifier).is(ACCOUNT_IDENTIFIER);
+    criteria.and(NotificationChannelKeys.orgIdentifier).is(ORG_IDENTIFIER);
+    criteria.and(NotificationChannelKeys.projectIdentifier).is(PROJECT_IDENTIFIER);
+    criteria.orOperator(
+        Criteria.where(NotificationChannelKeys.name)
+            .regex(filterProperties.getSearchTerm(), NGResourceFilterConstants.CASE_INSENSITIVE_MONGO_OPTIONS),
+        Criteria.where(NotificationChannelKeys.identifier)
+            .regex(filterProperties.getSearchTerm(), NGResourceFilterConstants.CASE_INSENSITIVE_MONGO_OPTIONS));
+    criteria.and(NotificationChannelKeys.notificationChannelType).is(NotificationChannelType.EMAIL.name());
+
+    int page = 0;
+    int limit = 1;
+    Pageable pageable =
+        PageRequest.of(page, limit, Sort.by(Sort.Direction.DESC, NotificationChannelKeys.lastModifiedAt));
+    when(notificationChannelRepository.findAll(criteria, pageable))
+        .thenReturn(PageUtils.getPage(Lists.newArrayList(notificationChannel1, notificationChannel2), 0, 1));
+    Page<NotificationChannel> nc = notificationChannelManagementService.list(
+        ACCOUNT_IDENTIFIER, ORG_IDENTIFIER, PROJECT_IDENTIFIER, pageable, filterProperties);
+    assertTrue(nc.hasContent());
+    assertEquals(1, nc.getContent().size());
   }
 
   @Test

@@ -11,6 +11,7 @@ import static io.harness.annotations.dev.HarnessTeam.PL;
 
 import static java.lang.String.format;
 
+import io.harness.NGResourceFilterConstants;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.exception.DuplicateFieldException;
 import io.harness.notification.entities.NotificationChannel;
@@ -24,6 +25,7 @@ import java.util.List;
 import javax.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -80,9 +82,19 @@ public class NotificationChannelManagementServiceImpl
   public Page<NotificationChannel> list(String accountIdentifier, String orgIdentifier, String projectIdentifier,
       Pageable pageable, NotificationChannelFilterProperties notificationChannelFilterProperties) {
     Criteria criteria = createScopeCriteria(accountIdentifier, orgIdentifier, projectIdentifier);
-    criteria.and(notificationChannelFilterProperties.getSearchTerm());
-    criteria.and(NotificationChannelKeys.notificationChannelType)
-        .is(notificationChannelFilterProperties.getNotificationChannelType().name());
+    if (StringUtils.isNotEmpty(notificationChannelFilterProperties.getSearchTerm())) {
+      criteria.orOperator(Criteria.where(NotificationChannelKeys.name)
+                              .regex(notificationChannelFilterProperties.getSearchTerm(),
+                                  NGResourceFilterConstants.CASE_INSENSITIVE_MONGO_OPTIONS),
+          Criteria.where(NotificationChannelKeys.identifier)
+              .regex(notificationChannelFilterProperties.getSearchTerm(),
+                  NGResourceFilterConstants.CASE_INSENSITIVE_MONGO_OPTIONS));
+    }
+
+    if (notificationChannelFilterProperties.getNotificationChannelType() != null) {
+      criteria.and(NotificationChannelKeys.notificationChannelType)
+          .is(notificationChannelFilterProperties.getNotificationChannelType().name());
+    }
     return notificationChannelRepository.findAll(criteria, pageable);
   }
 

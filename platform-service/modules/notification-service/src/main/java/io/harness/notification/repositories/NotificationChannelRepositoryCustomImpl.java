@@ -39,7 +39,6 @@ public class NotificationChannelRepositoryCustomImpl implements NotificationChan
   @Override
   public Page<NotificationChannel> findAll(Criteria criteria, Pageable pageable) {
     Query query = new Query(criteria);
-    query.with(pageable);
     List<NotificationChannel> notificationList = mongoTemplate.find(query, NotificationChannel.class);
     return PageableExecutionUtils.getPage(notificationList, pageable,
         () -> mongoTemplate.count(Query.of(query).limit(-1).skip(-1), NotificationChannel.class));

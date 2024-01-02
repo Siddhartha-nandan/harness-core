@@ -26,6 +26,7 @@ paths:
         - $ref: '#/components/parameters/SearchTerm'
         - $ref: '#/components/parameters/Sort'
         - $ref: '#/components/parameters/Order'
+        - $ref: '#/components/parameters/notification_channel_type'
       security:
         - x-api-key: []
       tags:
@@ -221,6 +222,7 @@ paths:
         - $ref: '#/components/parameters/SearchTerm'
         - $ref: '#/components/parameters/Sort'
         - $ref: '#/components/parameters/Order'
+        - $ref: '#/components/parameters/notification_channel_type'
       security:
         - x-api-key: []
       tags:
@@ -262,6 +264,7 @@ paths:
         - $ref: '#/components/parameters/SearchTerm'
         - $ref: '#/components/parameters/Sort'
         - $ref: '#/components/parameters/Order'
+        - $ref: '#/components/parameters/notification_channel_type'
       security:
         - x-api-key: []
       tags:
@@ -685,7 +688,11 @@ components:
         name:
           type: string
           x-stoplight:
-            id: xwi5kp0p2y69s
+            id: hhj90ixeo7k1p
+        account:
+          type: string
+          x-stoplight:
+            id: wa98rfw6vmtsc
     NotificationRuleDTO:
       type: object
       x-examples:
@@ -776,26 +783,7 @@ components:
                     notification_channels:
                       type: array
                       items:
-                        type: object
-                        x-stoplight:
-                          id: 1y43ooa3orvl6
-                        properties:
-                          name:
-                            type: string
-                          org:
-                            type: string
-                          project:
-                            type: string
-                          notification_channel_type:
-                            $ref: '#/components/schemas/ChannelType'
-                          status:
-                            type: string
-                          channel:
-                            $ref: '#/components/schemas/ChannelDTO'
-                          created_by:
-                            type: object
-                          created:
-                            type: integer
+                        $ref: '#/components/schemas/NotificationChannelDTO'
                     notification_event_data:
                       type: object
                       x-stoplight:
@@ -982,6 +970,13 @@ components:
           - ASC
           - DESC
       description: Order on the basis of which sorting is done.
+    notification_channel_type:
+      name: notification_channel_type
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Notification Channel Type
   responses:
     NotificationChannelListResponse:
       description: Example response

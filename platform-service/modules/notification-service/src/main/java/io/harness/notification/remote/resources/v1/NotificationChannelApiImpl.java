@@ -7,6 +7,7 @@
 
 package io.harness.notification.remote.resources.v1;
 
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.notification.utils.NotificationManagementResourceTypes.NOTIFICATION_MANAGEMENT;
 import static io.harness.notification.utils.NotificationManagementServicePermission.DELETE_NOTIFICATION_MANAGEMENT_PERMISSION;
 import static io.harness.notification.utils.NotificationManagementServicePermission.EDIT_NOTIFICATION_MANAGEMENT_PERMISSION;
@@ -76,20 +77,23 @@ public class NotificationChannelApiImpl implements NotificationChannelsApi {
 
   @Override
   public Response listNotificationChannels(String org, String project, String harnessAccount, @Max(1000L) Integer limit,
-      String searchTerm, String sort, String order) {
-    return listNotificationChannelsInternal(harnessAccount, org, project, limit, searchTerm, sort, order);
+      String searchTerm, String sort, String order, String notificationChannelType) {
+    return listNotificationChannelsInternal(
+        harnessAccount, org, project, limit, searchTerm, sort, order, notificationChannelType);
   }
 
   @Override
-  public Response listNotificationChannelsOrg(
-      String org, String harnessAccount, @Max(1000L) Integer limit, String searchTerm, String sort, String order) {
-    return listNotificationChannelsInternal(harnessAccount, org, null, limit, searchTerm, sort, order);
+  public Response listNotificationChannelsOrg(String org, String harnessAccount, @Max(1000L) Integer limit,
+      String searchTerm, String sort, String order, String notificationChannelType) {
+    return listNotificationChannelsInternal(
+        harnessAccount, org, null, limit, searchTerm, sort, order, notificationChannelType);
   }
 
   @Override
-  public Response listNotificationChannelsAccount(
-      String harnessAccount, @Max(1000L) Integer limit, String searchTerm, String sort, String order) {
-    return listNotificationChannelsInternal(harnessAccount, null, null, limit, searchTerm, sort, order);
+  public Response listNotificationChannelsAccount(String harnessAccount, @Max(1000L) Integer limit, String searchTerm,
+      String sort, String order, String notificationChannelType) {
+    return listNotificationChannelsInternal(
+        harnessAccount, null, null, limit, searchTerm, sort, order, notificationChannelType);
   }
 
   @Override
@@ -130,7 +134,7 @@ public class NotificationChannelApiImpl implements NotificationChannelsApi {
     accessControlClient.checkForAccessOrThrow(ResourceScope.of(accountId, orgId, projectId),
         Resource.of(NOTIFICATION_MANAGEMENT, null), EDIT_NOTIFICATION_MANAGEMENT_PERMISSION);
     NotificationChannel notificationChannel = notificationChannelManagementService.create(
-        notificationServiceManagementMapper.toNotificationChannelEntity(notificationChannelDTO, accountId));
+        notificationServiceManagementMapper.toNotificationChannelEntity(notificationChannelDTO));
     return Response.status(Response.Status.CREATED)
         .entity(notificationServiceManagementMapper.toNotificationChannelDTO(notificationChannel))
         .build();
@@ -147,11 +151,13 @@ public class NotificationChannelApiImpl implements NotificationChannelsApi {
         .build();
   }
 
-  private Response listNotificationChannelsInternal(
-      String accountId, String orgId, String projectId, Integer limit, String searchTerm, String sort, String order) {
+  private Response listNotificationChannelsInternal(String accountId, String orgId, String projectId, Integer limit,
+      String searchTerm, String sort, String order, String notificationChannelType) {
+    NotificationChannelType notificationChannel = isNotEmpty(notificationChannelType)
+        ? Enum.valueOf(NotificationChannelType.class, notificationChannelType)
+        : null;
     NotificationChannelFilterProperties filterProperties =
-        notificationManagementApiUtils.getNotificationChannelFilterProperties(
-            searchTerm, NotificationChannelType.EMAIL);
+        notificationManagementApiUtils.getNotificationChannelFilterProperties(searchTerm, notificationChannel);
     Pageable pageable = notificationManagementApiUtils.getPageRequest(1, limit, sort, order);
     Page<NotificationChannel> notificationChannelPage =
         notificationChannelManagementService.list(accountId, orgId, projectId, pageable, filterProperties);
@@ -166,8 +172,7 @@ public class NotificationChannelApiImpl implements NotificationChannelsApi {
         Resource.of(NOTIFICATION_MANAGEMENT, null), VIEW_NOTIFICATION_MANAGEMENT_PERMISSION);
     NotificationChannel existingEntity =
         notificationChannelManagementService.get(accountId, orgId, projectId, notificationChannelIdentifier);
-    NotificationChannel entityToUpdate =
-        notificationServiceManagementMapper.toNotificationChannelEntity(body, accountId);
+    NotificationChannel entityToUpdate = notificationServiceManagementMapper.toNotificationChannelEntity(body);
     entityToUpdate.setUuid(existingEntity.getUuid());
     NotificationChannel notificationChannel = notificationChannelManagementService.update(entityToUpdate);
     return Response.status(Response.Status.OK)
