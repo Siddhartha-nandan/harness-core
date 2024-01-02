@@ -14,8 +14,8 @@ echo "OPTIMIZED_PACKAGE_TESTS=0" >> test-util.bzl
 
 apt-get update -y
 apt install curl -y
-curl -O https://dl.google.com/go/go1.19.8.linux-amd64.tar.gz
-tar -xvf go1.19.8.linux-amd64.tar.gz
+curl -O https://dl.google.com/go/go1.21.5.linux-amd64.tar.gz
+tar -xvf go1.21.5.linux-amd64.tar.gz
 mv go/ /usr/local/
 export GOROOT=/usr/local/go
 export GOPATH=/usr/local
