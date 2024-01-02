@@ -53,7 +53,10 @@ import io.harness.ng.overview.dto.ActiveServiceDeploymentsInfo;
 import io.harness.ng.overview.dto.ActiveServiceDeploymentsInfo.ActiveServiceDeploymentsInfoBuilder;
 import io.harness.ng.overview.dto.ArtifactDeploymentDetail;
 import io.harness.ng.overview.dto.ArtifactInstanceDetails;
+import io.harness.ng.overview.dto.ChangeRate;
 import io.harness.ng.overview.dto.ChartVersionInstanceDetails;
+import io.harness.ng.overview.dto.DeploymentChangeRatesV2;
+import io.harness.ng.overview.dto.DeploymentCount;
 import io.harness.ng.overview.dto.EnvironmentGroupInstanceDetails;
 import io.harness.ng.overview.dto.IconDTO;
 import io.harness.ng.overview.dto.InstanceGroupedByEnvironmentList;
@@ -63,6 +66,10 @@ import io.harness.ng.overview.dto.OpenTaskDetails;
 import io.harness.ng.overview.dto.PipelineExecutionCountInfo;
 import io.harness.ng.overview.dto.ServiceArtifactExecutionDetail;
 import io.harness.ng.overview.dto.ServiceArtifactExecutionDetail.ServiceArtifactExecutionDetailBuilder;
+import io.harness.ng.overview.dto.ServiceDeploymentInfoDTOV2;
+import io.harness.ng.overview.dto.ServiceDeploymentMetrics;
+import io.harness.ng.overview.dto.ServiceDeploymentV2;
+import io.harness.ng.overview.dto.ServiceDeploymentsList;
 import io.harness.ng.overview.dto.ServicePipelineInfo;
 import io.harness.ng.overview.dto.ServicePipelineWithRevertInfo;
 import io.harness.pms.execution.ExecutionStatus;
@@ -81,6 +88,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -90,6 +98,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.Spy;
 import org.powermock.api.mockito.PowerMockito;
 import org.springframework.data.domain.Page;
 import retrofit2.Call;
@@ -97,7 +106,7 @@ import retrofit2.Response;
 
 @OwnedBy(HarnessTeam.CDC)
 public class CDOverviewDashboardServiceImplTest extends NgManagerTestBase {
-  @InjectMocks private CDOverviewDashboardServiceImpl cdOverviewDashboardService;
+  @InjectMocks @Spy private CDOverviewDashboardServiceImpl cdOverviewDashboardService;
   @Mock private InstanceDashboardServiceImpl instanceDashboardService;
   @Mock private ServiceEntityService serviceEntityServiceImpl;
   @Mock private EnvironmentServiceImpl environmentService;
@@ -2025,6 +2034,157 @@ public class CDOverviewDashboardServiceImplTest extends NgManagerTestBase {
     verify(instanceDashboardService)
         .getActiveServiceInstanceInfoWithEnvType(
             ACCOUNT_ID, ORG_ID, PROJECT_ID, ENVIRONMENT_1, SERVICE_ID, DISPLAY_NAME_1, false, false, null, false);
+  }
+
+  @Test
+  @Owner(developers = RISHABH)
+  @Category(UnitTests.class)
+  public void testGetServiceDeploymentMetrics() throws Exception {
+    long prevStartInterval = 1619136000000L;
+    long startInterval = 1619568000000L;
+    long endInterval = 1619999940000L;
+
+    Callable<DeploymentChangeRatesV2> getDeploymentChangeRates = ()
+        -> DeploymentChangeRatesV2.builder()
+               .frequency(0)
+               .frequencyChangeRate(new ChangeRate((double) 0))
+               .failureRate(0)
+               .failureRateChangeRate(new ChangeRate((double) 0))
+               .build();
+
+    List<ServiceDeploymentV2> executionDeploymentList = new ArrayList<>();
+    List<ServiceDeploymentV2> prevExecutionDeploymentList = new ArrayList<>();
+    prevExecutionDeploymentList.add(ServiceDeploymentV2.builder()
+                                        .time(1619136000000L)
+                                        .deployments(DeploymentCount.builder().total(1).success(1).failure(0).build())
+                                        .rate(getDeploymentChangeRates.call())
+                                        .build());
+    prevExecutionDeploymentList.add(ServiceDeploymentV2.builder()
+                                        .time(1619222400000L)
+                                        .deployments(DeploymentCount.builder().total(4).success(3).failure(0).build())
+                                        .rate(getDeploymentChangeRates.call())
+                                        .build());
+    prevExecutionDeploymentList.add(ServiceDeploymentV2.builder()
+                                        .time(1619308800000L)
+                                        .deployments(DeploymentCount.builder().total(1).success(0).failure(1).build())
+                                        .rate(getDeploymentChangeRates.call())
+                                        .build());
+    prevExecutionDeploymentList.add(ServiceDeploymentV2.builder()
+                                        .time(1619395200000L)
+                                        .deployments(DeploymentCount.builder().total(3).success(1).failure(2).build())
+                                        .rate(getDeploymentChangeRates.call())
+                                        .build());
+    prevExecutionDeploymentList.add(ServiceDeploymentV2.builder()
+                                        .time(1619481600000L)
+                                        .deployments(DeploymentCount.builder().total(1).success(0).failure(1).build())
+                                        .rate(getDeploymentChangeRates.call())
+                                        .build());
+
+    executionDeploymentList.add(ServiceDeploymentV2.builder()
+                                    .time(1619568000000L)
+                                    .deployments(DeploymentCount.builder().total(2).success(1).failure(0).build())
+                                    .rate(getDeploymentChangeRates.call())
+                                    .build());
+    executionDeploymentList.add(ServiceDeploymentV2.builder()
+                                    .time(1619654400000L)
+                                    .deployments(DeploymentCount.builder().total(0).success(0).failure(0).build())
+                                    .rate(getDeploymentChangeRates.call())
+                                    .build());
+    executionDeploymentList.add(ServiceDeploymentV2.builder()
+                                    .time(1619740800000L)
+                                    .deployments(DeploymentCount.builder().total(3).success(1).failure(2).build())
+                                    .rate(getDeploymentChangeRates.call())
+                                    .build());
+    executionDeploymentList.add(ServiceDeploymentV2.builder()
+                                    .time(1619827200000L)
+                                    .deployments(DeploymentCount.builder().total(4).success(2).failure(1).build())
+                                    .rate(getDeploymentChangeRates.call())
+                                    .build());
+    executionDeploymentList.add(ServiceDeploymentV2.builder()
+                                    .time(1619913600000L)
+                                    .deployments(DeploymentCount.builder().total(1).success(0).failure(1).build())
+                                    .rate(getDeploymentChangeRates.call())
+                                    .build());
+
+    ServiceDeploymentInfoDTOV2 serviceDeploymentListWrap =
+        ServiceDeploymentInfoDTOV2.builder().serviceDeploymentList(executionDeploymentList).build();
+    ServiceDeploymentInfoDTOV2 prevExecutionDeploymentWrap =
+        ServiceDeploymentInfoDTOV2.builder().serviceDeploymentList(prevExecutionDeploymentList).build();
+
+    doReturn(serviceDeploymentListWrap)
+        .when(cdOverviewDashboardService)
+        .getServiceDeploymentsV2("acc", "org", "pro", startInterval, endInterval, null, 1);
+    doReturn(prevExecutionDeploymentWrap)
+        .when(cdOverviewDashboardService)
+        .getServiceDeploymentsV2("acc", "org", "pro", prevStartInterval, startInterval, null, 1);
+
+    ServiceDeploymentMetrics deploymentsExecutionInfo = cdOverviewDashboardService.getServiceDeploymentMetrics(
+        "acc", "org", "pro", startInterval, endInterval, null, 1);
+
+    assertThat(deploymentsExecutionInfo.getTotalDeployments()).isEqualTo(10);
+    assertThat(deploymentsExecutionInfo.getFrequency()).isEqualTo(2.0);
+    assertThat(deploymentsExecutionInfo.getFailureRate()).isEqualTo(40.0);
+    assertThat(deploymentsExecutionInfo.getTotalDeploymentsChangeRate()).isEqualTo(new ChangeRate((double) 0));
+    assertThat(deploymentsExecutionInfo.getFailureRateChangeRate()).isEqualTo(new ChangeRate((double) 0));
+    assertThat(deploymentsExecutionInfo.getFrequencyChangeRate()).isEqualTo(new ChangeRate((double) 0));
+  }
+
+  @Test
+  @Owner(developers = RISHABH)
+  @Category(UnitTests.class)
+  public void testGetServiceDeploymentsList() throws Exception {
+    long startInterval = 1619568000000L;
+    long endInterval = 1619999940000L;
+
+    Callable<DeploymentChangeRatesV2> getDeploymentChangeRates = ()
+        -> DeploymentChangeRatesV2.builder()
+               .frequency(0)
+               .frequencyChangeRate(new ChangeRate((double) 0))
+               .failureRate(0)
+               .failureRateChangeRate(new ChangeRate((double) 0))
+               .build();
+
+    List<ServiceDeploymentV2> executionDeploymentList = new ArrayList<>();
+
+    executionDeploymentList.add(ServiceDeploymentV2.builder()
+                                    .time(1619568000000L)
+                                    .deployments(DeploymentCount.builder().total(2).success(1).failure(0).build())
+                                    .rate(getDeploymentChangeRates.call())
+                                    .build());
+    executionDeploymentList.add(ServiceDeploymentV2.builder()
+                                    .time(1619654400000L)
+                                    .deployments(DeploymentCount.builder().total(0).success(0).failure(0).build())
+                                    .rate(getDeploymentChangeRates.call())
+                                    .build());
+    executionDeploymentList.add(ServiceDeploymentV2.builder()
+                                    .time(1619740800000L)
+                                    .deployments(DeploymentCount.builder().total(3).success(1).failure(2).build())
+                                    .rate(getDeploymentChangeRates.call())
+                                    .build());
+    executionDeploymentList.add(ServiceDeploymentV2.builder()
+                                    .time(1619827200000L)
+                                    .deployments(DeploymentCount.builder().total(4).success(2).failure(1).build())
+                                    .rate(getDeploymentChangeRates.call())
+                                    .build());
+    executionDeploymentList.add(ServiceDeploymentV2.builder()
+                                    .time(1619913600000L)
+                                    .deployments(DeploymentCount.builder().total(1).success(0).failure(1).build())
+                                    .rate(getDeploymentChangeRates.call())
+                                    .build());
+
+    ServiceDeploymentInfoDTOV2 serviceDeploymentListWrap =
+        ServiceDeploymentInfoDTOV2.builder().serviceDeploymentList(executionDeploymentList).build();
+
+    doReturn(serviceDeploymentListWrap)
+        .when(cdOverviewDashboardService)
+        .getServiceDeploymentsV2("acc", "org", "pro", startInterval, endInterval, null, 1);
+
+    ServiceDeploymentsList deploymentsExecutionInfo =
+        cdOverviewDashboardService.getServiceDeploymentsList("acc", "org", "pro", startInterval, endInterval, null, 1);
+
+    assertThat(deploymentsExecutionInfo.getStartTime()).isEqualTo(startInterval);
+    assertThat(deploymentsExecutionInfo.getEndTime()).isEqualTo(endInterval);
+    assertThat(deploymentsExecutionInfo.getServiceDeploymentList()).isEqualTo(executionDeploymentList);
   }
 
   @Test
