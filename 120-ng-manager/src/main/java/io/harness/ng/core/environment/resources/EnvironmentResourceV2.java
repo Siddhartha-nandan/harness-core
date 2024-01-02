@@ -333,19 +333,16 @@ public class EnvironmentResourceV2 {
         ServiceOverridesMapperV2.toRequestDTOV2(ngEnvironmentConfig, accountId);
 
     if (requestDTOV2.isPresent()) {
-      Optional<NGServiceOverridesEntity> envGlobalOverridesEntity = serviceOverridesServiceV2.get(accountId,
+      Optional<NGServiceOverridesEntity> envGlobalOverridesEntity = serviceOverridesServiceV2.getMetadata(accountId,
           environmentEntity.getOrgIdentifier(), environmentEntity.getProjectIdentifier(), envGlobalOverrideIdentifier);
 
+      // this will create inline overrides
       if (envGlobalOverridesEntity.isPresent()) {
-        serviceOverridesResource.update(accountId, requestDTOV2.get());
+        serviceOverridesResource.update(accountId, requestDTOV2.get(), null);
       } else {
-        serviceOverridesResource.create(accountId, requestDTOV2.get());
+        serviceOverridesResource.create(accountId, requestDTOV2.get(), null);
       }
     }
-  }
-
-  private boolean checkFeatureFlagForOverridesV2(String accountId) {
-    return featureFlagHelperService.isEnabled(accountId, FeatureName.CDS_SERVICE_OVERRIDES_2_0);
   }
 
   @DELETE
@@ -895,9 +892,9 @@ public class EnvironmentResourceV2 {
         overridesEntity.getServiceRef());
     ResponseDTO<ServiceOverridesResponseDTOV2> apiResponseV2 = null;
     if (overrideEntityInDB.isPresent()) {
-      apiResponseV2 = serviceOverridesResource.update(accountId, requestV2);
+      apiResponseV2 = serviceOverridesResource.update(accountId, requestV2, null);
     } else {
-      apiResponseV2 = serviceOverridesResource.create(accountId, requestV2);
+      apiResponseV2 = serviceOverridesResource.create(accountId, requestV2, null);
     }
     return apiResponseV2.getData();
   }

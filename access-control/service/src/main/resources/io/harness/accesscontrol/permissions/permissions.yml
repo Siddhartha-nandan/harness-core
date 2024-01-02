@@ -1,4 +1,4 @@
-# Any edit in this file should accompany an increment in version.
+#Any edit in this file should accompany an increment in version.
 name: permissionsConfiguration
 version: 70
 permissions:
@@ -1947,6 +1947,38 @@ permissions:
   - identifier: core_gitxWebhooks_view
     name: View GitXWebhooks
     status: ACTIVE
+    includeInAllRoles: false
+    allowedScopeLevels:
+      - account
+      - organization
+      - project
+  - identifier: ssca_enforcementexemption_edit
+    name: Create exemption requests and edit un-reviewed requests
+    status: EXPERIMENTAL
+    includeInAllRoles: false
+    allowedScopeLevels:
+      - account
+      - organization
+      - project
+  - identifier: ssca_enforcementexemption_view
+    name: View exemption requests
+    status: EXPERIMENTAL
+    includeInAllRoles: false
+    allowedScopeLevels:
+      - account
+      - organization
+      - project
+  - identifier: ssca_enforcementexemption_delete
+    name: Delete un-reviewed exemption requests
+    status: EXPERIMENTAL
+    includeInAllRoles: false
+    allowedScopeLevels:
+      - account
+      - organization
+      - project
+  - identifier: ssca_enforcementexemption_review
+    name: Review exemption requests
+    status: EXPERIMENTAL
     includeInAllRoles: false
     allowedScopeLevels:
       - account
