@@ -82,8 +82,10 @@ public class RemediationTrackerEntity implements UuidAware, PersistentRegularIte
   @LastModifiedDate Long lastUpdatedAt;
   String comments;
   boolean closedManually;
-  EmbeddedUser closedBy;
+  String closedBy;
   Long targetEndDateEpochDay;
+  String createdBy;
+  String lastUpdatedBy;
 
   @Override
   public Long obtainNextIteration(String fieldName) {
