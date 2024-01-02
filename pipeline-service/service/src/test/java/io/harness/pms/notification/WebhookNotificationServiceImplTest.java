@@ -15,6 +15,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.harness.CategoryTest;
+import io.harness.audit.client.remote.AuditClient;
 import io.harness.category.element.UnitTests;
 import io.harness.cdstage.remote.CDNGStageSummaryResourceClient;
 import io.harness.data.structure.UUIDGenerator;
@@ -32,15 +33,15 @@ import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.util.Map;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import retrofit2.Call;
 import retrofit2.Response;
 
-@Ignore
 public class WebhookNotificationServiceImplTest extends CategoryTest {
   private static String ACCOUNT_ID = "accountId";
   private static String ORG_ID = "orgId";
