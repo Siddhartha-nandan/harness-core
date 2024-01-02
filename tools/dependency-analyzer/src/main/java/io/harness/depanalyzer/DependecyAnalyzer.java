@@ -79,9 +79,6 @@ public class DependecyAnalyzer {
         SymbolDependencyMap harnessSymbolMap = buildHarnessSymbolMap();
         log.debug("Total Java classes found: " + harnessSymbolMap.getCacheSize());
 
-//        Path dirPath = Paths.get("950-delegate-tasks-beans/src/main/java/io/harness/connector/helper");
-//        printModuleDependencies(module(), harnessSymbolMap);
-
         DirectoryGraphBuilder graphBuilder = new DirectoryGraphBuilder();
         MutableGraph<Path> graph = graphBuilder.getGraph();
 
@@ -94,25 +91,35 @@ public class DependecyAnalyzer {
             GraphSerializer.saveGraph(graph, graphFilePath().toString());
         }
 
-//        GraphUtils.printIndependentPackages(graph, module());
+        if (options.hasOption("printIndependentPackages")) {
+            GraphUtils.printIndependentPackages(graph, module());
+        }
+
+        if(options.hasOption("findPackagesThatDependsOnlyInThisList")){
+            Set<String> packageForWhichToCheckForSuccessors = findPackagesThatDependsOnlyInThisList();
+            System.out.println("Modules with specific successors: ");
+            GraphUtils.printNodesWithSpecificSuccessors(graph, packageForWhichToCheckForSuccessors);
+        }
+
+        if (options.hasOption("printDependencyGraph")) {
+            GraphUtils.printGraph(graph);
+        }
+
+        if (options.hasOption("findCycles")){
+            GraphUtils.printCycles(graph);
+        }
+
+        if(options.hasOption("exportGraphToDotFile")){
+            String dotFilename = "harness_dependency_graph.dot";
+            GraphUtils.exportGraphToDot(graph, workspace().resolve(dotFilename));
+        }
+
 
 //        GraphUtils.printWeaklyConnectedComponents(graph);
-        GraphUtils.printGraph(graph);
-
-//        GraphUtils.findAllCycles(graph);
 
 //        String dotFilename = "/Users/pankajkumar/Downloads/harness_dependency_graph.dot";
 //        GraphUtils.exportGraphToDot(graph, dotFilename);
     }
-
-//    private MutableGraph<Path> initGraph() throws IOException, ClassNotFoundException {
-//        if (graphFileExists()) {
-//            log.info("Loading the existing graph file {} to init graph", graphFilePath());
-//            return GraphSerializer.loadGraph(graphFilePath().toString());
-//        } else {
-//            return new MutableGraph<Path>;
-//        }
-//    }
 
 
     private void buildGraph(MutableGraph<Path> graph, Path path, SymbolDependencyMap harnessSymbolMap) throws IOException {
@@ -135,7 +142,7 @@ public class DependecyAnalyzer {
             Set<String> dependencies = getModuleDependencies(path, classpathParser, harnessSymbolMap);
             for (String destination : dependencies) {
                 Path destinationPath = Paths.get(destination);
-                if(destinationPath.equals(path) || !destinationPath.startsWith(module())){
+                if(destinationPath.equals(path) || (!options.hasOption("includeExternalDependencies") && !destinationPath.startsWith(module()))){
                     continue;
                 }
                 if (!graph.nodes().contains(destinationPath)) {
@@ -246,18 +253,6 @@ public class DependecyAnalyzer {
         return dependencies;
     }
 
-    public void printModuleDependencies(Path path, SymbolDependencyMap harnessSymbolMap) throws IOException, FileNotFoundException{
-        ClasspathParser classpathParser = this.packageParser.getClassPathParser();
-        String parseClassPattern = path.toString().isEmpty() ? srcsGlob() : path + "/" + srcsGlob();
-        classpathParser.parseClasses(parseClassPattern, new HashSet<>());
-
-        Set<String> dependencies = getModuleDependencies(path, classpathParser, harnessSymbolMap);
-
-        for (String dep: dependencies){
-            System.out.println(dep);
-        }
-    }
-
     /**
      * Find the dependency to include for the import statement.
      * @param importStatement to resolve.
@@ -350,6 +345,12 @@ public class DependecyAnalyzer {
                 : new HashSet<String>();
     }
 
+    private Set<String> findPackagesThatDependsOnlyInThisList() {
+        return options.hasOption("findPackagesThatDependsOnlyInThisList")
+                ? new HashSet<String>(Arrays.asList(options.getOptionValue("findPackagesThatDependsOnlyInThisList").split(",")))
+                : new HashSet<String>();
+    }
+
     private Path mavenManifestFile() {
         return options.hasOption("mavenManifestFile") ? Paths.get(options.getOptionValue("mavenManifestFile"))
                 : Paths.get(workspace() + "/maven-manifest.json");
@@ -384,6 +385,16 @@ public class DependecyAnalyzer {
         options.addOption(new Option(null, "assumedPackagePrefixesWithBuildFile", true,
                 "Comma separate list of module prefixes for which we can assume BUILD file to be present. "
                         + "Set to 'all' if need same behavior for all folders"));
+        options.addOption(
+                new Option(null, "printIndependentPackages", false, "Print packages which do not depend on any other packag in given module"));
+        options.addOption(
+                new Option(null, "printDependencyGraph", false, "for each package print packages on which it depends and packages that depend on this package."));
+        options.addOption(
+                new Option(null, "findCycles", false, "find cyclic dependency in given module."));
+        options.addOption(
+                new Option(null, "includeExternalDependencies", false, "Include dependencies which are outside of module"));
+        options.addOption(new Option(null, "findPackagesThatDependsOnlyInThisList", true,
+                "comma seperated list of modules to find modules which depends on modules in this list only."));
         CommandLine commandLineOptions = null;
         try {
             commandLineOptions = parser.parse(options, args);

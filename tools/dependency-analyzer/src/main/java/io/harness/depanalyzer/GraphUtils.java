@@ -26,10 +26,10 @@ public class GraphUtils {
         for (Path node : graph.nodes()) {
             System.out.println("Node " + node.toString() + " : ");
             for (Path successor : graph.successors(node)) {
-                System.out.println("    Successor: " + successor);
+                System.out.println("    Depends on: " + successor);
             }
             for (Path predecessor : graph.predecessors(node)) {
-                System.out.println("    Predecessor: " + predecessor);
+                System.out.println("    Dependency of: " + predecessor);
             }
             System.out.println();
         }
@@ -114,46 +114,46 @@ public class GraphUtils {
         }
     }
 
-    public static void findAllCycles(MutableGraph<Path> graph) {
-        List<Set<Path>> cycles = new ArrayList<>();
+    public static void printCycles(MutableGraph<Path> graph) {
         Set<Path> visited = new HashSet<>();
+        Set<Path> recStack = new HashSet<>();
+        Stack<Path> pathStack = new Stack<>();
 
         for (Path node : graph.nodes()) {
-            if (!visited.contains(node)) {
-                findCycles(graph, node, visited, new HashSet<>(), new ArrayList<>(), cycles);
-            }
-        }
-
-        if (cycles.isEmpty()) {
-            System.out.println("No cycles found in the graph.");
-        } else {
-            System.out.println("Cycles found:");
-            for (int i = 0; i < cycles.size(); i++) {
-                System.out.println("Cycle " + (i + 1) + ": " + cycles.get(i));
+            if (detectCycle(graph, node, visited, recStack, pathStack)) {
+                System.out.println("Cycle detected: ");
+                while (!pathStack.isEmpty()) {
+                    System.out.print(pathStack.pop() + " ");
+                }
+                System.out.println();
             }
         }
     }
 
-    private static void findCycles(MutableGraph<Path> graph, Path node, Set<Path> visited, Set<Path> currentPath, List<Path> currentCycle, List<Set<Path>> cycles) {
+    private static boolean detectCycle(MutableGraph<Path> graph, Path node, Set<Path> visited, Set<Path> recStack, Stack<Path> pathStack) {
+        if (recStack.contains(node)) {
+            pathStack.push(node);
+            return true;
+        }
+        if (visited.contains(node)) {
+            return false;
+        }
+
         visited.add(node);
-        currentPath.add(node);
-        currentCycle.add(node); // Track nodes in the current cycle
+        recStack.add(node);
+        pathStack.push(node);
 
         for (Path neighbor : graph.successors(node)) {
-            if (visited.contains(neighbor)) {
-                if (currentCycle.contains(neighbor)) { // Cycle found
-                    cycles.add(new HashSet<>(currentCycle.subList(currentCycle.indexOf(neighbor), currentCycle.size())));
-                } else {
-                    findCycles(graph, neighbor, visited, currentPath, currentCycle, cycles); // Explore for more cycles
-                }
-            } else if (!currentPath.contains(neighbor)) {
-                findCycles(graph, neighbor, visited, currentPath, currentCycle, cycles);
+            if (detectCycle(graph, neighbor, visited, recStack, pathStack)) {
+                return true;
             }
         }
 
-        currentPath.remove(node);
-        currentCycle.remove(currentCycle.size() - 1); // Backtrack in cycle tracking
+        recStack.remove(node);
+        pathStack.pop();
+        return false;
     }
+
 
     private static String quote(String str) {
         // Add quotes if the string contains special characters or spaces
@@ -163,7 +163,7 @@ public class GraphUtils {
         return str;
     }
 
-    public static void exportGraphToDot(MutableGraph<Path> graph, String filename) throws IOException {
+    public static void exportGraphToDot(MutableGraph<Path> graph, Path filename) throws IOException {
         StringBuilder dotString = new StringBuilder("digraph G {\n");
 
         // Add nodes
@@ -182,7 +182,31 @@ public class GraphUtils {
         dotString.append("}\n");
 
         // Write DOT string to file
-        Files.writeString(Paths.get(filename), dotString.toString());
+        Files.writeString(filename, dotString.toString());
     }
 
+    public static void printNodesWithSpecificSuccessors(MutableGraph<Path> graph, Set<String> allowedNodesSet) {
+        Set<Path> allowedNodes = new HashSet<>();
+        for (String nodeStr : allowedNodesSet) {
+            allowedNodes.add(Paths.get(nodeStr));
+        }
+        for (Path node : graph.nodes()) {
+            if (allowedNodes.contains(node)) {
+                continue;
+            }
+
+            boolean allSuccessorsAllowed = true;
+
+            for (Path successor : graph.successors(node)) {
+                if (!allowedNodes.contains(successor)) {
+                    allSuccessorsAllowed = false;
+                    break;
+                }
+            }
+
+            if (allSuccessorsAllowed) {
+                System.out.println(node);
+            }
+        }
+    }
 }
