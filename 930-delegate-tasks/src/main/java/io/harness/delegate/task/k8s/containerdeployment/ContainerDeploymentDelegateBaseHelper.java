@@ -149,14 +149,14 @@ public class ContainerDeploymentDelegateBaseHelper {
       GcpConnectorCredentialDTO gcpCredentials = gcpK8sInfraDelegateConfig.getGcpConnectorDTO().getCredential();
       GcpOidcTokenExchangeDetailsForDelegate gcpOidcTokenExchangeDetailsForDelegate = null;
       String oidcProjectId = null;
-      if (gcpK8sInfraDelegateConfig.getGcpOidcTokenExchangeDetailsForDelegate() != null) {
+      if (gcpK8sInfraDelegateConfig.getGcpOidcTokenExchangeDetailsForDelegate() != null
+          && gcpCredentials.getGcpCredentialType() == OIDC_AUTHENTICATION) {
         gcpOidcTokenExchangeDetailsForDelegate = gcpK8sInfraDelegateConfig.getGcpOidcTokenExchangeDetailsForDelegate();
         oidcProjectId = ((GcpOidcDetailsDTO) gcpCredentials.getConfig()).getGcpProjectId();
       }
       return gkeClusterHelper.getCluster(getGcpServiceAccountKeyFileContent(gcpCredentials),
           gcpCredentials.getGcpCredentialType() == INHERIT_FROM_DELEGATE, gcpK8sInfraDelegateConfig.getCluster(),
-          gcpK8sInfraDelegateConfig.getNamespace(), logCallback, gcpOidcTokenExchangeDetailsForDelegate,
-          gcpCredentials.getGcpCredentialType() == OIDC_AUTHENTICATION, oidcProjectId);
+          gcpK8sInfraDelegateConfig.getNamespace(), logCallback, gcpOidcTokenExchangeDetailsForDelegate, oidcProjectId);
     } else if (clusterConfigDTO instanceof AzureK8sInfraDelegateConfig) {
       try (LazyAutoCloseableWorkingDirectory workingDirectory =
                new LazyAutoCloseableWorkingDirectory(REPOSITORY_DIR_PATH, AZURE_AUTH_CERT_DIR_PATH)) {

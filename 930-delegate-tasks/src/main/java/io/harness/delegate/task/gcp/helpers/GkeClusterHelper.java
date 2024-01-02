@@ -85,7 +85,7 @@ public class GkeClusterHelper {
   public KubernetesConfig createCluster(char[] serviceAccountKeyFileContent, boolean useDelegate,
       String locationClusterName, String namespace, Map<String, String> params) {
     Container gkeContainerService =
-        gcpHelperService.getGkeContainerService(serviceAccountKeyFileContent, useDelegate, null, false);
+        gcpHelperService.getGkeContainerService(serviceAccountKeyFileContent, useDelegate, null);
     String projectId = getProjectIdFromCredentials(serviceAccountKeyFileContent, useDelegate);
     String[] locationCluster = locationClusterName.split(LOCATION_DELIMITER);
     String location = locationCluster[0];
@@ -139,24 +139,23 @@ public class GkeClusterHelper {
 
   public KubernetesConfig getCluster(
       char[] serviceAccountKeyFileContent, boolean useDelegate, String locationClusterName, String namespace) {
-    return getCluster(
-        serviceAccountKeyFileContent, useDelegate, locationClusterName, namespace, null, null, false, null);
+    return getCluster(serviceAccountKeyFileContent, useDelegate, locationClusterName, namespace, null, null, null);
   }
 
   public KubernetesConfig getCluster(char[] serviceAccountKeyFileContent, boolean useDelegate,
       String locationClusterName, String namespace, LogCallback logCallback,
-      GcpOidcTokenExchangeDetailsForDelegate gcpOidcTokenExchangeDetailsForDelegate, boolean isUseOidcAuth,
-      String oidcProjectId) {
+      GcpOidcTokenExchangeDetailsForDelegate gcpOidcTokenExchangeDetailsForDelegate, String oidcProjectId) {
     String oidcAccessToken = null;
     Container gkeContainerService = gcpHelperService.getGkeContainerService(
-        serviceAccountKeyFileContent, useDelegate, gcpOidcTokenExchangeDetailsForDelegate, isUseOidcAuth);
+        serviceAccountKeyFileContent, useDelegate, gcpOidcTokenExchangeDetailsForDelegate);
     if (gkeContainerService.getRequestFactory() != null
         && gkeContainerService.getRequestFactory().getInitializer() != null
         && ((GoogleCredential) gkeContainerService.getRequestFactory().getInitializer()).getAccessToken() != null) {
       oidcAccessToken = ((GoogleCredential) gkeContainerService.getRequestFactory().getInitializer()).getAccessToken();
     }
-    String projectId =
-        isUseOidcAuth ? oidcProjectId : getProjectIdFromCredentials(serviceAccountKeyFileContent, useDelegate);
+    String projectId = gcpOidcTokenExchangeDetailsForDelegate != null
+        ? oidcProjectId
+        : getProjectIdFromCredentials(serviceAccountKeyFileContent, useDelegate);
     // get the accesstoken and send it to the configFromCluster
     if (EmptyPredicate.isEmpty(locationClusterName)) {
       throw new InvalidRequestException("Cluster name is empty in Inframapping");
@@ -180,7 +179,7 @@ public class GkeClusterHelper {
       log.debug("Master endpoint: {}", cluster.getEndpoint());
 
       return configFromCluster(
-          cluster, namespace, serviceAccountKeyFileContent, useDelegate, logCallback, isUseOidcAuth, oidcAccessToken);
+          cluster, namespace, serviceAccountKeyFileContent, useDelegate, logCallback, oidcAccessToken);
     } catch (IOException e) {
       // PL-1118: In case the cluster is being destroyed/torn down. Return null will immediately reclaim the service
       // instances
@@ -200,12 +199,12 @@ public class GkeClusterHelper {
   }
 
   public List<String> listClusters(char[] serviceAccountKeyFileContent, boolean useDelegate,
-      GcpOidcTokenExchangeDetailsForDelegate gcpOidcTokenExchangeDetailsForDelegate, boolean isUseOidcAuth,
-      String oidcProjectId) {
+      GcpOidcTokenExchangeDetailsForDelegate gcpOidcTokenExchangeDetailsForDelegate, String oidcProjectId) {
     Container gkeContainerService = gcpHelperService.getGkeContainerService(
-        serviceAccountKeyFileContent, useDelegate, gcpOidcTokenExchangeDetailsForDelegate, isUseOidcAuth);
-    String projectId =
-        isUseOidcAuth ? oidcProjectId : getProjectIdFromCredentials(serviceAccountKeyFileContent, useDelegate);
+        serviceAccountKeyFileContent, useDelegate, gcpOidcTokenExchangeDetailsForDelegate);
+    String projectId = gcpOidcTokenExchangeDetailsForDelegate != null
+        ? oidcProjectId
+        : getProjectIdFromCredentials(serviceAccountKeyFileContent, useDelegate);
     try {
       ListClustersResponse response = gkeContainerService.projects()
                                           .locations()
@@ -236,11 +235,12 @@ public class GkeClusterHelper {
 
   private KubernetesConfig configFromCluster(
       Cluster cluster, String namespace, char[] serviceAccountKeyFileContent, boolean useDelegate) {
-    return configFromCluster(cluster, namespace, serviceAccountKeyFileContent, useDelegate, null, false, null);
+    return configFromCluster(cluster, namespace, serviceAccountKeyFileContent, useDelegate, null, null);
   }
 
   private KubernetesConfig configFromCluster(Cluster cluster, String namespace, char[] serviceAccountKeyFileContent,
-      boolean useDelegate, LogCallback logCallback, boolean useOidcAuth, String oidcAccessToken) {
+      boolean useDelegate, LogCallback logCallback, String oidcAccessToken) {
+    boolean useOidcAuth = isNotEmpty(oidcAccessToken);
     MasterAuth masterAuth = cluster.getMasterAuth();
     KubernetesConfigBuilder kubernetesConfigBuilder = KubernetesConfig.builder()
                                                           .masterUrl("https://" + cluster.getEndpoint() + "/")
@@ -295,7 +295,7 @@ public class GkeClusterHelper {
   private GcpAccessTokenSupplier createForServiceAccount(char[] serviceAccountKeyFileContent) {
     Function<String, GoogleCredential> mapper = unused -> {
       try {
-        return gcpHelperService.getGoogleCredential(serviceAccountKeyFileContent, false, null, false);
+        return gcpHelperService.getGoogleCredential(serviceAccountKeyFileContent, false, null);
       } catch (IOException e) {
         throw new ExplanationException("Cannot instantiate deserialize google credentials.", e);
       }

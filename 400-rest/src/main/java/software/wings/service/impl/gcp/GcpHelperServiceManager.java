@@ -79,7 +79,7 @@ public class GcpHelperServiceManager {
       // Decrypt gcpConfig
       encryptionService.decrypt(gcpConfig, encryptedDataDetails, false);
       gcpHelperService.getGkeContainerService(
-          gcpConfig.getServiceAccountKeyFileContent(), gcpConfig.isUseDelegateSelectors(), null, false);
+          gcpConfig.getServiceAccountKeyFileContent(), gcpConfig.isUseDelegateSelectors(), null);
     }
   }
 

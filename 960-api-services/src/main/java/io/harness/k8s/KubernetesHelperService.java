@@ -201,7 +201,6 @@ public class KubernetesHelperService {
     // Disable SSL validation (trust certs) if CA Certificate is missing in k8s configuration
     ConfigBuilder configBuilder =
         new ConfigBuilder(Config.empty()).withTrustCerts(isEmpty(kubernetesConfig.getCaCert()));
-
     if (isNotBlank(kubernetesConfig.getNamespace())) {
       configBuilder.withNamespace(kubernetesConfig.getNamespace().trim());
     }

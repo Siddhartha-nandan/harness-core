@@ -48,15 +48,15 @@ public class GcpHelperServiceTest extends WingsBaseTest {
     GcpConfig gcpConfig = GcpConfig.builder().build();
     assertThatExceptionOfType(InvalidRequestException.class)
         .isThrownBy(()
-                        -> gcpHelperService.getGoogleCredential(gcpConfig.getServiceAccountKeyFileContent(),
-                            gcpConfig.isUseDelegateSelectors(), null, false))
+                        -> gcpHelperService.getGoogleCredential(
+                            gcpConfig.getServiceAccountKeyFileContent(), gcpConfig.isUseDelegateSelectors(), null))
         .withMessageContaining("Empty service key");
 
     gcpConfig.setServiceAccountKeyFileContent(new char[] {});
     assertThatExceptionOfType(InvalidRequestException.class)
         .isThrownBy(()
-                        -> gcpHelperService.getGoogleCredential(gcpConfig.getServiceAccountKeyFileContent(),
-                            gcpConfig.isUseDelegateSelectors(), null, false))
+                        -> gcpHelperService.getGoogleCredential(
+                            gcpConfig.getServiceAccountKeyFileContent(), gcpConfig.isUseDelegateSelectors(), null))
         .withMessageContaining("Empty service key");
   }
 
@@ -70,7 +70,7 @@ public class GcpHelperServiceTest extends WingsBaseTest {
              gcpConfig.getServiceAccountKeyFileContent()))
         .thenReturn(new GoogleCredential());
     gcpHelperService.getGoogleCredential(
-        gcpConfig.getServiceAccountKeyFileContent(), gcpConfig.isUseDelegateSelectors(), null, false);
+        gcpConfig.getServiceAccountKeyFileContent(), gcpConfig.isUseDelegateSelectors(), null);
     verify(gcpCredentialsHelperService, only())
         .getGoogleCredentialWithProxyConfiguredHttpTransport(gcpConfig.getServiceAccountKeyFileContent());
     System.clearProperty("http.proxyHost");
@@ -85,7 +85,7 @@ public class GcpHelperServiceTest extends WingsBaseTest {
              gcpConfig.getServiceAccountKeyFileContent()))
         .thenReturn(new GoogleCredential());
     gcpHelperService.getGoogleCredential(
-        gcpConfig.getServiceAccountKeyFileContent(), gcpConfig.isUseDelegateSelectors(), null, false);
+        gcpConfig.getServiceAccountKeyFileContent(), gcpConfig.isUseDelegateSelectors(), null);
     verify(gcpCredentialsHelperService, only())
         .getGoogleCredentialWithDefaultHttpTransport(gcpConfig.getServiceAccountKeyFileContent());
   }
@@ -98,8 +98,8 @@ public class GcpHelperServiceTest extends WingsBaseTest {
         GcpConfig.builder().serviceAccountKeyFileContent("---PRIVATE-KEY-HERE---".toCharArray()).build();
     assertThatExceptionOfType(InvalidRequestException.class)
         .isThrownBy(()
-                        -> gcpHelperService.getGoogleCredential(gcpConfig.getServiceAccountKeyFileContent(),
-                            gcpConfig.isUseDelegateSelectors(), null, false))
+                        -> gcpHelperService.getGoogleCredential(
+                            gcpConfig.getServiceAccountKeyFileContent(), gcpConfig.isUseDelegateSelectors(), null))
         .withMessageContaining("Provided Service account key is not in JSON format");
   }
 
@@ -111,7 +111,7 @@ public class GcpHelperServiceTest extends WingsBaseTest {
         GcpConfig.builder().serviceAccountKeyFileContent("---PRIVATE-KEY-HERE---".toCharArray()).build();
     try {
       gcpHelperService.getGoogleCredential(
-          gcpConfig.getServiceAccountKeyFileContent(), gcpConfig.isUseDelegateSelectors(), null, false);
+          gcpConfig.getServiceAccountKeyFileContent(), gcpConfig.isUseDelegateSelectors(), null);
     } catch (Exception e) {
       boolean hasKeyInException = e.getMessage().contains("---PRIVATE-KEY-HERE---");
       assertThat(hasKeyInException).isFalse();

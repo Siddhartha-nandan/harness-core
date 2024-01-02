@@ -138,7 +138,7 @@ public class GkeClusterServiceImplTest extends WingsBaseTest {
   @Category(UnitTests.class)
   public void shouldListClusters() {
     List<String> clusterList = Arrays.asList("zone-a/cluster-1", "zone-a/cluster-2");
-    when(gkeClusterHelper.listClusters(serviceAccountKey, false, null, false, null)).thenReturn(clusterList);
+    when(gkeClusterHelper.listClusters(serviceAccountKey, false, null, null)).thenReturn(clusterList);
 
     List<String> result = gkeClusterService.listClusters(COMPUTE_PROVIDER_SETTING.toDTO(), Collections.emptyList());
 
@@ -150,7 +150,7 @@ public class GkeClusterServiceImplTest extends WingsBaseTest {
   @Owner(developers = BRETT)
   @Category(UnitTests.class)
   public void shouldNotListClustersIfError() {
-    when(gkeClusterHelper.listClusters(serviceAccountKey, false, null, false, null)).thenReturn(null);
+    when(gkeClusterHelper.listClusters(serviceAccountKey, false, null, null)).thenReturn(null);
 
     List<String> result = gkeClusterService.listClusters(COMPUTE_PROVIDER_SETTING.toDTO(), Collections.emptyList());
 

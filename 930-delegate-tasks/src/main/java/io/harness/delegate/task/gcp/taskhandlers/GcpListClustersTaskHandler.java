@@ -57,18 +57,13 @@ public class GcpListClustersTaskHandler implements TaskHandler {
 
     GcpListClustersRequest request = (GcpListClustersRequest) gcpRequest;
     boolean useDelegate = request.getGcpManualDetailsDTO() == null && isNotEmpty(request.getDelegateSelectors());
-    boolean useOidcAuth =
-        request.getGcpOidcTokenExchangeDetailsForDelegate() != null && request.getGcpManualDetailsDTO() == null;
-    GcpOidcTokenExchangeDetailsForDelegate gcpOidcTokenExchangeDetailsForDelegate = null;
-    if (useOidcAuth) {
-      gcpOidcTokenExchangeDetailsForDelegate = request.getGcpOidcTokenExchangeDetailsForDelegate();
-    }
+
     String projectId =
         gcpRequest.getGcpOidcDetailsDTO() != null && gcpRequest.getGcpOidcDetailsDTO().getGcpProjectId() != null
         ? gcpRequest.getGcpOidcDetailsDTO().getGcpProjectId()
         : null;
     List<String> clusterNames = gkeClusterHelper.listClusters(getGcpServiceAccountKeyFileContent(request), useDelegate,
-        gcpOidcTokenExchangeDetailsForDelegate, useOidcAuth, projectId);
+        request.getGcpOidcTokenExchangeDetailsForDelegate(), projectId);
 
     return GcpClusterListTaskResponse.builder()
         .commandExecutionStatus(CommandExecutionStatus.SUCCESS)

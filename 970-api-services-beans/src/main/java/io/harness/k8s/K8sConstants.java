@@ -182,7 +182,8 @@ public interface K8sConstants {
       + "users:\n"
       + "- name: HARNESS_USER\n"
       + "  user:\n"
-      + "    token: ${ACCESS_TOKEN}";
+      + "    ${EXEC}";
+
   String eventOutputFormat =
       "custom-columns=KIND:involvedObject.kind,NAME:.involvedObject.name,MESSAGE:.message,REASON:.reason";
   int FETCH_FILES_DISPLAY_LIMIT = 100;

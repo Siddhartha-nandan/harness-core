@@ -154,8 +154,7 @@ public class GARArtifactTaskHandler extends DelegateArtifactTaskHandler<GarDeleg
     return toGarInternalConfig(attributesRequest, "Bearer " + token);
   }
   public String getToken(char[] serviceAccountKeyFileContent, boolean isUseDelegate) throws IOException {
-    GoogleCredential gc =
-        gcpHelperService.getGoogleCredential(serviceAccountKeyFileContent, isUseDelegate, null, false);
+    GoogleCredential gc = gcpHelperService.getGoogleCredential(serviceAccountKeyFileContent, isUseDelegate, null);
     gc.refreshToken();
     return gc.getAccessToken();
   }
