@@ -15,8 +15,6 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.exception.ScmException;
-import io.harness.gitsync.beans.StoreType;
-import io.harness.persistence.gitaware.GitAware;
 
 import lombok.experimental.UtilityClass;
 
@@ -59,9 +57,5 @@ public class GitXUtils {
       return null;
     }
     return branch;
-  }
-
-  public static boolean isInlineEntity(GitAware gitAwareEntity) {
-    return !StoreType.REMOTE.equals(gitAwareEntity.getStoreType());
   }
 }

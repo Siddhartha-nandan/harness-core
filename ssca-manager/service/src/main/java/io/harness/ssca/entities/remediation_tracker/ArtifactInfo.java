@@ -8,17 +8,11 @@ package io.harness.ssca.entities.remediation_tracker;
 
 import java.util.List;
 import javax.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.experimental.FieldNameConstants;
 
 @Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-@FieldNameConstants(innerTypeName = "ArtifactInfoKeys")
 public class ArtifactInfo {
   @NotNull String artifactId;
   @NotNull String artifactName;

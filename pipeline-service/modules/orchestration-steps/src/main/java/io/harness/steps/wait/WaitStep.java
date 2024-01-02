@@ -41,7 +41,7 @@ public class WaitStep extends PipelineAsyncExecutable {
   public AsyncExecutableResponse executeAsyncAfterRbac(
       Ambiance ambiance, StepBaseParameters stepParameters, StepInputPackage inputPackage) {
     String correlationId = UUIDGenerator.generateUuid();
-    WaitStepParameters waitStepParameters = WaitStepServiceHelper.getWaitStepParameters(stepParameters);
+    WaitStepParameters waitStepParameters = (WaitStepParameters) stepParameters.getSpec();
     int duration = 0;
     if (waitStepParameters.getDuration() != null && waitStepParameters.getDuration().getValue() != null) {
       duration =

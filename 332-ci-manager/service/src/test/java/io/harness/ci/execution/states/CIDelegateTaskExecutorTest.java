@@ -41,8 +41,6 @@ public class CIDelegateTaskExecutorTest extends CIExecutionTestBase {
   private static final String TASK_ID = "123456";
   private static final String ACCOUNT_ID = "accountId";
   public static final String TASK_TYPE = "CI_LE_STATUS";
-  public static final long TASK_TIMEOUT = 10 * 60L;
-  public static final long TASK_TIMEOUT_12H = 12 * 60 * 60 * 1000L;
   @Mock private DelegateServiceGrpcClient delegateServiceGrpcClient;
   @Mock private Supplier<DelegateCallbackToken> delegateCallbackTokenSupplier;
   @InjectMocks private CIDelegateTaskExecutor ciDelegateTaskExecutor;
@@ -80,7 +78,7 @@ public class CIDelegateTaskExecutorTest extends CIExecutionTestBase {
                                        .parked(true)
                                        .taskType(TASK_TYPE)
                                        .parameters(new Object[] {parameters})
-                                       .timeout(TASK_TIMEOUT_12H)
+                                       .timeout(10 * 60L)
                                        .build())
                              .setupAbstractions(new HashMap<>())
                              .build();
@@ -106,7 +104,7 @@ public class CIDelegateTaskExecutorTest extends CIExecutionTestBase {
                                        .parked(true)
                                        .taskType(TASK_TYPE)
                                        .parameters(null)
-                                       .timeout(TASK_TIMEOUT)
+                                       .timeout(10 * 60L)
                                        .build())
                              .setupAbstractions(new HashMap<>())
                              .build();
@@ -131,7 +129,7 @@ public class CIDelegateTaskExecutorTest extends CIExecutionTestBase {
                                        .parked(true)
                                        .taskType(TASK_TYPE)
                                        .parameters(new Object[] {"Wrong type"})
-                                       .timeout(TASK_TIMEOUT)
+                                       .timeout(10 * 60L)
                                        .build())
                              .setupAbstractions(new HashMap<>())
                              .build();

@@ -25,8 +25,8 @@ import io.harness.ngsettings.SettingPlanConfig;
 import io.harness.ngsettings.SettingSource;
 import io.harness.ngsettings.SettingValueType;
 import io.harness.ngsettings.dto.SettingDTO;
-import io.harness.ngsettings.entities.AccountSetting;
-import io.harness.ngsettings.entities.AccountSettingConfiguration;
+import io.harness.ngsettings.entities.Setting;
+import io.harness.ngsettings.entities.SettingConfiguration;
 import io.harness.rule.Owner;
 
 import java.util.Arrays;
@@ -135,13 +135,12 @@ public class SettingUtilsTest extends CategoryTest {
   public void testValidateSettingConfiguration() {
     String value = randomAlphabetic(10);
     String[] allowedValues = {value, randomAlphabetic(5), randomAlphabetic(3), randomAlphabetic(7)};
-    AccountSettingConfiguration accountSettingConfiguration =
-        AccountSettingConfiguration.builder()
-            .defaultValue(value)
-            .valueType(SettingValueType.STRING)
-            .allowedValues(new HashSet<>(Arrays.asList(allowedValues)))
-            .build();
-    SettingUtils.validate(accountSettingConfiguration);
+    SettingConfiguration settingConfiguration = SettingConfiguration.builder()
+                                                    .defaultValue(value)
+                                                    .valueType(SettingValueType.STRING)
+                                                    .allowedValues(new HashSet<>(Arrays.asList(allowedValues)))
+                                                    .build();
+    SettingUtils.validate(settingConfiguration);
   }
 
   @Test
@@ -149,11 +148,11 @@ public class SettingUtilsTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testValidateSettingConfigurationForValueAndValueTypeMismatch() {
     String value = randomAlphabetic(10);
-    AccountSettingConfiguration accountSettingConfiguration =
-        AccountSettingConfiguration.builder().defaultValue(value).valueType(SettingValueType.NUMBER).build();
+    SettingConfiguration settingConfiguration =
+        SettingConfiguration.builder().defaultValue(value).valueType(SettingValueType.NUMBER).build();
     exceptionRule.expect(InvalidRequestException.class);
     exceptionRule.expectMessage(String.format("Only numbers are allowed. Received input [%s]", value));
-    SettingUtils.validate(accountSettingConfiguration);
+    SettingUtils.validate(settingConfiguration);
   }
 
   @Test
@@ -162,23 +161,22 @@ public class SettingUtilsTest extends CategoryTest {
   public void testValidateSettingConfigurationForAllowedValues() {
     String value = randomAlphabetic(10);
     String[] allowedValues = {randomAlphabetic(9), randomAlphabetic(5), randomAlphabetic(3), randomAlphabetic(7)};
-    AccountSettingConfiguration accountSettingConfiguration =
-        AccountSettingConfiguration.builder()
-            .defaultValue(value)
-            .valueType(SettingValueType.STRING)
-            .allowedValues(new HashSet<>(Arrays.asList(allowedValues)))
-            .build();
+    SettingConfiguration settingConfiguration = SettingConfiguration.builder()
+                                                    .defaultValue(value)
+                                                    .valueType(SettingValueType.STRING)
+                                                    .allowedValues(new HashSet<>(Arrays.asList(allowedValues)))
+                                                    .build();
     exceptionRule.expect(InvalidRequestException.class);
     exceptionRule.expectMessage(String.format("The value [%s] is not allowed.", value));
-    SettingUtils.validate(accountSettingConfiguration);
+    SettingUtils.validate(settingConfiguration);
   }
 
   @Test
   @Owner(developers = NISHANT)
   @Category(UnitTests.class)
   public void getSettingSourceForDefaultSource() {
-    AccountSetting accountSetting = AccountSetting.builder().value(randomAlphabetic(10)).build();
-    SettingSource source = SettingUtils.getSettingSource(accountSetting);
+    Setting setting = Setting.builder().value(randomAlphabetic(10)).build();
+    SettingSource source = SettingUtils.getSettingSource(setting);
     assertThat(source).isEqualTo(SettingSource.DEFAULT);
   }
 
@@ -186,9 +184,8 @@ public class SettingUtilsTest extends CategoryTest {
   @Owner(developers = NISHANT)
   @Category(UnitTests.class)
   public void getSettingSourceForAccountSource() {
-    AccountSetting accountSetting =
-        AccountSetting.builder().value(randomAlphabetic(10)).accountIdentifier(randomAlphabetic(10)).build();
-    SettingSource source = SettingUtils.getSettingSource(accountSetting);
+    Setting setting = Setting.builder().value(randomAlphabetic(10)).accountIdentifier(randomAlphabetic(10)).build();
+    SettingSource source = SettingUtils.getSettingSource(setting);
     assertThat(source).isEqualTo(SettingSource.ACCOUNT);
   }
 
@@ -196,11 +193,11 @@ public class SettingUtilsTest extends CategoryTest {
   @Owner(developers = NISHANT)
   @Category(UnitTests.class)
   public void getSettingSourceForOrgSource() {
-    AccountSetting setting = AccountSetting.builder()
-                                 .value(randomAlphabetic(10))
-                                 .accountIdentifier(randomAlphabetic(10))
-                                 .orgIdentifier(randomAlphabetic(10))
-                                 .build();
+    Setting setting = Setting.builder()
+                          .value(randomAlphabetic(10))
+                          .accountIdentifier(randomAlphabetic(10))
+                          .orgIdentifier(randomAlphabetic(10))
+                          .build();
     SettingSource source = SettingUtils.getSettingSource(setting);
     assertThat(source).isEqualTo(SettingSource.ORG);
   }
@@ -209,13 +206,13 @@ public class SettingUtilsTest extends CategoryTest {
   @Owner(developers = NISHANT)
   @Category(UnitTests.class)
   public void getSettingSourceForProjectSource() {
-    AccountSetting accountSetting = AccountSetting.builder()
-                                        .value(randomAlphabetic(10))
-                                        .accountIdentifier(randomAlphabetic(10))
-                                        .orgIdentifier(randomAlphabetic(10))
-                                        .projectIdentifier(randomAlphabetic(10))
-                                        .build();
-    SettingSource source = SettingUtils.getSettingSource(accountSetting);
+    Setting setting = Setting.builder()
+                          .value(randomAlphabetic(10))
+                          .accountIdentifier(randomAlphabetic(10))
+                          .orgIdentifier(randomAlphabetic(10))
+                          .projectIdentifier(randomAlphabetic(10))
+                          .build();
+    SettingSource source = SettingUtils.getSettingSource(setting);
     assertThat(source).isEqualTo(SettingSource.PROJECT);
   }
 
@@ -286,19 +283,18 @@ public class SettingUtilsTest extends CategoryTest {
     allowedPlans.put(Edition.ENTERPRISE, SettingPlanConfig.builder().editable(true).build());
     allowedPlans.put(Edition.COMMUNITY, SettingPlanConfig.builder().build());
 
-    AccountSettingConfiguration accountSettingConfiguration =
-        AccountSettingConfiguration.builder().allowedPlans(allowedPlans).build();
+    SettingConfiguration settingConfiguration = SettingConfiguration.builder().allowedPlans(allowedPlans).build();
 
     boolean isSettingEditable_Free =
-        SettingUtils.isSettingEditableForAccountEdition(Edition.FREE, accountSettingConfiguration);
+        SettingUtils.isSettingEditableForAccountEdition(Edition.FREE, settingConfiguration);
     assertEquals(isSettingEditable_Free, false);
 
     boolean isSettingEditable_Enterprise =
-        SettingUtils.isSettingEditableForAccountEdition(Edition.ENTERPRISE, accountSettingConfiguration);
+        SettingUtils.isSettingEditableForAccountEdition(Edition.ENTERPRISE, settingConfiguration);
     assertTrue(isSettingEditable_Enterprise);
 
     boolean isSettingEditable_Community =
-        SettingUtils.isSettingEditableForAccountEdition(Edition.COMMUNITY, accountSettingConfiguration);
+        SettingUtils.isSettingEditableForAccountEdition(Edition.COMMUNITY, settingConfiguration);
     assertTrue(isSettingEditable_Community);
   }
 
@@ -309,10 +305,9 @@ public class SettingUtilsTest extends CategoryTest {
     Map<Edition, SettingPlanConfig> allowedPlans = new HashMap<>();
     allowedPlans.put(Edition.FREE, SettingPlanConfig.builder().editable(false).build());
 
-    AccountSettingConfiguration accountSettingConfiguration =
-        AccountSettingConfiguration.builder().allowedPlans(allowedPlans).build();
+    SettingConfiguration settingConfiguration = SettingConfiguration.builder().allowedPlans(allowedPlans).build();
 
-    SettingUtils.isSettingEditableForAccountEdition(Edition.ENTERPRISE, accountSettingConfiguration);
+    SettingUtils.isSettingEditableForAccountEdition(Edition.ENTERPRISE, settingConfiguration);
   }
 
   @Test
@@ -326,13 +321,13 @@ public class SettingUtilsTest extends CategoryTest {
     allowedPlans.put(Edition.FREE, SettingPlanConfig.builder().defaultValue(freeDefaultValue).build());
     allowedPlans.put(Edition.ENTERPRISE, SettingPlanConfig.builder().build());
 
-    AccountSettingConfiguration accountSettingConfiguration =
-        AccountSettingConfiguration.builder().defaultValue(settingDefaultValue).allowedPlans(allowedPlans).build();
+    SettingConfiguration settingConfiguration =
+        SettingConfiguration.builder().defaultValue(settingDefaultValue).allowedPlans(allowedPlans).build();
 
-    String defaultValue = SettingUtils.getDefaultValue(Edition.FREE, accountSettingConfiguration);
+    String defaultValue = SettingUtils.getDefaultValue(Edition.FREE, settingConfiguration);
     assertEquals(defaultValue, freeDefaultValue);
 
-    defaultValue = SettingUtils.getDefaultValue(Edition.ENTERPRISE, accountSettingConfiguration);
+    defaultValue = SettingUtils.getDefaultValue(Edition.ENTERPRISE, settingConfiguration);
     assertEquals(defaultValue, settingDefaultValue);
   }
 
@@ -346,8 +341,8 @@ public class SettingUtilsTest extends CategoryTest {
     Map<Edition, SettingPlanConfig> allowedPlans = new HashMap<>();
     allowedPlans.put(Edition.FREE, SettingPlanConfig.builder().defaultValue(freeDefaultValue).build());
 
-    AccountSettingConfiguration settingConfiguration =
-        AccountSettingConfiguration.builder().defaultValue(settingDefaultValue).allowedPlans(allowedPlans).build();
+    SettingConfiguration settingConfiguration =
+        SettingConfiguration.builder().defaultValue(settingDefaultValue).allowedPlans(allowedPlans).build();
 
     SettingUtils.getDefaultValue(Edition.ENTERPRISE, settingConfiguration);
   }

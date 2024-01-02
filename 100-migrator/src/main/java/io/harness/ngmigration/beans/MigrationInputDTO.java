@@ -21,7 +21,6 @@ import software.wings.ngmigration.NGMigrationEntityType;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -48,6 +47,4 @@ public class MigrationInputDTO {
   private CaseFormat identifierCaseFormat;
   private List<MigrationInputSettings> settings;
   private NGMigrationEntityType root;
-  private Set<NGMigrationEntityType> skipEntities;
-  private boolean shouldMigrateOverrides;
 }

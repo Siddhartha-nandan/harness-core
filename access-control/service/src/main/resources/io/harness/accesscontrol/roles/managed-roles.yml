@@ -1,6 +1,6 @@
 # Any edit in this file should accompany an increment in version.
 name: rolesConfiguration
-version: 71
+version: 69
 roles:
     - identifier: _project_admin
       name: Project Admin
@@ -178,13 +178,6 @@ roles:
         - core_gitxWebhooks_edit
         - core_gitxWebhooks_delete
         - core_gitxWebhooks_view
-        - ssca_remediationtracker_close
-        - ssca_remediationtracker_view
-        - ssca_remediationtracker_edit
-        - ssca_enforcementexemption_edit
-        - ssca_enforcementexemption_view
-        - ssca_enforcementexemption_delete
-        - ssca_enforcementexemption_review
       allowedScopeLevels:
         - project
       managed: true
@@ -246,8 +239,6 @@ roles:
         - cet_criticalevent_view
         - iac_workspace_view
         - core_gitxWebhooks_view
-        - ssca_remediationtracker_view
-        - ssca_enforcementexemption_view
       allowedScopeLevels:
         - project
       managed: true
@@ -433,13 +424,6 @@ roles:
         - core_gitxWebhooks_edit
         - core_gitxWebhooks_delete
         - core_gitxWebhooks_view
-        - ssca_remediationtracker_close
-        - ssca_remediationtracker_view
-        - ssca_remediationtracker_edit
-        - ssca_enforcementexemption_edit
-        - ssca_enforcementexemption_view
-        - ssca_enforcementexemption_delete
-        - ssca_enforcementexemption_review
       allowedScopeLevels:
         - organization
       managed: true
@@ -503,8 +487,6 @@ roles:
         - cet_criticalevent_view
         - iac_workspace_view
         - core_gitxWebhooks_view
-        - ssca_remediationtracker_view
-        - ssca_enforcementexemption_view
       allowedScopeLevels:
         - organization
       managed: true
@@ -760,13 +742,6 @@ roles:
         - core_gitxWebhooks_edit
         - core_gitxWebhooks_delete
         - core_gitxWebhooks_view
-        - ssca_remediationtracker_close
-        - ssca_remediationtracker_view
-        - ssca_remediationtracker_edit
-        - ssca_enforcementexemption_edit
-        - ssca_enforcementexemption_view
-        - ssca_enforcementexemption_delete
-        - ssca_enforcementexemption_review
       allowedScopeLevels:
         - account
       managed: true
@@ -849,8 +824,6 @@ roles:
         - ccm_commitmentOrchestrator_view
         - iac_workspace_view
         - core_gitxWebhooks_view
-        - ssca_remediationtracker_view
-        - ssca_enforcementexemption_view
       allowedScopeLevels:
         - account
       managed: true

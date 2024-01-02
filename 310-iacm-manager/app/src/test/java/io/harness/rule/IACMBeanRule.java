@@ -12,6 +12,7 @@ import io.harness.factory.ClosingFactory;
 import io.harness.factory.ClosingFactoryModule;
 import io.harness.govern.ProviderModule;
 import io.harness.govern.ServersModule;
+import io.harness.iacm.serializer.IACMBeansRegistrars;
 import io.harness.threading.CurrentThreadExecutor;
 import io.harness.threading.ExecutorModule;
 import io.harness.yaml.YamlSdkModule;
@@ -63,7 +64,7 @@ public class IACMBeanRule implements MethodRule, InjectorRuleMixin {
       @Provides
       @Singleton
       List<YamlSchemaRootClass> yamlSchemaRootClass() {
-        return ImmutableList.<YamlSchemaRootClass>builder().build();
+        return ImmutableList.<YamlSchemaRootClass>builder().addAll(IACMBeansRegistrars.yamlSchemaRegistrars).build();
       }
 
       @Provides

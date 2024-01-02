@@ -27,6 +27,4 @@ public class DelegateOutboxEventConstants {
 
   public static final String DELEGATE_TOKEN_CREATE_EVENT = "DelegateNgTokenCreateEvent";
   public static final String DELEGATE_TOKEN_REVOKE_EVENT = "DelegateNgTokenRevokeEvent";
-
-  public static final String DELEGATE_VERSION_OVERRIDE_EVENT = "DelegateVersionOverrideEvent";
 }

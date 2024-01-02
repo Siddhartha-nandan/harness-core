@@ -7,8 +7,6 @@
 
 package io.harness.ngsettings.services.impl;
 
-import static io.harness.ngsettings.SettingConstants.TYPE_ALIAS_FOR_ACCOUNT_CONFIGURATION;
-import static io.harness.ngsettings.SettingConstants._CLASS;
 import static io.harness.rule.OwnerRule.NISHANT;
 import static io.harness.rule.OwnerRule.SAHILDEEP;
 import static io.harness.rule.OwnerRule.TEJAS;
@@ -44,8 +42,6 @@ import io.harness.ngsettings.dto.SettingRequestDTO;
 import io.harness.ngsettings.dto.SettingResponseDTO;
 import io.harness.ngsettings.dto.SettingUpdateResponseDTO;
 import io.harness.ngsettings.dto.SettingValueResponseDTO;
-import io.harness.ngsettings.entities.AccountSetting;
-import io.harness.ngsettings.entities.AccountSettingConfiguration;
 import io.harness.ngsettings.entities.Setting;
 import io.harness.ngsettings.entities.SettingConfiguration;
 import io.harness.ngsettings.entities.SettingConfiguration.SettingConfigurationKeys;
@@ -111,11 +107,11 @@ public class SettingsServiceImplTest extends CategoryTest {
   public void testListWhenDefaultOnlyPresent() {
     String identifier = randomAlphabetic(10);
     String accountIdentifier = randomAlphabetic(10);
-    Map<String, AccountSettingConfiguration> settingConfigurations = new HashMap<>();
-    AccountSettingConfiguration settingConfiguration = AccountSettingConfiguration.builder()
-                                                           .identifier(identifier)
-                                                           .allowedScopes(Collections.singleton(ScopeLevel.ACCOUNT))
-                                                           .build();
+    Map<String, SettingConfiguration> settingConfigurations = new HashMap<>();
+    SettingConfiguration settingConfiguration = SettingConfiguration.builder()
+                                                    .identifier(identifier)
+                                                    .allowedScopes(Collections.singleton(ScopeLevel.ACCOUNT))
+                                                    .build();
     settingConfigurations.put(identifier, settingConfiguration);
     mockStatic(SettingUtils.class);
     when(SettingUtils.getDefaultValue(any(), any())).thenReturn(DEFAULT_VALUE);
@@ -126,7 +122,7 @@ public class SettingsServiceImplTest extends CategoryTest {
         .thenReturn(List.of(settingConfigurations.get(identifier)));
     when(settingsMapper.writeSettingDTO(settingConfiguration, true, DEFAULT_VALUE))
         .thenReturn(SettingDTO.builder().value(DEFAULT_VALUE).build());
-    when(settingsMapper.toSetting(any(), any())).thenReturn(AccountSetting.builder().build());
+    when(settingsMapper.toSetting(any(), any())).thenReturn(Setting.builder().build());
     when(licenseService.calculateAccountEdition(accountIdentifier)).thenReturn(Edition.ENTERPRISE);
     List<SettingResponseDTO> dtoList =
         settingsService.list(accountIdentifier, null, null, SettingCategory.CORE, null, false);
@@ -143,23 +139,22 @@ public class SettingsServiceImplTest extends CategoryTest {
   public void testListWhenSettingAlsoPresent() {
     String identifier = randomAlphabetic(10);
     String accountIdentifier = randomAlphabetic(10);
-    Map<String, AccountSettingConfiguration> settingConfigurations = new HashMap<>();
-    AccountSettingConfiguration accountSettingConfiguration =
-        AccountSettingConfiguration.builder()
-            .identifier(identifier)
-            .allowedScopes(Collections.singleton(ScopeLevel.ACCOUNT))
-            .build();
+    Map<String, SettingConfiguration> settingConfigurations = new HashMap<>();
+    SettingConfiguration settingConfiguration = SettingConfiguration.builder()
+                                                    .identifier(identifier)
+                                                    .allowedScopes(Collections.singleton(ScopeLevel.ACCOUNT))
+                                                    .build();
     Map<String, Setting> settings = new HashMap<>();
-    AccountSetting accountSetting = AccountSetting.builder().identifier(identifier).build();
-    settings.put(identifier, accountSetting);
-    settingConfigurations.put(identifier, accountSettingConfiguration);
+    Setting setting = Setting.builder().identifier(identifier).build();
+    settings.put(identifier, setting);
+    settingConfigurations.put(identifier, settingConfiguration);
     when(licenseService.calculateAccountEdition(accountIdentifier)).thenReturn(Edition.ENTERPRISE);
     when(settingRepository.findAll(any(Criteria.class))).thenReturn(List.of(settings.get(identifier)));
     when(settingConfigurationRepository.findAll(any(Criteria.class)))
         .thenReturn(List.of(settingConfigurations.get(identifier)));
-    when(settingsMapper.writeSettingResponseDTO(accountSetting, accountSettingConfiguration, true, DEFAULT_VALUE))
+    when(settingsMapper.writeSettingResponseDTO(setting, settingConfiguration, true, DEFAULT_VALUE))
         .thenReturn(SettingResponseDTO.builder().setting(SettingDTO.builder().identifier(identifier).build()).build());
-    when(settingsMapper.toSetting(any(), any())).thenReturn(accountSetting);
+    when(settingsMapper.toSetting(any(), any())).thenReturn(setting);
     List<SettingResponseDTO> dtoList =
         settingsService.list(accountIdentifier, null, null, SettingCategory.CORE, null, false);
     verify(settingRepository, times(1)).findAll(any(Criteria.class));
@@ -176,9 +171,9 @@ public class SettingsServiceImplTest extends CategoryTest {
     String accountIdentifier = randomAlphabetic(10);
     SettingRequestDTO settingRequestDTO =
         SettingRequestDTO.builder().identifier(identifier).updateType(SettingUpdateType.RESTORE).build();
-    AccountSetting accountSetting = AccountSetting.builder().identifier(identifier).build();
-    AccountSettingConfiguration accountSettingConfiguration =
-        AccountSettingConfiguration.builder().identifier(identifier).defaultValue(DEFAULT_VALUE).build();
+    Setting setting = Setting.builder().identifier(identifier).build();
+    SettingConfiguration settingConfiguration =
+        SettingConfiguration.builder().identifier(identifier).defaultValue(DEFAULT_VALUE).build();
     SettingResponseDTO settingResponseDTO =
         SettingResponseDTO.builder().setting(SettingDTO.builder().identifier(identifier).build()).build();
     SettingUpdateResponseDTO settingBatchResponseDTO = SettingUpdateResponseDTO.builder()
@@ -189,27 +184,24 @@ public class SettingsServiceImplTest extends CategoryTest {
     mockStatic(SettingUtils.class);
     when(SettingUtils.getDefaultValue(any(), any())).thenReturn(DEFAULT_VALUE);
     when(SettingUtils.isSettingEditableForAccountEdition(any(), any())).thenReturn(true);
-    when(SettingUtils.getSettingSource(accountSetting)).thenReturn(SettingSource.ACCOUNT);
+    when(SettingUtils.getSettingSource(setting)).thenReturn(SettingSource.ACCOUNT);
     when(settingRepository.findByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndIdentifier(
              accountIdentifier, null, null, identifier))
-        .thenReturn(ofNullable(accountSetting));
-    AccountSetting updatedAccountSetting = AccountSetting.builder().identifier(identifier).build();
-    when(settingRepository.upsert(updatedAccountSetting)).thenReturn(updatedAccountSetting);
+        .thenReturn(ofNullable(setting));
+    Setting updatedSetting = Setting.builder().identifier(identifier).build();
+    when(settingRepository.upsert(updatedSetting)).thenReturn(updatedSetting);
     when(settingConfigurationRepository.findByIdentifierAndAllowedScopesIn(anyString(), any()))
-        .thenReturn(ofNullable(accountSettingConfiguration));
+        .thenReturn(ofNullable(settingConfiguration));
     when(settingsMapper.writeBatchResponseDTO(settingResponseDTO)).thenReturn(settingBatchResponseDTO);
     SettingDTO settingDTO = SettingDTO.builder().identifier(identifier).build();
-    when(
-        settingsMapper.writeNewDTO(accountSetting, settingRequestDTO, accountSettingConfiguration, true, DEFAULT_VALUE))
+    when(settingsMapper.writeNewDTO(setting, settingRequestDTO, settingConfiguration, true, DEFAULT_VALUE))
         .thenReturn(settingDTO);
-    when(settingsMapper.writeSettingDTO(
-             accountSetting, accountSettingConfiguration, true, accountSettingConfiguration.getDefaultValue()))
+    when(settingsMapper.writeSettingDTO(setting, settingConfiguration, true, settingConfiguration.getDefaultValue()))
         .thenReturn(settingDTO);
-    when(settingsMapper.writeSettingDTO(accountSettingConfiguration, true, DEFAULT_VALUE)).thenReturn(settingDTO);
-    when(settingsMapper.toSetting(accountIdentifier, settingDTO)).thenReturn(updatedAccountSetting);
-    when(settingsMapper.toSetting(null, settingDTO)).thenReturn(accountSetting);
-    when(settingsMapper.writeSettingResponseDTO(accountSetting, accountSettingConfiguration, true))
-        .thenReturn(settingResponseDTO);
+    when(settingsMapper.writeSettingDTO(settingConfiguration, true, DEFAULT_VALUE)).thenReturn(settingDTO);
+    when(settingsMapper.toSetting(accountIdentifier, settingDTO)).thenReturn(updatedSetting);
+    when(settingsMapper.toSetting(null, settingDTO)).thenReturn(setting);
+    when(settingsMapper.writeSettingResponseDTO(setting, settingConfiguration, true)).thenReturn(settingResponseDTO);
     when(transactionTemplate.execute(any()))
         .thenAnswer(invocationOnMock
             -> invocationOnMock.getArgument(0, TransactionCallback.class)
@@ -219,7 +211,7 @@ public class SettingsServiceImplTest extends CategoryTest {
     verify(settingRepository, times(1))
         .findByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndIdentifier(
             accountIdentifier, null, null, identifier);
-    verify(settingRepository, times(1)).delete(accountSetting);
+    verify(settingRepository, times(1)).delete(setting);
     verify(settingConfigurationRepository, times(1))
         .findByIdentifierAndAllowedScopesIn(identifier, List.of(ScopeLevel.ACCOUNT));
     verify(outboxService, times(1)).save(any(SettingRestoreEvent.class));
@@ -240,12 +232,11 @@ public class SettingsServiceImplTest extends CategoryTest {
                                               .allowOverrides(true)
                                               .updateType(SettingUpdateType.UPDATE)
                                               .build();
-    AccountSetting setting =
-        AccountSetting.builder().identifier(identifier).value(value).valueType(SettingValueType.STRING).build();
-    AccountSetting newSetting =
-        AccountSetting.builder().identifier(identifier).value(newValue).valueType(SettingValueType.STRING).build();
-    AccountSettingConfiguration accountSettingConfiguration =
-        AccountSettingConfiguration.builder().identifier(identifier).defaultValue(DEFAULT_VALUE).build();
+    Setting setting = Setting.builder().identifier(identifier).value(value).valueType(SettingValueType.STRING).build();
+    Setting newSetting =
+        Setting.builder().identifier(identifier).value(newValue).valueType(SettingValueType.STRING).build();
+    SettingConfiguration settingConfiguration =
+        SettingConfiguration.builder().identifier(identifier).defaultValue(DEFAULT_VALUE).build();
     SettingDTO settingDTO =
         SettingDTO.builder().identifier(identifier).valueType(SettingValueType.STRING).value(value).build();
     SettingResponseDTO settingResponseDTO = SettingResponseDTO.builder().setting(settingDTO).build();
@@ -261,22 +252,21 @@ public class SettingsServiceImplTest extends CategoryTest {
              accountIdentifier, null, null, identifier))
         .thenReturn(ofNullable(setting));
     when(settingConfigurationRepository.findByIdentifierAndAllowedScopesIn(anyString(), any()))
-        .thenReturn(ofNullable(accountSettingConfiguration));
-    when(settingsMapper.writeNewDTO(setting, settingRequestDTO, accountSettingConfiguration, true, DEFAULT_VALUE))
+        .thenReturn(ofNullable(settingConfiguration));
+    when(settingsMapper.writeNewDTO(setting, settingRequestDTO, settingConfiguration, true, DEFAULT_VALUE))
         .thenReturn(settingDTO);
     when(settingRepository.upsert(newSetting)).thenReturn(newSetting);
     when(settingsMapper.toSetting(accountIdentifier, settingDTO)).thenReturn(newSetting);
     when(settingsMapper.toSetting(null, settingDTO)).thenReturn(setting);
-    when(settingsMapper.writeSettingDTO(setting, accountSettingConfiguration, true, DEFAULT_VALUE))
-        .thenReturn(settingDTO);
-    when(settingsMapper.writeSettingResponseDTO(newSetting, accountSettingConfiguration, true, value))
+    when(settingsMapper.writeSettingDTO(setting, settingConfiguration, true, DEFAULT_VALUE)).thenReturn(settingDTO);
+    when(settingsMapper.writeSettingResponseDTO(newSetting, settingConfiguration, true, value))
         .thenReturn(settingResponseDTO);
     when(settingsMapper.writeBatchResponseDTO(settingResponseDTO)).thenReturn(settingBatchResponseDTO);
     when(transactionTemplate.execute(any()))
         .thenAnswer(invocationOnMock
             -> invocationOnMock.getArgument(0, TransactionCallback.class)
                    .doInTransaction(new SimpleTransactionStatus()));
-    when(settingsMapper.writeSettingDTO(accountSettingConfiguration, true, DEFAULT_VALUE)).thenReturn(settingDTO);
+    when(settingsMapper.writeSettingDTO(settingConfiguration, true, DEFAULT_VALUE)).thenReturn(settingDTO);
     List<SettingUpdateResponseDTO> batchResponse =
         settingsService.update(accountIdentifier, null, null, List.of(settingRequestDTO));
     verify(settingRepository, times(1))
@@ -304,12 +294,11 @@ public class SettingsServiceImplTest extends CategoryTest {
                                               .allowOverrides(true)
                                               .updateType(SettingUpdateType.UPDATE)
                                               .build();
-    AccountSetting setting =
-        AccountSetting.builder().identifier(identifier).value(value).valueType(SettingValueType.STRING).build();
-    AccountSetting newSetting =
-        AccountSetting.builder().identifier(identifier).value(newValue).valueType(SettingValueType.STRING).build();
-    AccountSettingConfiguration accountSettingConfiguration =
-        AccountSettingConfiguration.builder().identifier(identifier).defaultValue(DEFAULT_VALUE).build();
+    Setting setting = Setting.builder().identifier(identifier).value(value).valueType(SettingValueType.STRING).build();
+    Setting newSetting =
+        Setting.builder().identifier(identifier).value(newValue).valueType(SettingValueType.STRING).build();
+    SettingConfiguration settingConfiguration =
+        SettingConfiguration.builder().identifier(identifier).defaultValue(DEFAULT_VALUE).build();
     SettingDTO settingDTO = SettingDTO.builder()
                                 .identifier(identifier)
                                 .valueType(SettingValueType.STRING)
@@ -329,22 +318,21 @@ public class SettingsServiceImplTest extends CategoryTest {
              accountIdentifier, null, null, identifier))
         .thenReturn(Optional.of(setting));
     when(settingConfigurationRepository.findByIdentifierAndAllowedScopesIn(anyString(), any()))
-        .thenReturn(Optional.of(accountSettingConfiguration));
-    when(settingsMapper.writeNewDTO(setting, settingRequestDTO, accountSettingConfiguration, true, DEFAULT_VALUE))
+        .thenReturn(Optional.of(settingConfiguration));
+    when(settingsMapper.writeNewDTO(setting, settingRequestDTO, settingConfiguration, true, DEFAULT_VALUE))
         .thenReturn(settingDTO);
     when(settingRepository.upsert(newSetting)).thenReturn(newSetting);
     when(settingsMapper.toSetting(accountIdentifier, settingDTO)).thenReturn(newSetting);
     when(settingsMapper.toSetting(null, settingDTO)).thenReturn(setting);
-    when(settingsMapper.writeSettingDTO(setting, accountSettingConfiguration, true, DEFAULT_VALUE))
-        .thenReturn(settingDTO);
-    when(settingsMapper.writeSettingResponseDTO(newSetting, accountSettingConfiguration, true, value))
+    when(settingsMapper.writeSettingDTO(setting, settingConfiguration, true, DEFAULT_VALUE)).thenReturn(settingDTO);
+    when(settingsMapper.writeSettingResponseDTO(newSetting, settingConfiguration, true, value))
         .thenReturn(settingResponseDTO);
     when(settingsMapper.writeBatchResponseDTO(settingResponseDTO)).thenReturn(settingBatchResponseDTO);
     when(transactionTemplate.execute(any()))
         .thenAnswer(invocationOnMock
             -> invocationOnMock.getArgument(0, TransactionCallback.class)
                    .doInTransaction(new SimpleTransactionStatus()));
-    when(settingsMapper.writeSettingDTO(accountSettingConfiguration, true, DEFAULT_VALUE)).thenReturn(settingDTO);
+    when(settingsMapper.writeSettingDTO(settingConfiguration, true, DEFAULT_VALUE)).thenReturn(settingDTO);
     List<SettingUpdateResponseDTO> batchResponse =
         settingsService.update(accountIdentifier, null, null, List.of(settingRequestDTO));
     verify(settingRepository, times(1))
@@ -369,8 +357,8 @@ public class SettingsServiceImplTest extends CategoryTest {
     String newValue = randomAlphabetic(10);
     SettingRequestDTO settingRequestDTO =
         SettingRequestDTO.builder().identifier(identifier).value(newValue).updateType(SettingUpdateType.UPDATE).build();
-    AccountSetting newAccountSetting =
-        AccountSetting.builder().identifier(identifier).value(newValue).valueType(SettingValueType.STRING).build();
+    Setting newSetting =
+        Setting.builder().identifier(identifier).value(newValue).valueType(SettingValueType.STRING).build();
     SettingUpdateResponseDTO settingBatchResponseDTO = SettingUpdateResponseDTO.builder()
                                                            .updateStatus(false)
                                                            .identifier(identifier)
@@ -387,7 +375,7 @@ public class SettingsServiceImplTest extends CategoryTest {
     verify(settingConfigurationRepository, times(1))
         .findByIdentifierAndAllowedScopesIn(identifier, List.of(ScopeLevel.ACCOUNT));
     verify(settingsMapper, times(0)).writeNewDTO(any(), any(), any(), any(), any());
-    verify(settingRepository, times(0)).upsert(newAccountSetting);
+    verify(settingRepository, times(0)).upsert(newSetting);
     assertThat(batchResponse).contains(settingBatchResponseDTO);
   }
 
@@ -400,21 +388,21 @@ public class SettingsServiceImplTest extends CategoryTest {
     String orgIdentifier = randomAlphabetic(10);
     String projectIdentifier = randomAlphabetic(10);
     String value = randomAlphabetic(10);
-    AccountSetting setting = AccountSetting.builder()
-                                 .identifier(identifier)
-                                 .accountIdentifier(accountIdentifier)
-                                 .orgIdentifier(orgIdentifier)
-                                 .projectIdentifier(projectIdentifier)
-                                 .valueType(SettingValueType.STRING)
-                                 .value(value)
-                                 .build();
-    AccountSettingConfiguration accountSettingConfiguration =
-        AccountSettingConfiguration.builder().identifier(identifier).valueType(SettingValueType.STRING).build();
+    Setting setting = Setting.builder()
+                          .identifier(identifier)
+                          .accountIdentifier(accountIdentifier)
+                          .orgIdentifier(orgIdentifier)
+                          .projectIdentifier(projectIdentifier)
+                          .valueType(SettingValueType.STRING)
+                          .value(value)
+                          .build();
+    SettingConfiguration settingConfiguration =
+        SettingConfiguration.builder().identifier(identifier).valueType(SettingValueType.STRING).build();
     when(settingRepository.findByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndIdentifier(
              accountIdentifier, orgIdentifier, projectIdentifier, identifier))
         .thenReturn(ofNullable(setting));
     when(settingConfigurationRepository.findByIdentifierAndAllowedScopesIn(identifier, List.of(ScopeLevel.PROJECT)))
-        .thenReturn(ofNullable(accountSettingConfiguration));
+        .thenReturn(ofNullable(settingConfiguration));
     SettingValueResponseDTO response =
         settingsService.get(identifier, accountIdentifier, orgIdentifier, projectIdentifier);
     verify(settingRepository, times(1))
@@ -433,18 +421,18 @@ public class SettingsServiceImplTest extends CategoryTest {
     String orgIdentifier = randomAlphabetic(10);
     String projectIdentifier = randomAlphabetic(10);
     String defaultValue = randomAlphabetic(10);
-    AccountSettingConfiguration accountSettingConfiguration = AccountSettingConfiguration.builder()
-                                                                  .identifier(identifier)
-                                                                  .defaultValue(defaultValue)
-                                                                  .valueType(SettingValueType.STRING)
-                                                                  .build();
+    SettingConfiguration settingConfiguration = SettingConfiguration.builder()
+                                                    .identifier(identifier)
+                                                    .defaultValue(defaultValue)
+                                                    .valueType(SettingValueType.STRING)
+                                                    .build();
     when(settingRepository.findByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndIdentifier(
              accountIdentifier, orgIdentifier, projectIdentifier, identifier))
         .thenReturn(Optional.empty());
     when(settingConfigurationRepository.findByIdentifierAndAllowedScopesIn(identifier, List.of(ScopeLevel.PROJECT)))
-        .thenReturn(ofNullable(accountSettingConfiguration));
+        .thenReturn(ofNullable(settingConfiguration));
     when(settingsMapper.toSetting(any(), any()))
-        .thenReturn(AccountSetting.builder().identifier(identifier).value(defaultValue).build());
+        .thenReturn(Setting.builder().identifier(identifier).value(defaultValue).build());
     SettingValueResponseDTO response =
         settingsService.get(identifier, accountIdentifier, orgIdentifier, projectIdentifier);
     verify(settingRepository, times(1))
@@ -475,13 +463,11 @@ public class SettingsServiceImplTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testListDefaultSettings() {
     String identifier = randomAlphabetic(10);
-    Criteria criteria = Criteria.where(_CLASS).is(TYPE_ALIAS_FOR_ACCOUNT_CONFIGURATION);
-    AccountSettingConfiguration accountSettingConfiguration =
-        AccountSettingConfiguration.builder().identifier(identifier).build();
-    when(settingConfigurationRepository.findAll(criteria)).thenReturn(List.of(accountSettingConfiguration));
-    List<AccountSettingConfiguration> settingConfigurationList = settingsService.listDefaultSettings();
-    verify(settingConfigurationRepository, times(1)).findAll(criteria);
-    assertThat(settingConfigurationList).containsExactly(accountSettingConfiguration);
+    SettingConfiguration settingConfiguration = SettingConfiguration.builder().identifier(identifier).build();
+    when(settingConfigurationRepository.findAll()).thenReturn(List.of(settingConfiguration));
+    List<SettingConfiguration> settingConfigurationList = settingsService.listDefaultSettings();
+    verify(settingConfigurationRepository, times(1)).findAll();
+    assertThat(settingConfigurationList).containsExactly(settingConfiguration);
   }
 
   @Test
@@ -495,25 +481,24 @@ public class SettingsServiceImplTest extends CategoryTest {
     Map<String, SettingConfiguration> settingConfigurations = new HashMap<>();
 
     String identifier1 = randomAlphabetic(10);
-    AccountSettingConfiguration accountSettingConfiguration1 =
-        AccountSettingConfiguration.builder().identifier(identifier1).allowedScopes(Set.of(ScopeLevel.ACCOUNT)).build();
-    settingConfigurations.put(identifier1, accountSettingConfiguration1);
+    SettingConfiguration settingConfiguration1 =
+        SettingConfiguration.builder().identifier(identifier1).allowedScopes(Set.of(ScopeLevel.ACCOUNT)).build();
+    settingConfigurations.put(identifier1, settingConfiguration1);
 
     String identifier2 = randomAlphabetic(10);
-    AccountSettingConfiguration accountSettingConfiguration2 =
-        AccountSettingConfiguration.builder()
-            .identifier(identifier2)
-            .allowedScopes(Set.of(ScopeLevel.ACCOUNT, ScopeLevel.ORGANIZATION))
-            .build();
-    settingConfigurations.put(identifier2, accountSettingConfiguration2);
+    SettingConfiguration settingConfiguration2 = SettingConfiguration.builder()
+                                                     .identifier(identifier2)
+                                                     .allowedScopes(Set.of(ScopeLevel.ACCOUNT, ScopeLevel.ORGANIZATION))
+                                                     .build();
+    settingConfigurations.put(identifier2, settingConfiguration2);
 
     String identifier3 = randomAlphabetic(10);
-    AccountSettingConfiguration accountSettingConfiguration3 =
-        AccountSettingConfiguration.builder()
+    SettingConfiguration settingConfiguration3 =
+        SettingConfiguration.builder()
             .identifier(identifier3)
             .allowedScopes(Set.of(ScopeLevel.ACCOUNT, ScopeLevel.ORGANIZATION, ScopeLevel.PROJECT))
             .build();
-    settingConfigurations.put(identifier3, accountSettingConfiguration3);
+    settingConfigurations.put(identifier3, settingConfiguration3);
 
     mockStatic(SettingUtils.class);
     when(SettingUtils.getDefaultValue(any(), any())).thenReturn(DEFAULT_VALUE);
@@ -523,16 +508,16 @@ public class SettingsServiceImplTest extends CategoryTest {
         .thenReturn(new ArrayList<>());
 
     when(settingConfigurationRepository.findAll(any(Criteria.class)))
-        .thenReturn(List.of(accountSettingConfiguration1, accountSettingConfiguration2, accountSettingConfiguration3));
+        .thenReturn(List.of(settingConfiguration1, settingConfiguration2, settingConfiguration3));
 
-    when(settingsMapper.writeSettingDTO(accountSettingConfiguration1, true, DEFAULT_VALUE))
+    when(settingsMapper.writeSettingDTO(settingConfiguration1, true, DEFAULT_VALUE))
         .thenReturn(SettingDTO.builder().value(DEFAULT_VALUE).build());
-    when(settingsMapper.writeSettingDTO(accountSettingConfiguration2, true, DEFAULT_VALUE))
+    when(settingsMapper.writeSettingDTO(settingConfiguration2, true, DEFAULT_VALUE))
         .thenReturn(SettingDTO.builder().value(DEFAULT_VALUE).build());
-    when(settingsMapper.writeSettingDTO(accountSettingConfiguration3, true, DEFAULT_VALUE))
+    when(settingsMapper.writeSettingDTO(settingConfiguration3, true, DEFAULT_VALUE))
         .thenReturn(SettingDTO.builder().value(DEFAULT_VALUE).build());
 
-    when(settingsMapper.toSetting(any(), any())).thenReturn(AccountSetting.builder().build());
+    when(settingsMapper.toSetting(any(), any())).thenReturn(Setting.builder().build());
     when(licenseService.calculateAccountEdition(accountIdentifier)).thenReturn(Edition.ENTERPRISE);
 
     ArgumentCaptor<Criteria> criteriaArgumentCaptor = ArgumentCaptor.forClass(Criteria.class);
@@ -554,7 +539,8 @@ public class SettingsServiceImplTest extends CategoryTest {
             .orOperator(Criteria.where(SettingConfigurationKeys.allowedPlans).is(null),
                 Criteria.where(SettingConfigurationKeys.allowedPlans + "." + Edition.ENTERPRISE.toString())
                     .exists(true));
-    expectedCriteria.and(_CLASS).is(TYPE_ALIAS_FOR_ACCOUNT_CONFIGURATION);
+
+    //
     verify(settingConfigurationRepository, times(1)).findAll(criteriaArgumentCaptor.capture());
     assertThat(expectedCriteria).isEqualTo(criteriaArgumentCaptor.getValue());
     assertThat(dtoList.size()).isEqualTo(settingConfigurations.size());
@@ -565,17 +551,16 @@ public class SettingsServiceImplTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testListDeleteConfig() {
     String identifier = randomAlphabetic(10);
-    AccountSettingConfiguration accountSettingConfiguration =
-        AccountSettingConfiguration.builder().identifier(identifier).build();
-    AccountSetting setting = AccountSetting.builder().identifier(identifier).build();
+    SettingConfiguration settingConfiguration = SettingConfiguration.builder().identifier(identifier).build();
+    Setting setting = Setting.builder().identifier(identifier).build();
     when(settingConfigurationRepository.findByIdentifier(identifier))
-        .thenReturn(Optional.ofNullable(accountSettingConfiguration));
-    doNothing().when(settingConfigurationRepository).delete(accountSettingConfiguration);
+        .thenReturn(Optional.ofNullable(settingConfiguration));
+    doNothing().when(settingConfigurationRepository).delete(settingConfiguration);
     when(settingRepository.findByIdentifier(identifier)).thenReturn(List.of(setting));
     doNothing().when(settingRepository).deleteAll(List.of(setting));
     settingsService.removeSetting(identifier);
     verify(settingConfigurationRepository, times(1)).findByIdentifier(identifier);
-    verify(settingConfigurationRepository, times(1)).delete(accountSettingConfiguration);
+    verify(settingConfigurationRepository, times(1)).delete(settingConfiguration);
     verify(settingRepository, times(1)).findByIdentifier(identifier);
     verify(settingRepository, times(1)).deleteAll(List.of(setting));
   }
@@ -586,15 +571,15 @@ public class SettingsServiceImplTest extends CategoryTest {
   public void testUpsertConfig() {
     String identifier = randomAlphabetic(10);
     String defaultValue = randomAlphabetic(10);
-    AccountSettingConfiguration accountSettingConfiguration = AccountSettingConfiguration.builder()
-                                                                  .identifier(identifier)
-                                                                  .defaultValue(defaultValue)
-                                                                  .valueType(SettingValueType.STRING)
-                                                                  .build();
-    when(settingConfigurationRepository.save(accountSettingConfiguration)).thenReturn(accountSettingConfiguration);
-    SettingConfiguration response = settingsService.upsertSettingConfiguration(accountSettingConfiguration);
-    verify(settingConfigurationRepository, times(1)).save(accountSettingConfiguration);
-    assertThat(response).isNotNull().isEqualTo(accountSettingConfiguration);
+    SettingConfiguration settingConfiguration = SettingConfiguration.builder()
+                                                    .identifier(identifier)
+                                                    .defaultValue(defaultValue)
+                                                    .valueType(SettingValueType.STRING)
+                                                    .build();
+    when(settingConfigurationRepository.save(settingConfiguration)).thenReturn(settingConfiguration);
+    SettingConfiguration response = settingsService.upsertSettingConfiguration(settingConfiguration);
+    verify(settingConfigurationRepository, times(1)).save(settingConfiguration);
+    assertThat(response).isNotNull().isEqualTo(settingConfiguration);
   }
 
   @Test
@@ -611,12 +596,11 @@ public class SettingsServiceImplTest extends CategoryTest {
                                               .allowOverrides(true)
                                               .updateType(SettingUpdateType.UPDATE)
                                               .build();
-    AccountSetting accountSetting =
-        AccountSetting.builder().identifier(identifier).value(value).valueType(SettingValueType.STRING).build();
-    AccountSetting newAccountSetting =
-        AccountSetting.builder().identifier(identifier).value(newValue).valueType(SettingValueType.STRING).build();
-    AccountSettingConfiguration accountSettingConfiguration =
-        AccountSettingConfiguration.builder().identifier(identifier).defaultValue(DEFAULT_VALUE).build();
+    Setting setting = Setting.builder().identifier(identifier).value(value).valueType(SettingValueType.STRING).build();
+    Setting newSetting =
+        Setting.builder().identifier(identifier).value(newValue).valueType(SettingValueType.STRING).build();
+    SettingConfiguration settingConfiguration =
+        SettingConfiguration.builder().identifier(identifier).defaultValue(DEFAULT_VALUE).build();
     SettingDTO settingDTO =
         SettingDTO.builder().identifier(identifier).valueType(SettingValueType.STRING).value(value).build();
     SettingResponseDTO settingResponseDTO = SettingResponseDTO.builder().setting(settingDTO).build();
@@ -634,25 +618,23 @@ public class SettingsServiceImplTest extends CategoryTest {
     when(SettingUtils.isSettingEditableForAccountEdition(any(), any())).thenReturn(true);
     when(settingRepository.findByAccountIdentifierAndOrgIdentifierAndProjectIdentifierAndIdentifier(
              accountIdentifier, null, null, identifier))
-        .thenReturn(ofNullable(accountSetting));
+        .thenReturn(ofNullable(setting));
     when(settingConfigurationRepository.findByIdentifierAndAllowedScopesIn(anyString(), any()))
-        .thenReturn(ofNullable(accountSettingConfiguration));
-    when(
-        settingsMapper.writeNewDTO(accountSetting, settingRequestDTO, accountSettingConfiguration, true, DEFAULT_VALUE))
+        .thenReturn(ofNullable(settingConfiguration));
+    when(settingsMapper.writeNewDTO(setting, settingRequestDTO, settingConfiguration, true, DEFAULT_VALUE))
         .thenReturn(settingDTO);
-    when(settingRepository.upsert(newAccountSetting)).thenReturn(newAccountSetting);
-    when(settingsMapper.toSetting(accountIdentifier, settingDTO)).thenReturn(newAccountSetting);
-    when(settingsMapper.toSetting(null, settingDTO)).thenReturn(accountSetting);
-    when(settingsMapper.writeSettingDTO(accountSetting, accountSettingConfiguration, true, DEFAULT_VALUE))
-        .thenReturn(settingDTO);
-    when(settingsMapper.writeSettingResponseDTO(newAccountSetting, accountSettingConfiguration, true, value))
+    when(settingRepository.upsert(newSetting)).thenReturn(newSetting);
+    when(settingsMapper.toSetting(accountIdentifier, settingDTO)).thenReturn(newSetting);
+    when(settingsMapper.toSetting(null, settingDTO)).thenReturn(setting);
+    when(settingsMapper.writeSettingDTO(setting, settingConfiguration, true, DEFAULT_VALUE)).thenReturn(settingDTO);
+    when(settingsMapper.writeSettingResponseDTO(newSetting, settingConfiguration, true, value))
         .thenReturn(settingResponseDTO);
     when(settingsMapper.writeBatchResponseDTO(settingResponseDTO)).thenReturn(settingBatchResponseDTO);
     when(transactionTemplate.execute(any()))
         .thenAnswer(invocationOnMock
             -> invocationOnMock.getArgument(0, TransactionCallback.class)
                    .doInTransaction(new SimpleTransactionStatus()));
-    when(settingsMapper.writeSettingDTO(accountSettingConfiguration, true, DEFAULT_VALUE)).thenReturn(settingDTO);
+    when(settingsMapper.writeSettingDTO(settingConfiguration, true, DEFAULT_VALUE)).thenReturn(settingDTO);
     when(settingEnforcementValidatorMap.get(identifier)).thenReturn(settingEnforcementValidator);
     when(SettingsValidatorFactory.getFeatureRestrictionName(identifier)).thenReturn(featureRestrictionName);
 
@@ -667,7 +649,7 @@ public class SettingsServiceImplTest extends CategoryTest {
     verify(settingsMapper, times(0)).writeNewDTO(any(), any(), any(), any(), any(Boolean.class), any());
     verify(settingEnforcementValidator, times(1))
         .validate(accountIdentifier, featureRestrictionName, settingDTO, settingDTO);
-    verify(settingRepository, times(1)).upsert(newAccountSetting);
+    verify(settingRepository, times(1)).upsert(newSetting);
     verify(outboxService, times(1)).save(any(SettingUpdateEvent.class));
     assertThat(batchResponse).contains(settingBatchResponseDTO);
   }

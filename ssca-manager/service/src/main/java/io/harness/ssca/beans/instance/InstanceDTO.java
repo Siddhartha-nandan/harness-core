@@ -38,5 +38,4 @@ public class InstanceDTO {
   private Long podCreatedAt;
 
   private ArtifactDetailsDTO primaryArtifact;
-  private InstanceInfoDTO instanceInfo;
 }

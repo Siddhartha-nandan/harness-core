@@ -159,7 +159,7 @@ iteratorsConfig:
      targetIntervalInSeconds: 1800
 
 ticketServiceRestClientConfig:
-  baseUrl: http://localhost:4444/api/
+  baseUrl: http://localhost:4444/
   connectTimeOutSeconds: 15
   readTimeOutSeconds: 15
 

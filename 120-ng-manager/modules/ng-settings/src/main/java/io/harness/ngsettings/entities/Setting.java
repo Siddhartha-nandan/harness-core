@@ -17,6 +17,7 @@ import io.harness.mongo.index.MongoIndex;
 import io.harness.ng.DbAliases;
 import io.harness.ng.core.NGAccountAccess;
 import io.harness.ngsettings.SettingCategory;
+import io.harness.ngsettings.SettingValueType;
 import io.harness.persistence.PersistentEntity;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -25,28 +26,26 @@ import dev.morphia.annotations.Entity;
 import java.util.List;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.Builder;
+import lombok.Data;
 import lombok.experimental.FieldNameConstants;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.annotation.Persistent;
+import org.springframework.data.annotation.TypeAlias;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @OwnedBy(HarnessTeam.PL)
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Data
+@Builder
 @FieldNameConstants(innerTypeName = "SettingKeys")
 @StoreIn(DbAliases.NG_MANAGER)
 @Entity(value = "settings", noClassnameStored = true)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Document("settings")
 @Persistent
-public abstract class Setting implements PersistentEntity, NGAccountAccess {
+@TypeAlias("NGSetting")
+public class Setting implements PersistentEntity, NGAccountAccess {
   @Id @dev.morphia.annotations.Id String id;
   @NotEmpty @EntityIdentifier String identifier;
   @Trimmed @NotEmpty String accountIdentifier;
@@ -54,6 +53,9 @@ public abstract class Setting implements PersistentEntity, NGAccountAccess {
   @Trimmed String projectIdentifier;
   @NotNull SettingCategory category;
   String groupIdentifier;
+  @NotNull Boolean allowOverrides;
+  @NotNull SettingValueType valueType;
+  @NotNull String value;
   @LastModifiedDate Long lastModifiedAt;
 
   public static List<MongoIndex> mongoIndexes() {

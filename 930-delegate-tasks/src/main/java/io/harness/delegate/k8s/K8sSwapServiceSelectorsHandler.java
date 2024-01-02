@@ -28,7 +28,6 @@ import io.harness.k8s.releasehistory.IK8sRelease;
 import io.harness.k8s.releasehistory.IK8sReleaseHistory;
 import io.harness.logging.CommandExecutionStatus;
 import io.harness.logging.LogCallback;
-import io.harness.logging.LogLevel;
 
 import com.google.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -75,11 +74,6 @@ public class K8sSwapServiceSelectorsHandler extends K8sRequestHandler {
     String stageColor = k8sBGBaseHandler.getInverseColor(primaryColor);
     IK8sRelease primaryRelease = releaseHistory.getLatestSuccessfulReleaseMatchingColor(primaryColor);
     IK8sRelease stageRelease = releaseHistory.getLatestSuccessfulReleaseMatchingColor(stageColor);
-
-    k8sSwapServiceSelectorsBaseHandler.updateTrafficRouting(kubernetesConfig, stageRelease,
-        k8sSwapServiceSelectorsRequest.getService1(), k8sSwapServiceSelectorsRequest.getService2(), logCallback);
-    logCallback.saveExecutionLog("Done", LogLevel.INFO, CommandExecutionStatus.SUCCESS);
-
     k8sSwapServiceSelectorsBaseHandler.updateReleaseHistory(primaryRelease, stageRelease);
     IK8sRelease release = (stageRelease != null) ? stageRelease : primaryRelease;
     if (!useDeclarativeRollback) {

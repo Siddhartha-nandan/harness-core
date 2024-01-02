@@ -8,10 +8,8 @@
 package io.harness.mapstruct.protobuf;
 
 import com.google.protobuf.ByteString;
-import com.google.protobuf.Timestamp;
 import com.google.protobuf.util.Durations;
 import java.time.Duration;
-import java.time.Instant;
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
 
@@ -25,7 +23,7 @@ import org.mapstruct.factory.Mappers;
 @Mapper
 public interface StandardProtobufMappers {
   StandardProtobufMappers INSTANCE = Mappers.getMapper(StandardProtobufMappers.class);
-  default Duration mapDuration(final com.google.protobuf.Duration t) {
+  default Duration mapDuration(com.google.protobuf.Duration t) {
     if (t != null) {
       return Duration.ofSeconds(t.getSeconds(), t.getNanos());
     } else {
@@ -33,7 +31,7 @@ public interface StandardProtobufMappers {
     }
   }
 
-  default com.google.protobuf.Duration mapDuration(final Duration t) {
+  default com.google.protobuf.Duration mapDuration(Duration t) {
     if (t != null) {
       return Durations.fromNanos(t.toNanos());
     } else {
@@ -41,29 +39,14 @@ public interface StandardProtobufMappers {
     }
   }
 
-  default Instant mapToInstant(final Timestamp timestamp) {
-    if (timestamp == null) {
-      return null;
-    }
-    return Instant.ofEpochSecond(timestamp.getSeconds(), timestamp.getNanos());
-  }
-
-  default Timestamp mapToTimestamp(final Instant instant) {
-    if (instant == null) {
-      return null;
-    }
-
-    return Timestamp.newBuilder().setSeconds(instant.getEpochSecond()).setNanos(instant.getNano()).build();
-  }
-
-  default ByteString mapByteString(final byte[] array) {
+  default ByteString mapByteString(byte[] array) {
     if (array == null) {
       return ByteString.EMPTY;
     }
     return ByteString.copyFrom(array);
   }
 
-  default byte[] mapByteString(final ByteString in) {
+  default byte[] mapByteString(ByteString in) {
     if (in != null && !in.isEmpty()) {
       return in.toByteArray();
     }

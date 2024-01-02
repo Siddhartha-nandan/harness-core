@@ -7,9 +7,7 @@
 
 package io.harness.execution;
 
-import static io.harness.steps.StepUtils.DEFAULT_CI_STEP_TIMEOUT_IN_HOURS;
 import static io.harness.steps.StepUtils.buildAbstractions;
-import static io.harness.steps.StepUtils.getTimeoutMillis;
 
 import static software.wings.beans.TaskType.CONTAINER_EXECUTE_STEP;
 
@@ -111,8 +109,7 @@ public class CIDelegateTaskExecutor {
             .stageId(stageId)
             .taskType(taskData.getTaskType())
             .taskParameters(extractTaskParameters(taskData))
-            .executionTimeout(
-                getTimeoutMillis(taskData.getTimeout(), Duration.ofHours(DEFAULT_CI_STEP_TIMEOUT_IN_HOURS)))
+            .executionTimeout(Duration.ofHours(12))
             .executeOnHarnessHostedDelegates(executeOnHarnessHostedDelegates)
             .taskSetupAbstractions(setupAbstractions)
             .expressionFunctorToken(taskData.getExpressionFunctorToken())

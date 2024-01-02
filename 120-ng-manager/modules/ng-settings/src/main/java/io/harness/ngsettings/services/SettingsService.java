@@ -14,7 +14,6 @@ import io.harness.ngsettings.dto.SettingRequestDTO;
 import io.harness.ngsettings.dto.SettingResponseDTO;
 import io.harness.ngsettings.dto.SettingUpdateResponseDTO;
 import io.harness.ngsettings.dto.SettingValueResponseDTO;
-import io.harness.ngsettings.entities.AccountSettingConfiguration;
 import io.harness.ngsettings.entities.SettingConfiguration;
 
 import java.util.List;
@@ -26,7 +25,7 @@ public interface SettingsService {
       List<SettingRequestDTO> settingRequestDTO);
   SettingValueResponseDTO get(
       String identifier, String accountIdentifier, String orgIdentifier, String projectIdentifier);
-  List<AccountSettingConfiguration> listDefaultSettings();
+  List<SettingConfiguration> listDefaultSettings();
   void removeSetting(String identifier);
   SettingConfiguration upsertSettingConfiguration(SettingConfiguration settingConfiguration);
 

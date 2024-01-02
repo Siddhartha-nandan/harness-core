@@ -23,9 +23,4 @@ public interface ServiceOverrideRepositoryCustomV2 {
   Page<NGServiceOverridesEntity> findAll(Criteria criteria, Pageable pageRequest);
 
   List<NGServiceOverridesEntity> findAll(Criteria criteria);
-
-  NGServiceOverridesEntity saveGitAware(NGServiceOverridesEntity overrideToSave);
-
-  NGServiceOverridesEntity getRemoteOverridesWithYaml(
-      NGServiceOverridesEntity ngServiceOverridesEntity, boolean loadFromCache, boolean loadFromFallbackBranch);
 }

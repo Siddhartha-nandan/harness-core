@@ -17,31 +17,22 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.data.validator.EntityIdentifier;
 import io.harness.data.validator.Trimmed;
-import io.harness.gitsync.beans.StoreType;
 import io.harness.mongo.index.CompoundMongoIndex;
 import io.harness.mongo.index.MongoIndex;
 import io.harness.ng.DbAliases;
 import io.harness.ng.core.ScopeAware;
-import io.harness.ng.core.serviceoverridev2.beans.ServiceOverrideSpecConfig;
 import io.harness.ng.core.serviceoverridev2.beans.ServiceOverridesSpec;
 import io.harness.ng.core.serviceoverridev2.beans.ServiceOverridesType;
 import io.harness.persistence.PersistentEntity;
-import io.harness.persistence.gitaware.GitAware;
-import io.harness.pms.yaml.YamlUtils;
 
 import com.google.common.collect.ImmutableList;
 import dev.morphia.annotations.Entity;
-import java.io.IOException;
 import java.util.List;
 import javax.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Data;
-import lombok.Setter;
-import lombok.With;
 import lombok.experimental.FieldNameConstants;
-import lombok.experimental.NonFinal;
 import lombok.experimental.Wither;
-import lombok.extern.slf4j.Slf4j;
 import org.hibernate.validator.constraints.NotEmpty;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
@@ -49,7 +40,6 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.annotation.TypeAlias;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-@Slf4j
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = false,
     components = {HarnessModuleComponent.CDS_SERVICE_ENVIRONMENT})
 @Data
@@ -61,7 +51,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @TypeAlias("io.harness.ng.core.serviceoverride.beans.NGServiceOverridesEntity")
 @RecasterAlias("io.harness.ng.core.serviceoverride.beans.NGServiceOverridesEntity")
 @OwnedBy(CDC)
-public class NGServiceOverridesEntity implements PersistentEntity, ScopeAware, GitAware {
+public class NGServiceOverridesEntity implements PersistentEntity, ScopeAware {
   public static List<MongoIndex> mongoIndexes() {
     return ImmutableList.<MongoIndex>builder()
         .add(CompoundMongoIndex.builder()
@@ -107,35 +97,4 @@ public class NGServiceOverridesEntity implements PersistentEntity, ScopeAware, G
 
   @Wither @CreatedDate Long createdAt;
   @Wither @LastModifiedDate Long lastModifiedAt;
-
-  // GitX field
-  @With @Setter @NonFinal StoreType storeType;
-  @With @Setter @NonFinal String repo;
-  @With @Setter @NonFinal String connectorRef;
-  @With @Setter @NonFinal String repoURL;
-  @With @Setter @NonFinal String fallBackBranch;
-  @Setter @NonFinal String filePath;
-
-  @Override
-  public String getData() {
-    return yamlV2;
-  }
-
-  @Override
-  public void setData(String data) {
-    this.yamlV2 = data;
-    setSpecFromYamlV2();
-  }
-
-  private void setSpecFromYamlV2() {
-    try {
-      ServiceOverrideSpecConfig specConfig = YamlUtils.read(this.yamlV2, ServiceOverrideSpecConfig.class);
-      // overwrite spec from yamlV2
-      this.spec = specConfig.getSpec();
-    } catch (IOException ex) {
-      log.error(
-          String.format("Could not set spec from YAML for override : [%s] of type [%s]", this.identifier, this.type),
-          ex);
-    }
-  }
 }

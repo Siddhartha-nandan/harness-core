@@ -16,7 +16,6 @@ import io.harness.annotations.dev.ProductModule;
 import io.harness.delegate.task.k8s.ReleaseMetadata;
 import io.harness.k8s.model.KubernetesResource;
 import io.harness.k8s.model.KubernetesResourceId;
-import io.harness.k8s.trafficrouting.TrafficRoutingInfoDTO;
 
 import java.util.ArrayList;
 import java.util.List;

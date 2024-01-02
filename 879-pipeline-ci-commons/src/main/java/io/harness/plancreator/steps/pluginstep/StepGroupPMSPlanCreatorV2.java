@@ -6,12 +6,10 @@
  */
 
 package io.harness.plancreator.steps;
-
 import static io.harness.pms.yaml.YAMLFieldNameConstants.PARALLEL;
 import static io.harness.pms.yaml.YAMLFieldNameConstants.ROLLBACK_STEPS;
 import static io.harness.pms.yaml.YAMLFieldNameConstants.STEP_GROUP;
 import static io.harness.pms.yaml.YAMLFieldNameConstants.STEP_GROUP_CHILD_NODE_ID;
-import static io.harness.utils.ContainerStepGroupValidator.validateContainerStepGroup;
 
 import io.harness.advisers.nextstep.NextStepAdviserParameters;
 import io.harness.annotations.dev.CodePulse;
@@ -80,8 +78,6 @@ public class StepGroupPMSPlanCreatorV2 extends ChildrenPlanCreator<StepGroupElem
     if (config.getStepGroupInfra() == null) {
       return stepGroupPMSPlanCreator.createPlanForChildrenNodes(ctx, config);
     }
-    validateContainerStepGroup(config);
-
     List<YamlField> dependencyNodeIdsList = ctx.getStepYamlFields();
 
     LinkedHashMap<String, PlanCreationResponse> responseMap = new LinkedHashMap<>();

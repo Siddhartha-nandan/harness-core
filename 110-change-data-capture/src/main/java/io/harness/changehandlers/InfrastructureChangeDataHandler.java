@@ -168,11 +168,6 @@ public class InfrastructureChangeDataHandler extends AbstractChangeDataHandler {
   }
 
   @Override
-  public boolean shouldUpdateOnConflict() {
-    return true;
-  }
-
-  @Override
   public List<String> getPrimaryKeys() {
     return asList("id");
   }

@@ -6,7 +6,6 @@
  */
 
 package io.harness.helm;
-
 import static io.harness.annotations.dev.HarnessTeam.CDP;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
@@ -40,7 +39,6 @@ import io.harness.k8s.model.HelmVersion;
 import io.harness.logging.CommandExecutionStatus;
 import io.harness.logging.LogCallback;
 import io.harness.logging.LogLevel;
-import io.harness.taskcontext.HelmTaskContextHolder;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
@@ -597,12 +595,10 @@ public class HelmClientImpl implements HelmClient {
       return executeWithExceptionHandling(command, commandType, errorMessagePrefix, errorStream, env);
     } catch (InterruptedException e) {
       // Don't interrupt again, we need to propagate exception to the delegate task and perform post-failure tasks
-
-      throw new HelmClientRuntimeException(new HelmClientException(ExceptionUtils.getMessage(e), USER, commandType),
-          INTERRUPT, HelmTaskContextHolder.get());
-    } catch (Exception e) {
       throw new HelmClientRuntimeException(
-          new HelmClientException(ExceptionUtils.getMessage(e), USER, commandType), HelmTaskContextHolder.get());
+          new HelmClientException(ExceptionUtils.getMessage(e), USER, commandType), INTERRUPT);
+    } catch (Exception e) {
+      throw new HelmClientRuntimeException(new HelmClientException(ExceptionUtils.getMessage(e), USER, commandType));
     }
   }
 
@@ -619,9 +615,8 @@ public class HelmClientImpl implements HelmClient {
           && (outputMessage.contains("not found") && outputMessage.contains("release"))) {
         return helmCliResponse;
       }
-      throw new HelmClientRuntimeException(ExceptionMessageSanitizer.sanitizeException(new HelmClientException(
-                                               errorMessagePrefix + command + ". " + outputMessage, USER, commandType)),
-          HelmTaskContextHolder.get());
+      throw new HelmClientRuntimeException(ExceptionMessageSanitizer.sanitizeException(
+          new HelmClientException(errorMessagePrefix + command + ". " + outputMessage, USER, commandType)));
     }
     return helmCliResponse;
   }

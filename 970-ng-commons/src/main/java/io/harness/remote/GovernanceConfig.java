@@ -22,8 +22,6 @@ public class GovernanceConfig {
   private String awsFaktoryQueueName;
   private String azureFaktoryJobType;
   private String azureFaktoryQueueName;
-  private String gcpFaktoryJobType;
-  private String gcpFaktoryQueueName;
   private String OOTBAccount;
   private String tagsKey;
   private String tagsValue;

@@ -6,9 +6,6 @@
  */
 
 package io.harness.ngmigration.service.step;
-import static io.harness.ngmigration.beans.MigrationInputSettingsType.MIGRATE_SHELL_VARIABLES_WITH_ALIAS;
-import static io.harness.ngmigration.beans.MigrationInputSettingsType.SIMULTANEOUS_DEPLOYMENT_ON_SAME_INFRA;
-
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
@@ -29,7 +26,6 @@ import io.harness.pms.yaml.ParameterField;
 import io.harness.shell.ScriptType;
 import io.harness.steps.StepSpecTypeConstants;
 import io.harness.steps.shellscript.ExecutionTarget;
-import io.harness.steps.shellscript.OutputAlias;
 import io.harness.steps.shellscript.ShellScriptInlineSource;
 import io.harness.steps.shellscript.ShellScriptSourceWrapper;
 import io.harness.steps.shellscript.ShellScriptStepInfo;
@@ -173,15 +169,8 @@ public class ShellScriptStepMapperImpl extends StepMapper {
                             .collect(Collectors.toList()));
     }
 
-    var exportScope = getSweepingOutputScope(state);
-
     shellScriptStepNode.setShellScriptStepInfo(
         ShellScriptStepInfo.infoBuilder()
-            .outputAlias(exportScope != null ? OutputAlias.builder()
-                                                   .key(ParameterField.createValueField(getSweepingOutputName(state)))
-                                                   .scope(exportScope)
-                                                   .build()
-                                             : null)
             .onDelegate(ParameterField.createValueField(state.isExecuteOnDelegate()))
             .includeInfraSelectors(ParameterField.createValueField(state.getIncludeInfraSelectors()))
             .shell(ScriptType.BASH.equals(state.getScriptType()) ? ShellType.Bash : ShellType.PowerShell)
@@ -241,12 +230,9 @@ public class ShellScriptStepMapperImpl extends StepMapper {
   public List<StepExpressionFunctor> getExpressionFunctor(
       WorkflowMigrationContext context, String stageName, String stepGroupName, GraphNode graphNode) {
     String sweepingOutputName = getSweepingOutputName(graphNode);
-    var scope = getSweepingOutputScope(graphNode);
     if (StringUtils.isEmpty(sweepingOutputName)) {
       return Collections.emptyList();
     }
-    var useAlias =
-        MigratorUtility.getSettingValue(context.getMigrationInputDTO(), MIGRATE_SHELL_VARIABLES_WITH_ALIAS, "false");
     return Lists.newArrayList(String.format("context.%s", sweepingOutputName), String.format("%s", sweepingOutputName))
         .stream()
         .map(exp
@@ -257,8 +243,6 @@ public class ShellScriptStepMapperImpl extends StepMapper {
                    .stepGroupIdentifier(
                        MigratorUtility.generateIdentifier(stepGroupName, context.getIdentifierCaseFormat()))
                    .expression(exp)
-                   .exportScope(scope)
-                   .useAlias(Boolean.parseBoolean(useAlias))
                    .build())
         .map(ShellScriptStepFunctor::new)
         .collect(Collectors.toList());

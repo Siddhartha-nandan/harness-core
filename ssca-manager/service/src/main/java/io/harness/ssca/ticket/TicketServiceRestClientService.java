@@ -10,13 +10,9 @@ package io.harness.ssca.ticket;
 import io.harness.ssca.beans.ticket.TicketRequestDto;
 import io.harness.ssca.beans.ticket.TicketResponseDto;
 
-import java.util.List;
-import java.util.Map;
+import java.io.IOException;
 
 public interface TicketServiceRestClientService {
-  TicketResponseDto createTicket(
-      String authToken, String accountId, String orgId, String projectId, TicketRequestDto ticketRequestDto);
-
-  List<TicketResponseDto> getTickets(String authToken, String module, Map<String, List<String>> identifiers,
-      String accountId, String orgId, String projectId);
+  TicketResponseDto createTicket(String accountId, String orgId, String projectId, TicketRequestDto ticketRequestDto)
+      throws IOException;
 }

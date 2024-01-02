@@ -13,6 +13,5 @@ import io.harness.annotations.dev.ProductModule;
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = true, components = {HarnessModuleComponent.CDS_MIGRATOR})
 public enum MigrationInputSettingsType {
   // this setting can allow simultaneous deployments to this infrastructure
-  SIMULTANEOUS_DEPLOYMENT_ON_SAME_INFRA,
-  MIGRATE_SHELL_VARIABLES_WITH_ALIAS
+  SIMULTANEOUS_DEPLOYMENT_ON_SAME_INFRA
 }

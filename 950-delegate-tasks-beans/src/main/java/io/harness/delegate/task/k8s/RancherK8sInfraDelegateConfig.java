@@ -6,7 +6,6 @@
  */
 
 package io.harness.delegate.task.k8s;
-
 import static io.harness.annotations.dev.HarnessTeam.CDP;
 
 import io.harness.annotation.RecasterAlias;
@@ -16,8 +15,6 @@ import io.harness.annotations.dev.OwnedBy;
 import io.harness.annotations.dev.ProductModule;
 import io.harness.delegate.beans.connector.rancher.RancherConnectorDTO;
 import io.harness.security.encryption.EncryptedDataDetail;
-import io.harness.taskcontext.infra.InfraContext;
-import io.harness.taskcontext.infra.RancherK8sInfraContext;
 
 import java.util.List;
 import lombok.Builder;
@@ -33,9 +30,4 @@ public class RancherK8sInfraDelegateConfig implements K8sInfraDelegateConfig {
   String cluster;
   RancherConnectorDTO rancherConnectorDTO;
   List<EncryptedDataDetail> encryptionDataDetails;
-
-  @Override
-  public InfraContext toInfraContext(String delegateId) {
-    return RancherK8sInfraContext.builder().delegateId(delegateId).build();
-  }
 }

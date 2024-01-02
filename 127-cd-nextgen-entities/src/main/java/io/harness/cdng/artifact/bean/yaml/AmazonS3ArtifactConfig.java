@@ -12,7 +12,6 @@ import static io.harness.delegate.task.artifacts.ArtifactSourceConstants.AMAZON_
 
 import io.harness.annotation.RecasterAlias;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.artifact.ArtifactMetadataKeys;
 import io.harness.beans.SwaggerConstants;
 import io.harness.cdng.artifact.bean.ArtifactConfig;
 import io.harness.cdng.artifact.utils.ArtifactUtils;
@@ -139,7 +138,6 @@ public class AmazonS3ArtifactConfig implements ArtifactConfig, Visitable, WithCo
 
   @Override
   public void validate() {
-    ArtifactConfigHelper.checkParameter(bucketName, ArtifactMetadataKeys.bucketName);
     ArtifactConfigHelper.checkFilePathAndFilePathRegex(filePath, filePathRegex);
   }
 }

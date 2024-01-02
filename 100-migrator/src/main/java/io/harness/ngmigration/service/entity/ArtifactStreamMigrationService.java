@@ -6,7 +6,6 @@
  */
 
 package io.harness.ngmigration.service.entity;
-
 import static java.util.stream.Collectors.counting;
 import static java.util.stream.Collectors.groupingBy;
 
@@ -115,7 +114,7 @@ public class ArtifactStreamMigrationService extends NgMigrationService {
   }
 
   @Override
-  public boolean canMigrate(MigrationContext migrationContext, CgEntityId id, CgEntityId root, boolean migrateAll) {
+  public boolean canMigrate(CgEntityId id, CgEntityId root, boolean migrateAll) {
     return migrateAll || root.getType().equals(NGMigrationEntityType.SERVICE);
   }
 }

@@ -138,6 +138,8 @@ import io.harness.waiter.NotifyEvent;
 import io.harness.waiter.NotifyQueuePublisherRegister;
 import io.harness.waiter.NotifyResponseCleaner;
 import io.harness.waiter.ProgressUpdateService;
+import io.harness.yaml.YamlSdkConfiguration;
+import io.harness.yaml.YamlSdkInitHelper;
 import io.harness.yaml.YamlSdkModule;
 import io.harness.yaml.schema.beans.YamlSchemaRootClass;
 
@@ -280,7 +282,7 @@ public class CIManagerApplication extends Application<CIManagerConfiguration> {
       @Provides
       @Singleton
       List<YamlSchemaRootClass> yamlSchemaRootClasses() {
-        return ImmutableList.<YamlSchemaRootClass>builder().build();
+        return ImmutableList.<YamlSchemaRootClass>builder().addAll(CiBeansRegistrars.yamlSchemaRegistrars).build();
       }
     });
 
@@ -354,6 +356,7 @@ public class CIManagerApplication extends Application<CIManagerConfiguration> {
     registerExceptionMappers(environment);
     registerCorrelationFilter(environment, injector);
     registerStores(configuration, injector);
+    registerYamlSdk(injector);
     scheduleJobs(injector, configuration);
     registerQueueListener(injector);
     registerPmsSdkEvents(injector);
@@ -616,6 +619,16 @@ public class CIManagerApplication extends Application<CIManagerConfiguration> {
   private void registerTraceFilter(Environment environment, Injector injector) {
     environment.jersey().register(injector.getInstance(TraceFilter.class));
   }
+
+  private void registerYamlSdk(Injector injector) {
+    YamlSdkConfiguration yamlSdkConfiguration = YamlSdkConfiguration.builder()
+                                                    .requireSchemaInit(true)
+                                                    .requireSnippetInit(true)
+                                                    .requireValidatorInit(false)
+                                                    .build();
+    YamlSdkInitHelper.initialize(injector, yamlSdkConfiguration);
+  }
+
   private void registerMigrations(Injector injector) {
     NGMigrationConfiguration config = getMigrationSdkConfiguration();
     NGMigrationSdkInitHelper.initialize(injector, config);

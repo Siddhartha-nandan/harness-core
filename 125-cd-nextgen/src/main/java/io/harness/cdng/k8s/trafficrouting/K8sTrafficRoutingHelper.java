@@ -27,7 +27,6 @@ import io.harness.delegate.task.k8s.trafficrouting.TrafficRoutingDestination;
 import io.harness.exception.InvalidArgumentsException;
 
 import com.google.inject.Singleton;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -70,13 +69,11 @@ public class K8sTrafficRoutingHelper {
   }
 
   private List<TrafficRoute> getTrafficRouts(AbstractK8sTrafficRouting trafficRouting) {
-    List<K8sTrafficRoutingRoute> routes = trafficRouting.getSpec().getRoutes();
-    return routes != null
-        ? routes.stream()
-              .map(route
-                  -> mapRoutes(trafficRouting.getProvider(), route.getRoute().getType(), route.getRoute().getRules()))
-              .collect(Collectors.toList())
-        : Collections.emptyList();
+    return trafficRouting.getSpec()
+        .getRoutes()
+        .stream()
+        .map(route -> mapRoutes(trafficRouting.getProvider(), route.getRoute().getType(), route.getRoute().getRules()))
+        .collect(Collectors.toList());
   }
 
   private TrafficRoute mapRoutes(AbstractK8sTrafficRouting.ProviderType providerType,

@@ -32,12 +32,8 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @OwnedBy(CV)
 public class NewRelicMetricPackValidationRequest extends DataCollectionRequest<NewRelicConnectorDTO> {
-  public static final String INSIGHTS_DSL = DataCollectionRequest.readDSL(
+  public static final String DSL = DataCollectionRequest.readDSL(
       "newrelic-metric-pack-validation.datacollection", NewRelicMetricPackValidationRequest.class);
-  public static final String NERDGRAPHQL_API_DSL = DataCollectionRequest.readDSL(
-      "newrelic-api-metric-pack-validation.datacollection", NewRelicMetricPackValidationRequest.class);
-  public static final String INSIGHTS = "insights";
-  public static final String GRAPHQL_ENDPOINT = "https://api.newrelic.com/graphql";
 
   private String applicationName;
   private String applicationId;
@@ -45,10 +41,7 @@ public class NewRelicMetricPackValidationRequest extends DataCollectionRequest<N
 
   @Override
   public String getDSL() {
-    if (getConnectorConfigDTO().getUrl().contains(INSIGHTS)) {
-      return INSIGHTS_DSL;
-    }
-    return NERDGRAPHQL_API_DSL;
+    return DSL;
   }
 
   @Override
@@ -66,9 +59,6 @@ public class NewRelicMetricPackValidationRequest extends DataCollectionRequest<N
     Map<String, Object> envVariables = new HashMap<>();
     envVariables.put("appId", applicationId);
     envVariables.put("appName", applicationName);
-    envVariables.put("accountId", getConnectorConfigDTO().getNewRelicAccountId());
-    envVariables.put("graphqlURL", GRAPHQL_ENDPOINT);
-    envVariables.put("commonHeaders", collectionHeaders());
     List<NewRelicValidationCollectionInfo> collectionInfoList = getNewRelicValidationCollectionInfo();
     List<String> queryList = new ArrayList<>();
     List<String> metricNameList = new ArrayList<>();

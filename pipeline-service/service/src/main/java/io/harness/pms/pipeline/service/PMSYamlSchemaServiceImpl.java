@@ -26,6 +26,7 @@ import io.harness.logging.AccountLogContext;
 import io.harness.logging.AutoLogContext;
 import io.harness.pms.merger.YamlConfig;
 import io.harness.pms.merger.helpers.FQNMapGenerator;
+import io.harness.pms.pipeline.service.yamlschema.PmsYamlSchemaHelper;
 import io.harness.pms.pipeline.service.yamlschema.SchemaFetcher;
 import io.harness.pms.yaml.HarnessYamlVersion;
 import io.harness.pms.yaml.NGYamlHelper;
@@ -33,7 +34,6 @@ import io.harness.pms.yaml.YamlUtils;
 import io.harness.pms.yaml.preprocess.YamlPreProcessor;
 import io.harness.pms.yaml.preprocess.YamlPreProcessorFactory;
 import io.harness.utils.PipelineVersionConstants;
-import io.harness.utils.PmsFeatureFlagHelper;
 import io.harness.yaml.individualschema.PipelineSchemaMetadata;
 import io.harness.yaml.individualschema.PipelineSchemaParserFactory;
 import io.harness.yaml.individualschema.PipelineSchemaRequest;
@@ -64,10 +64,12 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class PMSYamlSchemaServiceImpl implements PMSYamlSchemaService {
   public static final long SCHEMA_TIMEOUT = 10;
+
   private final YamlSchemaValidator yamlSchemaValidator;
-  private final PmsFeatureFlagHelper pmsFeatureFlagHelper;
+  private final PmsYamlSchemaHelper pmsYamlSchemaHelper;
   private final SchemaFetcher schemaFetcher;
   private final InputsSchemaServiceImpl inputsSchemaService;
+
   private ExecutorService yamlSchemaExecutor;
 
   @Inject PipelineSchemaParserFactory pipelineSchemaParserFactory;
@@ -78,11 +80,11 @@ public class PMSYamlSchemaServiceImpl implements PMSYamlSchemaService {
   private final String STEP_GROUP_NODE_TYPE = "step_group";
 
   @Inject
-  public PMSYamlSchemaServiceImpl(YamlSchemaValidator yamlSchemaValidator, PmsFeatureFlagHelper pmsFeatureFlagHelper,
+  public PMSYamlSchemaServiceImpl(YamlSchemaValidator yamlSchemaValidator, PmsYamlSchemaHelper pmsYamlSchemaHelper,
       SchemaFetcher schemaFetcher, @Named("YamlSchemaExecutorService") ExecutorService executor,
       InputsSchemaServiceImpl inputsSchemaService) {
     this.yamlSchemaValidator = yamlSchemaValidator;
-    this.pmsFeatureFlagHelper = pmsFeatureFlagHelper;
+    this.pmsYamlSchemaHelper = pmsYamlSchemaHelper;
     this.schemaFetcher = schemaFetcher;
     this.yamlSchemaExecutor = executor;
     this.inputsSchemaService = inputsSchemaService;
@@ -93,7 +95,7 @@ public class PMSYamlSchemaServiceImpl implements PMSYamlSchemaService {
       String accountId, String orgId, String projectId, JsonNode jsonNode, String harnessVersion) {
     // Keeping pipeline yaml schema validation behind ff. If ff is disabled then schema validation will happen. Will
     // remove after finding the root cause of invalid schema generation and fixing it.
-    if (!pmsFeatureFlagHelper.isEnabled(accountId, FeatureName.DISABLE_PIPELINE_SCHEMA_VALIDATION)) {
+    if (!pmsYamlSchemaHelper.isFeatureFlagEnabled(FeatureName.DISABLE_PIPELINE_SCHEMA_VALIDATION, accountId)) {
       Future<Boolean> future = yamlSchemaExecutor.submit(
           () -> validateYamlSchemaInternal(accountId, orgId, projectId, jsonNode, harnessVersion));
       try (AutoLogContext accountLogContext =

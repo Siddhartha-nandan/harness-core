@@ -6,7 +6,6 @@
  */
 
 package io.harness.ngmigration.service.importer;
-
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.HarnessTeam;
@@ -36,13 +35,8 @@ public class ServiceImportService implements ImportService {
   @Inject ServiceResourceService serviceResourceService;
 
   public DiscoveryResult discover(ImportDTO importDTO) {
-    String accountId = importDTO.getAccountIdentifier();
-    return discoveryService.discoverMulti(accountId, getDiscoveryInput(importDTO));
-  }
-
-  @Override
-  public DiscoveryInput getDiscoveryInput(ImportDTO importDTO) {
     ServiceFilter filter = (ServiceFilter) importDTO.getFilter();
+    String accountId = importDTO.getAccountIdentifier();
     String appId = filter.getAppId();
 
     List<String> serviceIds = filter.getIds();
@@ -53,17 +47,17 @@ public class ServiceImportService implements ImportService {
       }
       serviceIds = services.stream().map(Service::getUuid).collect(Collectors.toList());
     }
-
-    return DiscoveryInput.builder()
-        .entities(serviceIds.stream()
-                      .map(id
-                          -> DiscoverEntityInput.builder()
-                                 .entityId(id)
-                                 .appId(appId)
-                                 .type(NGMigrationEntityType.SERVICE)
-                                 .build())
-                      .collect(Collectors.toList()))
-        .exportImage(false)
-        .build();
+    return discoveryService.discoverMulti(accountId,
+        DiscoveryInput.builder()
+            .entities(serviceIds.stream()
+                          .map(id
+                              -> DiscoverEntityInput.builder()
+                                     .entityId(id)
+                                     .appId(appId)
+                                     .type(NGMigrationEntityType.SERVICE)
+                                     .build())
+                          .collect(Collectors.toList()))
+            .exportImage(false)
+            .build());
   }
 }

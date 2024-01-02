@@ -22,7 +22,6 @@ import io.harness.steps.StepSpecTypeConstants;
 import io.harness.steps.approval.step.harness.beans.ApproverInputInfo;
 import io.harness.steps.approval.step.harness.beans.Approvers;
 import io.harness.steps.approval.step.harness.beans.AutoApprovalParams;
-import io.harness.validator.NGRegexValidatorConstants;
 import io.harness.yaml.YamlSchemaTypes;
 import io.harness.yaml.core.VariableExpression;
 
@@ -31,7 +30,6 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
 import io.swagger.annotations.ApiModelProperty;
 import java.util.List;
 import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Pattern;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Data;
@@ -54,9 +52,7 @@ public class HarnessApprovalStepInfo implements PMSStepInfo {
 
   @NotEmpty @ApiModelProperty(dataType = SwaggerConstants.STRING_CLASSPATH) ParameterField<String> approvalMessage;
 
-  @ApiModelProperty(dataType = SwaggerConstants.STRING_CLASSPATH)
-  @Pattern(regexp = NGRegexValidatorConstants.EXPRESSION_OR_FIXED_VALUE_WITH_NO_SPACE)
-  ParameterField<String> callbackId;
+  @ApiModelProperty(dataType = SwaggerConstants.STRING_CLASSPATH) ParameterField<String> callbackId;
 
   @NotNull
   @YamlSchemaTypes(value = {string})

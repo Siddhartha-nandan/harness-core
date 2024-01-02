@@ -354,11 +354,7 @@ public class InfraMigrationService extends NgMigrationService {
   }
 
   @Override
-  public boolean canMigrate(MigrationContext migrationContext, CgEntityId id, CgEntityId root, boolean migrateAll) {
-    if (EmptyPredicate.isNotEmpty(migrationContext.getInputDTO().getSkipEntities())) {
-      return !migrationContext.getInputDTO().getSkipEntities().contains(NGMigrationEntityType.INFRA);
-    }
-
+  public boolean canMigrate(CgEntityId id, CgEntityId root, boolean migrateAll) {
     return migrateAll || root.getType().equals(NGMigrationEntityType.ENVIRONMENT);
   }
 

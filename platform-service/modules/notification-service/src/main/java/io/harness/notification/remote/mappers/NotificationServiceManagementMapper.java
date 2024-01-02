@@ -39,8 +39,6 @@ import java.util.stream.Collectors;
 public class NotificationServiceManagementMapper {
   private static Map<ChannelType, NotificationChannelType> notificationChannelTypeEnumMap = new HashMap<>();
   private static Map<NotificationChannelType, ChannelType> channelTypeEnumMap = new HashMap<>();
-  private static Map<Status, NotificationChannel.Status> channelStatusEnumMap = new HashMap<>();
-  private static Map<NotificationChannel.Status, Status> statusEnumMap = new HashMap<>();
 
   static {
     notificationChannelTypeEnumMap.put(ChannelType.EMAIL, NotificationChannelType.EMAIL);
@@ -50,10 +48,6 @@ public class NotificationServiceManagementMapper {
     notificationChannelTypeEnumMap.put(ChannelType.WEBHOOK, NotificationChannelType.WEBHOOK);
     channelTypeEnumMap = notificationChannelTypeEnumMap.entrySet().stream().collect(
         Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
-    channelStatusEnumMap.put(Status.ENABLED, NotificationChannel.Status.ENABLED);
-    channelStatusEnumMap.put(Status.DISABLED, NotificationChannel.Status.DISABLED);
-    statusEnumMap =
-        channelStatusEnumMap.entrySet().stream().collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
   }
 
   public NotificationRule toNotificationRuleEntity(NotificationRuleDTO notificationRuleDTO) {
@@ -89,7 +83,6 @@ public class NotificationServiceManagementMapper {
         .identifier(notificationChannelDTO.getIdentifier())
         .notificationChannelType(notificationChannelType)
         .name(notificationChannelDTO.getName())
-        .status(channelStatusEnumMap.get(notificationChannelDTO.getStatus()))
         .channel(toChannelEntity(notificationChannelDTO, notificationChannelType))
         .build();
   }
@@ -101,7 +94,6 @@ public class NotificationServiceManagementMapper {
         .org(notificationChannel.getOrgIdentifier())
         .notificationChannelType(channelTypeEnumMap.get(notificationChannel.getNotificationChannelType()))
         .name(notificationChannel.getName())
-        .status(statusEnumMap.get(notificationChannel.getStatus()))
         .channel(getChannel(notificationChannel));
   }
 

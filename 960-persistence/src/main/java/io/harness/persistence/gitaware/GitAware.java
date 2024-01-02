@@ -8,7 +8,6 @@
 package io.harness.persistence.gitaware;
 
 import io.harness.beans.WithIdentifier;
-import io.harness.gitsync.beans.StoreType;
 import io.harness.persistence.PersistentEntity;
 
 /**
@@ -30,6 +29,4 @@ public interface GitAware extends PersistentEntity, WithIdentifier {
 
   // Connector Identifier which will be used connect to the repo
   String getConnectorRef();
-
-  StoreType getStoreType();
 }

@@ -19,6 +19,7 @@ import io.harness.mongo.index.MongoIndex;
 import io.harness.ng.DbAliases;
 import io.harness.ngsettings.SettingCategory;
 import io.harness.ngsettings.SettingPlanConfig;
+import io.harness.ngsettings.SettingValueType;
 import io.harness.persistence.PersistentEntity;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -29,32 +30,34 @@ import java.util.Map;
 import java.util.Set;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.Builder;
+import lombok.Data;
 import lombok.experimental.FieldNameConstants;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Persistent;
+import org.springframework.data.annotation.TypeAlias;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @OwnedBy(HarnessTeam.PL)
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Data
+@Builder
 @FieldNameConstants(innerTypeName = "SettingConfigurationKeys")
 @StoreIn(DbAliases.NG_MANAGER)
 @Entity(value = "settingConfigurations", noClassnameStored = true)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Document("settingConfigurations")
 @Persistent
-public abstract class SettingConfiguration implements PersistentEntity {
+@TypeAlias("NGSettingConfiguration")
+public class SettingConfiguration implements PersistentEntity {
   @Id @dev.morphia.annotations.Id String id;
   @NotEmpty @EntityIdentifier String identifier;
   @NotEmpty @NGEntityName String name;
   @NotNull SettingCategory category;
   String groupIdentifier;
+  String defaultValue;
+  @NotNull SettingValueType valueType;
+  Set<String> allowedValues;
+  Boolean allowOverrides;
   @NotNull Set<ScopeLevel> allowedScopes;
   Map<Edition, SettingPlanConfig> allowedPlans;
 

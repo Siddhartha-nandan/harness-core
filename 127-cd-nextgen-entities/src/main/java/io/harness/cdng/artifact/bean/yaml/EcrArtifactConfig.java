@@ -12,7 +12,6 @@ import static io.harness.delegate.task.artifacts.ArtifactSourceConstants.ECR_NAM
 
 import io.harness.annotation.RecasterAlias;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.artifact.ArtifactMetadataKeys;
 import io.harness.beans.SwaggerConstants;
 import io.harness.cdng.artifact.bean.ArtifactConfig;
 import io.harness.cdng.artifact.utils.ArtifactUtils;
@@ -144,8 +143,6 @@ public class EcrArtifactConfig implements ArtifactConfig, Visitable, WithConnect
 
   @Override
   public void validate() {
-    ArtifactConfigHelper.checkParameter(region, ArtifactMetadataKeys.region);
-    ArtifactConfigHelper.checkParameter(imagePath, ArtifactMetadataKeys.IMAGE_PATH);
     ArtifactConfigHelper.checkTagAndTagRegex(tag, tagRegex);
   }
 }

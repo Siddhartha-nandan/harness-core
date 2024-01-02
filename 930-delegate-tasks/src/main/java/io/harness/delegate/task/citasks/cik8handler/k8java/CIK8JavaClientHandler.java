@@ -260,7 +260,6 @@ public class CIK8JavaClientHandler {
         getRetryPolicyForDeletion(format("[Retrying failed to delete pod: [%s]; attempt: {}", podName),
             format("Failed to delete pod after retrying {} times", podName));
 
-    log.info("Cluster endpoint for deletion : {}", coreV1Api.getApiClient().getBasePath());
     GenericKubernetesApi<V1Pod, V1PodList> podClient =
         new GenericKubernetesApi(V1Pod.class, V1PodList.class, "", "v1", "pods", coreV1Api.getApiClient());
     return Failsafe.with(retryPolicy).get(() -> deletePod(podClient, podName, namespace));
@@ -277,8 +276,7 @@ public class CIK8JavaClientHandler {
     }
 
     if (kubernetesApiResponse.getHttpStatusCode() == 404) {
-      log.warn("Pod {} with Namespace {} not found, api status: {}", podName, namespace,
-          kubernetesApiResponse.getStatus().toString());
+      log.warn("Pod {} not found ", podName);
       throw new PodNotFoundException("Failed to delete pod " + podName);
     } else {
       log.warn("Pod {} deletion failed with response code: {}", podName, kubernetesApiResponse.getHttpStatusCode());

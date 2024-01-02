@@ -152,7 +152,7 @@ public class PipelineExecutorTest extends CategoryTest {
 
     doReturn(planExecution)
         .when(executionHelper)
-        .startExecution(accountId, orgId, projectId, metadata, planExecutionMetadata, false, null, null, null, true);
+        .startExecution(accountId, orgId, projectId, metadata, planExecutionMetadata, false, null, null, null);
 
     MergeInputSetRequestDTOPMS mergeInputSetRequestDTOPMS =
         MergeInputSetRequestDTOPMS.builder().inputSetReferences(inputSetReferences).build();
@@ -234,7 +234,7 @@ public class PipelineExecutorTest extends CategoryTest {
 
     doReturn(planExecution)
         .when(executionHelper)
-        .startExecution(accountId, orgId, projectId, metadata, planExecutionMetadata, false, null, null, null, true);
+        .startExecution(accountId, orgId, projectId, metadata, planExecutionMetadata, false, null, null, null);
 
     MergeInputSetRequestDTOPMS mergeInputSetRequestDTOPMS =
         MergeInputSetRequestDTOPMS.builder().inputSetReferences(inputSetReferences).build();
@@ -282,7 +282,7 @@ public class PipelineExecutorTest extends CategoryTest {
 
     doReturn(planExecution)
         .when(executionHelper)
-        .startExecution(accountId, orgId, projectId, metadata, planExecutionMetadata, false, null, null, null, true);
+        .startExecution(accountId, orgId, projectId, metadata, planExecutionMetadata, false, null, null, null);
   }
 
   private void verifyStatementsForFreshRun(
@@ -308,10 +308,9 @@ public class PipelineExecutorTest extends CategoryTest {
               YamlUtils.readAsJsonNode(runtimeInputYaml));
     }
     verify(executionHelper, times(1))
-        .startExecution(accountId, orgId, projectId, metadata, planExecutionMetadata, false, null, null, null, true);
+        .startExecution(accountId, orgId, projectId, metadata, planExecutionMetadata, false, null, null, null);
     verify(executionHelper, times(0))
-        .startExecutionV2(
-            anyString(), anyString(), anyString(), any(), any(), anyBoolean(), any(), any(), any(), anyBoolean());
+        .startExecutionV2(anyString(), anyString(), anyString(), any(), any(), anyBoolean(), any(), any(), any());
   }
 
   @Test
@@ -382,7 +381,7 @@ public class PipelineExecutorTest extends CategoryTest {
     doReturn(planExecution)
         .when(executionHelper)
         .startExecution(
-            accountId, orgId, projectId, metadata, planExecutionMetadata, false, null, originalExecutionId, null, true);
+            accountId, orgId, projectId, metadata, planExecutionMetadata, false, null, originalExecutionId, null);
     assertThat(pipelineExecutor.startPostExecutionRollback(
                    accountId, orgId, projectId, originalExecutionId, stageNodeExecutionIds, null))
         .isEqualTo(planExecution);
@@ -419,7 +418,7 @@ public class PipelineExecutorTest extends CategoryTest {
     doReturn(planExecution)
         .when(executionHelper)
         .startExecution(
-            accountId, orgId, projectId, metadata, planExecutionMetadata, false, null, originalExecutionId, null, true);
+            accountId, orgId, projectId, metadata, planExecutionMetadata, false, null, originalExecutionId, null);
     doReturn(Collections.emptyList()).when(nodeExecutionService).fetchStageExecutions(any());
     assertThat(pipelineExecutor.startPipelineRollback(accountId, orgId, projectId, originalExecutionId, null))
         .isEqualTo(planExecution);

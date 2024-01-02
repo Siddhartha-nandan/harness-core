@@ -96,6 +96,8 @@ paths:
       responses:
         '200':
           $ref: '#/components/responses/PublicAccessResponse'
+        '':
+          $ref: '#/components/responses/PublicAccessResponse'
       security:
         - x-api-key: []
       tags:

@@ -29,20 +29,11 @@ import lombok.experimental.SuperBuilder;
 public class NewRelicFetchSampleDataRequest extends DataCollectionRequest<NewRelicConnectorDTO> {
   public static final String DSL =
       DataCollectionRequest.readDSL("newrelic-sample-fetch.datacollection", NewRelicFetchSampleDataRequest.class);
-  public static final String INSIGHTS_DSL =
-      DataCollectionRequest.readDSL("newrelic-sample-fetch.datacollection", NewRelicMetricPackValidationRequest.class);
-  public static final String NERDGRAPHQL_API_DSL = DataCollectionRequest.readDSL(
-      "newrelic-api-sample-fetch.datacollection", NewRelicMetricPackValidationRequest.class);
-  public static final String INSIGHTS = "insights";
-  public static final String GRAPHQL_ENDPOINT = "https://api.newrelic.com/graphql";
 
   String query;
   @Override
   public String getDSL() {
-    if (getConnectorConfigDTO().getUrl().contains(INSIGHTS)) {
-      return INSIGHTS_DSL;
-    }
-    return NERDGRAPHQL_API_DSL;
+    return DSL;
   }
 
   @Override
@@ -59,8 +50,6 @@ public class NewRelicFetchSampleDataRequest extends DataCollectionRequest<NewRel
   public Map<String, Object> fetchDslEnvVariables() {
     Map<String, Object> variables = new HashMap<>();
     variables.put("query", query);
-    variables.put("accountId", getConnectorConfigDTO().getNewRelicAccountId());
-    variables.put("graphqlURL", GRAPHQL_ENDPOINT);
     return variables;
   }
 }

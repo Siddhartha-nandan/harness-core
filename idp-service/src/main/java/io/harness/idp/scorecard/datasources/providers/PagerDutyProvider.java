@@ -7,7 +7,6 @@
 
 package io.harness.idp.scorecard.datasources.providers;
 
-import static io.harness.idp.common.CommonUtils.parseObjectToString;
 import static io.harness.idp.common.Constants.PAGERDUTY_IDENTIFIER;
 import static io.harness.idp.scorecard.datasourcelocations.constants.DataSourceLocations.AUTHORIZATION_HEADER;
 import static io.harness.idp.scorecard.datasourcelocations.constants.DataSourceLocations.PAGERDUTY_SERVICE_ID;
@@ -53,8 +52,7 @@ public class PagerDutyProvider extends HttpDataSourceProvider {
     Map<String, String> replaceableHeaders = new HashMap<>(authHeaders);
 
     String pagerDutyServiceId = entity.getMetadata().getAnnotations().get(PAGERDUTY_ANNOTATION);
-    String targetUrl =
-        parseObjectToString(configReader.getConfigValues(accountIdentifier, configs, TARGET_URL_EXPRESSION_KEY));
+    String targetUrl = (String) configReader.getConfigValues(accountIdentifier, configs, TARGET_URL_EXPRESSION_KEY);
 
     return processOut(accountIdentifier, PAGERDUTY_IDENTIFIER, entity, replaceableHeaders,
         prepareUrlReplaceablePairs(PAGERDUTY_SERVICE_ID, pagerDutyServiceId, PAGERDUTY_TARGET_URL, targetUrl,
@@ -68,8 +66,7 @@ public class PagerDutyProvider extends HttpDataSourceProvider {
 
   @Override
   public Map<String, String> getAuthHeaders(String accountIdentifier, String configs) {
-    String authToken =
-        parseObjectToString(configReader.getConfigValues(accountIdentifier, configs, AUTH_TOKEN_EXPRESSION_KEY));
+    String authToken = (String) configReader.getConfigValues(accountIdentifier, configs, AUTH_TOKEN_EXPRESSION_KEY);
     return Map.of(AUTHORIZATION_HEADER, authToken);
   }
 }

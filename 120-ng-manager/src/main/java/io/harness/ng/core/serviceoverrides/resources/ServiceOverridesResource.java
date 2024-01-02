@@ -41,9 +41,6 @@ import io.harness.exception.AccessDeniedException;
 import io.harness.exception.InvalidRequestException;
 import io.harness.filter.dto.FilterDTO;
 import io.harness.filter.service.FilterService;
-import io.harness.gitsync.interceptor.GitEntityCreateInfoDTO;
-import io.harness.gitsync.interceptor.GitEntityFindInfoDTO;
-import io.harness.gitsync.interceptor.GitEntityUpdateInfoDTO;
 import io.harness.manage.GlobalContextManager;
 import io.harness.ng.beans.PageResponse;
 import io.harness.ng.core.beans.DocumentationConstants;
@@ -63,7 +60,6 @@ import io.harness.ng.core.serviceoverridev2.beans.ServiceOverridesSpec;
 import io.harness.ng.core.serviceoverridev2.beans.ServiceOverridesType;
 import io.harness.ng.core.serviceoverridev2.mappers.ServiceOverridesMapperV2;
 import io.harness.ng.core.serviceoverridev2.service.ServiceOverridesServiceV2;
-import io.harness.ng.core.utils.GitXUtils;
 import io.harness.ng.core.utils.OrgAndProjectValidationHelper;
 import io.harness.pms.yaml.YamlUtils;
 import io.harness.remote.client.CGRestUtils;
@@ -93,12 +89,10 @@ import java.util.Optional;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.NotNull;
-import javax.ws.rs.BeanParam;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
-import javax.ws.rs.HeaderParam;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
@@ -181,16 +175,9 @@ public class ServiceOverridesResource {
       @Parameter(description = NGCommonEntityConstants.ORG_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.ORG_KEY) @OrgIdentifier String orgIdentifier,
       @Parameter(description = NGCommonEntityConstants.PROJECT_PARAM_MESSAGE) @QueryParam(
-          NGCommonEntityConstants.PROJECT_KEY) @ResourceIdentifier String projectIdentifier,
-      @Parameter(description = "This contains details of Git Entity like Git Branch info",
-          hidden = true) @BeanParam GitEntityFindInfoDTO gitEntityBasicInfo,
-      @Parameter(description = "Specifies whether to load the entity from cache", hidden = true) @HeaderParam(
-          "Load-From-Cache") @DefaultValue("false") String loadFromCache,
-      @Parameter(description = "Specifies whether to load the entity from fallback branch", hidden = true) @QueryParam(
-          "loadFromFallbackBranch") @DefaultValue("false") boolean loadFromFallbackBranch) {
+          NGCommonEntityConstants.PROJECT_KEY) @ResourceIdentifier String projectIdentifier) {
     Optional<NGServiceOverridesEntity> serviceOverridesEntityOptional =
-        serviceOverridesServiceV2.get(accountId, orgIdentifier, projectIdentifier, identifier,
-            GitXUtils.parseLoadFromCacheHeaderParam(loadFromCache), loadFromFallbackBranch);
+        serviceOverridesServiceV2.get(accountId, orgIdentifier, projectIdentifier, identifier);
     if (serviceOverridesEntityOptional.isEmpty()) {
       throw new NotFoundException(
           format("ServiceOverride entity with identifier [%s] in project [%s], org [%s] not found", identifier,
@@ -224,15 +211,11 @@ public class ServiceOverridesResource {
   public ResponseDTO<ServiceOverridesResponseDTOV2>
   create(@Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
              NGCommonEntityConstants.ACCOUNT_KEY) String accountId,
-      @RequestBody(required = true, description = "Details of the Service Override to be updated",
-          content =
-          {
-            @Content(examples = @ExampleObject(name = "Create", summary = "Sample Service Override update request",
-                         value = DocumentationConstants.SERVICE_OVERRIDE_V2_REQUEST_DTO,
-                         description = "Sample Service Override Request"))
-          }) @Valid ServiceOverrideRequestDTOV2 requestDTOV2,
-      @Parameter(description = "This contains details of Git Entity like Git Branch, Git Repository to be created",
-          hidden = true) @BeanParam GitEntityCreateInfoDTO gitEntityCreateInfo) {
+      @RequestBody(required = true, description = "Details of the Service Override to be updated", content = {
+        @Content(examples = @ExampleObject(name = "Create", summary = "Sample Service Override update request",
+                     value = DocumentationConstants.SERVICE_OVERRIDE_V2_REQUEST_DTO,
+                     description = "Sample Service Override Request"))
+      }) @Valid ServiceOverrideRequestDTOV2 requestDTOV2) {
     String yamlInternal = requestDTOV2.getYamlInternal();
     // if request is coming from v1 automation, yamlInternal is only to be used for sending back to v1 api response
     // In this case it cant be used for creating spec as v1 yaml and v2 yaml (created from spec) are different
@@ -265,15 +248,11 @@ public class ServiceOverridesResource {
   public ResponseDTO<ServiceOverridesResponseDTOV2>
   update(@Parameter(description = NGCommonEntityConstants.ACCOUNT_PARAM_MESSAGE) @NotNull @QueryParam(
              NGCommonEntityConstants.ACCOUNT_KEY) String accountId,
-      @RequestBody(required = true, description = "Details of the Service Override to be updated",
-          content =
-          {
-            @Content(examples = @ExampleObject(name = "Update", summary = "Sample Service Override update request",
-                         value = DocumentationConstants.SERVICE_OVERRIDE_V2_REQUEST_DTO,
-                         description = "Sample Service Override Request"))
-          }) @Valid ServiceOverrideRequestDTOV2 requestDTOV2,
-      @Parameter(description = "This contains details of Git Entity like Git Branch information to be updated",
-          hidden = true) @BeanParam GitEntityUpdateInfoDTO gitEntityInfo) throws IOException {
+      @RequestBody(required = true, description = "Details of the Service Override to be updated", content = {
+        @Content(examples = @ExampleObject(name = "Update", summary = "Sample Service Override update request",
+                     value = DocumentationConstants.SERVICE_OVERRIDE_V2_REQUEST_DTO,
+                     description = "Sample Service Override Request"))
+      }) @Valid ServiceOverrideRequestDTOV2 requestDTOV2) throws IOException {
     String yamlInternal = requestDTOV2.getYamlInternal();
     if (isNotEmpty(yamlInternal) && requestDTOV2.getSpec() == null && !requestDTOV2.isV1Api()) {
       try {
@@ -336,7 +315,7 @@ public class ServiceOverridesResource {
           NGCommonEntityConstants.PROJECT_KEY) @ProjectIdentifier String projectIdentifier) {
     orgAndProjectValidationHelper.checkThatTheOrganizationAndProjectExists(orgIdentifier, projectIdentifier, accountId);
     Optional<NGServiceOverridesEntity> ngServiceOverridesEntityOptional =
-        serviceOverridesServiceV2.getMetadata(accountId, orgIdentifier, projectIdentifier, identifier);
+        serviceOverridesServiceV2.get(accountId, orgIdentifier, projectIdentifier, identifier);
     if (ngServiceOverridesEntityOptional.isEmpty()) {
       throw new InvalidRequestException(format("Service Override [%s], Project[%s], Organization [%s] does not exist",
           identifier, projectIdentifier, orgIdentifier));
@@ -639,16 +618,9 @@ public class ServiceOverridesResource {
       @Parameter(description = NGCommonEntityConstants.ORG_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.ORG_KEY) @OrgIdentifier String orgIdentifier,
       @Parameter(description = NGCommonEntityConstants.PROJECT_PARAM_MESSAGE) @QueryParam(
-          NGCommonEntityConstants.PROJECT_KEY) @ResourceIdentifier String projectIdentifier,
-      @Parameter(description = "This contains details of Git Entity like Git Branch info",
-          hidden = true) @BeanParam GitEntityFindInfoDTO gitEntityBasicInfo,
-      @Parameter(description = "Specifies whether to load the entity from cache", hidden = true) @HeaderParam(
-          "Load-From-Cache") @DefaultValue("false") String loadFromCache,
-      @Parameter(description = "Specifies whether to load the entity from fallback branch", hidden = true) @QueryParam(
-          "loadFromFallbackBranch") @DefaultValue("false") boolean loadFromFallbackBranch) {
+          NGCommonEntityConstants.PROJECT_KEY) @ResourceIdentifier String projectIdentifier) {
     Optional<NGServiceOverridesEntity> serviceOverridesEntityOptional =
-        serviceOverridesServiceV2.get(accountId, orgIdentifier, projectIdentifier, identifier,
-            GitXUtils.parseLoadFromCacheHeaderParam(loadFromCache), loadFromFallbackBranch);
+        serviceOverridesServiceV2.get(accountId, orgIdentifier, projectIdentifier, identifier);
     if (serviceOverridesEntityOptional.isEmpty()) {
       throw new NotFoundException(
           format("ServiceOverrides entity with identifier [%s] in project [%s], org [%s] not found", identifier,

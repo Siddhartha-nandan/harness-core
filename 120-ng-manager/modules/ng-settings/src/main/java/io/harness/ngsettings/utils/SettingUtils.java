@@ -22,7 +22,6 @@ import io.harness.ngsettings.SettingPlanConfig;
 import io.harness.ngsettings.SettingSource;
 import io.harness.ngsettings.SettingValueType;
 import io.harness.ngsettings.dto.SettingDTO;
-import io.harness.ngsettings.entities.AccountSettingConfiguration;
 import io.harness.ngsettings.entities.Setting;
 import io.harness.ngsettings.entities.SettingConfiguration;
 
@@ -79,7 +78,7 @@ public class SettingUtils {
     validateValueForAllowedValues(setting);
   }
 
-  public static void validate(AccountSettingConfiguration settingConfiguration) {
+  public static void validate(SettingConfiguration settingConfiguration) {
     if (isNotEmpty(settingConfiguration.getDefaultValue())) {
       parseValue(settingConfiguration.getDefaultValue(), settingConfiguration.getValueType());
       validateValueForAllowedValues(settingConfiguration.getDefaultValue(), settingConfiguration.getAllowedValues());
@@ -128,7 +127,7 @@ public class SettingUtils {
 
   public static String getDefaultValue(Edition edition, SettingConfiguration settingConfiguration) {
     if (isEmpty(settingConfiguration.getAllowedPlans())) {
-      return ((AccountSettingConfiguration) settingConfiguration).getDefaultValue();
+      return settingConfiguration.getDefaultValue();
     }
 
     if (isNull(settingConfiguration.getAllowedPlans().get(edition))) {
@@ -137,7 +136,7 @@ public class SettingUtils {
 
     String planDefaultValue = settingConfiguration.getAllowedPlans().get(edition).getDefaultValue();
     if (isNull(planDefaultValue)) {
-      return ((AccountSettingConfiguration) settingConfiguration).getDefaultValue();
+      return settingConfiguration.getDefaultValue();
     }
 
     return planDefaultValue;

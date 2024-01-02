@@ -73,11 +73,6 @@ public class JiraStepExecutionHandler extends AbstractChangeDataHandler {
     }
   }
 
-  @Override
-  public boolean shouldUpdateOnConflict() {
-    return true;
-  }
-
   private boolean isInvalidEvent(ChangeEvent<?> changeEvent) {
     if (changeEvent == null) {
       return true;

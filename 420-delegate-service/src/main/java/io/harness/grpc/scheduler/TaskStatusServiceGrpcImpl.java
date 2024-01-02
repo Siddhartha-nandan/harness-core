@@ -36,8 +36,6 @@ public class TaskStatusServiceGrpcImpl extends TaskStatusServiceImplBase {
 
     try {
       final var taskResponse = responseService.getTaskResponse(request.getAccountId(), request.getTaskId().getId());
-      // Mark response for deletion once consumed
-      responseService.deleteResponse(request.getAccountId(), request.getTaskId().getId());
 
       responseObserver.onNext(TaskResponseMapper.INSTANCE.toProto(taskResponse));
       responseObserver.onCompleted();

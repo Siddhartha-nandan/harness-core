@@ -11,8 +11,6 @@ import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.cdng.service.beans.ServiceDefinitionType;
 import io.harness.gitsync.interceptor.GitEntityInfo;
-import io.harness.ng.core.infrastructure.dto.InfraMoveConfigOperationDTO;
-import io.harness.ng.core.infrastructure.dto.InfraMoveConfigResponse;
 import io.harness.ng.core.infrastructure.dto.InfrastructureInputsMergedResponseDto;
 import io.harness.ng.core.infrastructure.dto.InfrastructureYamlMetadata;
 import io.harness.ng.core.infrastructure.dto.NoInputMergeInputAction;
@@ -128,7 +126,4 @@ public interface InfrastructureEntityService {
 
   GitEntityInfo getGitDetailsForInfrastructure(String accountIdentifier, String orgIdentifier, String projectIdentifier,
       String environmentRef, String environmentBranch);
-
-  InfraMoveConfigResponse moveInfrastructure(String accountIdentifier, String orgIdentifier, String projectIdentifier,
-      String environmentIdentifier, String infraIdentifier, InfraMoveConfigOperationDTO moveConfigOperationDTO);
 }

@@ -10,12 +10,13 @@ package io.harness.ssca.beans.ticket;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Builder;
 import lombok.Data;
+import lombok.Getter;
 
 @Data
 @Builder
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class TicketResponseDto {
   String id;
-  String externalId;
+  @Getter String externalId;
   String url;
 }

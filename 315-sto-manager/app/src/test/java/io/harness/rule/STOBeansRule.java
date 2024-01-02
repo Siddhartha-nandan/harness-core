@@ -66,7 +66,7 @@ public class STOBeansRule implements MethodRule, InjectorRuleMixin {
       @Provides
       @Singleton
       List<YamlSchemaRootClass> yamlSchemaRootClass() {
-        return ImmutableList.<YamlSchemaRootClass>builder().build();
+        return ImmutableList.<YamlSchemaRootClass>builder().addAll(StoBeansRegistrars.yamlSchemaRegistrars).build();
       }
 
       @Provides

@@ -6,7 +6,6 @@
  */
 
 package io.harness.ngmigration.service.entity;
-
 import static software.wings.ngmigration.NGMigrationEntityType.SERVICE_TEMPLATE;
 
 import io.harness.annotations.dev.CodePulse;
@@ -102,6 +101,6 @@ public class ServiceTemplateMigrationService extends NgMigrationService {
   @Override
   protected boolean isNGEntityExists(MigrationContext migrationContext) {
     NGMigrationEntityType rootType = migrationContext.getRoot();
-    return migrationContext.getInputDTO().isShouldMigrateOverrides() || NGMigrationEntityType.APPLICATION == rootType;
+    return NGMigrationEntityType.APPLICATION == rootType;
   }
 }

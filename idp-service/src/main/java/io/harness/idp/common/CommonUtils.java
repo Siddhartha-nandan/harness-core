@@ -94,8 +94,4 @@ public class CommonUtils {
     }
     return str;
   }
-
-  public static String parseObjectToString(Object value) {
-    return value != null ? (String) value : null;
-  }
 }

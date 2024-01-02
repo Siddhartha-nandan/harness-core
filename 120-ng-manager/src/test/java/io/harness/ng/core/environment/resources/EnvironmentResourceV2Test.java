@@ -137,10 +137,10 @@ public class EnvironmentResourceV2Test extends CategoryTest {
     MockitoAnnotations.initMocks(this);
     doReturn(ResponseDTO.newResponse(OVERRIDE_RESPONSE))
         .when(serviceOverridesResource)
-        .create(anyString(), any(ServiceOverrideRequestDTOV2.class), any());
+        .create(anyString(), any(ServiceOverrideRequestDTOV2.class));
     doReturn(ResponseDTO.newResponse(OVERRIDE_RESPONSE))
         .when(serviceOverridesResource)
-        .update(anyString(), any(ServiceOverrideRequestDTOV2.class), any());
+        .update(anyString(), any(ServiceOverrideRequestDTOV2.class));
   }
 
   @Test
@@ -343,7 +343,7 @@ public class EnvironmentResourceV2Test extends CategoryTest {
 
     ArgumentCaptor<ServiceOverrideRequestDTOV2> requestDTOV2Captor =
         ArgumentCaptor.forClass(ServiceOverrideRequestDTOV2.class);
-    verify(serviceOverridesResource, times(1)).create(eq(ACCOUNT_ID), requestDTOV2Captor.capture(), any());
+    verify(serviceOverridesResource, times(1)).create(eq(ACCOUNT_ID), requestDTOV2Captor.capture());
 
     assertRequestDTOV2(requestDTOV2Captor.getValue());
   }
@@ -373,7 +373,7 @@ public class EnvironmentResourceV2Test extends CategoryTest {
 
     ArgumentCaptor<ServiceOverrideRequestDTOV2> requestDTOV2Captor =
         ArgumentCaptor.forClass(ServiceOverrideRequestDTOV2.class);
-    verify(serviceOverridesResource, times(1)).update(eq(ACCOUNT_ID), requestDTOV2Captor.capture(), any());
+    verify(serviceOverridesResource, times(1)).update(eq(ACCOUNT_ID), requestDTOV2Captor.capture());
 
     assertRequestDTOV2(requestDTOV2Captor.getValue());
   }

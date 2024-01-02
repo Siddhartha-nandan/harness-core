@@ -88,10 +88,14 @@ public class PipelineGitXHelper {
     return false;
   }
 
-  public boolean shouldPublishSetupUsages(StoreType storeType, boolean loadFromCache) {
+  public boolean shouldPublishSetupUsages(boolean loadFromCache, StoreType storeType) {
     return StoreType.REMOTE.equals(storeType) && isFetchedFromGit(loadFromCache)
         && GitAwareContextHelper.isGitDefaultBranch()
-        && (!GitAwareContextHelper.isNullOrDefault(GitAwareContextHelper.getBranchInSCMGitMetadata()));
+        && (!GitAwareContextHelper.isNullOrDefault(GitAwareContextHelper.getBranchFromGitContext()));
+  }
+
+  public boolean shouldPublishSetupUsages(StoreType storeType) {
+    return StoreType.REMOTE.equals(storeType) && GitAwareContextHelper.isGitDefaultBranch();
   }
 
   private boolean isFetchedFromGit(boolean loadFromCache) {
