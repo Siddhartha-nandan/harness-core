@@ -115,6 +115,7 @@ import io.harness.metrics.jobs.RecordMetricsJob;
 import io.harness.metrics.service.api.MetricService;
 import io.harness.migrations.MigrationModule;
 import io.harness.module.DelegateServiceModule;
+import io.harness.module.TaskResponseEventModule;
 import io.harness.mongo.AbstractMongoModule;
 import io.harness.mongo.QuartzCleaner;
 import io.harness.mongo.tracing.TraceMode;
@@ -976,6 +977,7 @@ public class WingsApplication extends Application<MainConfiguration> {
         return configuration.getGrpcServerConfig();
       }
     });
+    modules.add(new TaskResponseEventModule(configuration.getDelegateServiceRedisConfig()));
     modules.add(new GrpcServiceConfigurationModule(configuration.getGrpcServerConfig(),
         configuration.getPortal().getJwtNextGenManagerSecret(),
         configuration.getLogStreamingServiceConfig().getServiceToken()));
@@ -1377,10 +1379,11 @@ public class WingsApplication extends Application<MainConfiguration> {
     taskPollExecutor.scheduleWithFixedDelay(
         new Schedulable("Failed cleaning up manager versions.", injector.getInstance(ManagerVersionsCleanUpJob.class)),
         1, 5L, TimeUnit.MINUTES);
-
-    ScheduledExecutorService cgJobExecutor =
-        injector.getInstance(Key.get(ScheduledExecutorService.class, Names.named("cgJobExecutor")));
-    cgJobExecutor.scheduleWithFixedDelay(injector.getInstance(AccountDeletionJob.class), 0, 1, TimeUnit.HOURS);
+    if (configuration.isEnableAccountDeletionJob()) {
+      ScheduledExecutorService cgJobExecutor =
+          injector.getInstance(Key.get(ScheduledExecutorService.class, Names.named("cgJobExecutor")));
+      cgJobExecutor.scheduleWithFixedDelay(injector.getInstance(AccountDeletionJob.class), 0, 1, TimeUnit.HOURS);
+    }
   }
 
   private void scheduleJobsDelegateService(

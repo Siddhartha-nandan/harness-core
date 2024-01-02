@@ -72,7 +72,9 @@ public class SshWinRmAwsInfrastructure extends InfrastructureDetailsAbstract imp
   @Wither
   ParameterField<String> region;
 
-  @NotNull @Wither AwsInstanceFilter awsInstanceFilter;
+  @Wither AwsInstanceFilter awsInstanceFilter;
+
+  @ApiModelProperty(dataType = SwaggerConstants.STRING_CLASSPATH) ParameterField<String> asgName;
 
   @NotNull
   @NotEmpty
@@ -91,6 +93,7 @@ public class SshWinRmAwsInfrastructure extends InfrastructureDetailsAbstract imp
     if (connectorRef != null) {
       builder.connectorRef(connectorRef.getValue());
     }
+
     if (region != null) {
       builder.region(region.getValue());
     }
