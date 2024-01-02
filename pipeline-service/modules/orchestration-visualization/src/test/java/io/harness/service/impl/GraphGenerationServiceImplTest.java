@@ -105,8 +105,13 @@ public class GraphGenerationServiceImplTest extends OrchestrationVisualizationTe
   @Owner(developers = ALEXEI)
   @Category(UnitTests.class)
   public void shouldReturnOrchestrationGraphWithoutCache() {
-    doReturn(PlanExecution.builder().ambiance(
-            Ambiance.newBuilder().putSetupAbstractions(SetupAbstractionKeys.accountId, "accountIdentifier").build()).build()).when(planExecutionRepository).getPlanExecutionWithProjections(any(), any());
+    doReturn(
+        PlanExecution.builder()
+            .ambiance(
+                Ambiance.newBuilder().putSetupAbstractions(SetupAbstractionKeys.accountId, "accountIdentifier").build())
+            .build())
+        .when(planExecutionRepository)
+        .getPlanExecutionWithProjections(any(), any());
     PlanExecution planExecution = planExecutionService.save(PlanExecution.builder().build());
     NodeExecution dummyStart =
         NodeExecution.builder()
