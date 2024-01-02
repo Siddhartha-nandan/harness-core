@@ -268,14 +268,42 @@ spec:
                 name: ng-manager
                 port:
                   number: {{ $.Values.service.port }}
-            path: /(v1/gitx-webhooks)
+            path: /(v1/rancher/connectors/.+/clusters)
             pathType: ImplementationSpecific
           - backend:
               service:
                 name: ng-manager
                 port:
                   number: {{ $.Values.service.port }}
-            path: /(v1/gitx-webhook-events)
+            path: /(v1/orgs/.+/rancher/connectors/.+/clusters)
+            pathType: ImplementationSpecific
+          - backend:
+              service:
+                name: ng-manager
+                port:
+                  number: {{ $.Values.service.port }}
+            path: /(v1/orgs/.+/projects/.+/rancher/connectors/.+/clusters)
+            pathType: ImplementationSpecific
+          - backend:
+              service:
+                name: ng-manager
+                port:
+                  number: {{ $.Values.service.port }}
+            path: /(v1/rancher/environments/.+/infrastructure-definitions/.+/clusters)
+            pathType: ImplementationSpecific
+          - backend:
+              service:
+                name: ng-manager
+                port:
+                  number: {{ $.Values.service.port }}
+            path: /(v1/orgs/.+/rancher/environments/.+/infrastructure-definitions/.+/clusters)
+            pathType: ImplementationSpecific
+          - backend:
+              service:
+                name: ng-manager
+                port:
+                  number: {{ $.Values.service.port }}
+            path: /(v1/orgs/.+/projects/.+/rancher/environments/.+/infrastructure-definitions/.+/clusters)
             pathType: ImplementationSpecific
     {{- end }}
   {{- if .Values.global.ingress.tls.enabled }}
