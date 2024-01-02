@@ -59,6 +59,7 @@ public class CdSscaEnforcementStep extends AbstractContainerStep {
                                         .tag(sscaEnforcementSummary.getArtifact().getTag())
                                         .denyListViolationCount(sscaEnforcementSummary.getDenyListViolationCount())
                                         .allowListViolationCount(sscaEnforcementSummary.getAllowListViolationCount())
+                                        .exemptedComponentCount(sscaEnforcementSummary.getExemptedComponentCount())
                                         .stepExecutionId(stepExecutionId)
                                         .build());
       } catch (CIStageExecutionException exception) {
@@ -78,6 +79,7 @@ public class CdSscaEnforcementStep extends AbstractContainerStep {
                                       .tag(sscaEnforcementSummary.getArtifact().getTag())
                                       .denyListViolationCount(sscaEnforcementSummary.getDenyListViolationCount())
                                       .allowListViolationCount(sscaEnforcementSummary.getAllowListViolationCount())
+                                      .exemptedComponentCount(sscaEnforcementSummary.getExemptedComponentCount())
                                       .stepExecutionId(stepExecutionId)
                                       .build());
       try {

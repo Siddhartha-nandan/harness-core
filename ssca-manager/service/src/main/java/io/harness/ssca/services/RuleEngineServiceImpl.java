@@ -39,7 +39,7 @@ public class RuleEngineServiceImpl implements RuleEngineService {
       JSONObject jsonObject = new JSONObject(response.body().string());
       data = jsonObject.getString("data");
     } catch (Exception e) {
-      log.error(String.format("Policy File Response Doesn't have data"));
+      log.error("Policy File Response Doesn't have data", e);
       throw new InvalidArgumentsException(String.format("Policy file [%s] is Empty/Null", policyFileId));
     }
 
@@ -49,7 +49,7 @@ public class RuleEngineServiceImpl implements RuleEngineService {
     try {
       allowList = objectMapper.readValue(data.getBytes(StandardCharsets.UTF_8), AllowList.class);
     } catch (Exception e) {
-      log.error(String.format("Failed to read allow list"));
+      log.error("Failed to read allow list", e);
       throw new InvalidArgumentsException(
           String.format("Invalid allow list policy format in Policy file [%s]", policyFileId));
     }

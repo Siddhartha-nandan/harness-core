@@ -7,6 +7,8 @@
 
 package io.harness.repositories.exemption;
 
+import io.harness.annotations.dev.HarnessTeam;
+import io.harness.annotations.dev.OwnedBy;
 import io.harness.ssca.entities.exemption.Exemption;
 import io.harness.ssca.entities.exemption.Exemption.ExemptionKeys;
 
@@ -25,6 +27,7 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.support.PageableExecutionUtils;
 
+@OwnedBy(HarnessTeam.SSCA)
 @AllArgsConstructor(access = AccessLevel.PROTECTED, onConstructor = @__({ @Inject }))
 public class ExemptionRepositoryCustomImpl implements ExemptionRepositoryCustom {
   private final MongoTemplate mongoTemplate;

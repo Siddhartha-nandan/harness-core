@@ -80,15 +80,24 @@ public class EnforcementStepServiceImpl implements EnforcementStepService {
     }
     int exemptedComponentCount = 0;
     if (featureFlagService.isFeatureFlagEnabled(accountId, FeatureName.SSCA_ENFORCEMENT_EXEMPTIONS_ENABLED.name())) {
+      log.info("Applying exemptions for accountId {} orgIdentifier {} projectIdentifier {} artifactId null or {} ",
+          accountId, orgIdentifier, projectIdentifier, artifactId);
       Map<String, String> exemptedComponents = findExemptedComponentsWithExemptionIds(
           accountId, orgIdentifier, projectIdentifier, artifactId, policyEvaluationResult);
       if (isNotEmpty(exemptedComponents)) {
+        log.info(
+            "{} components are exempted for accountId {} orgIdentifier {} projectIdentifier {} artifactId null or {} ",
+            exemptedComponents.size(), accountId, orgIdentifier, projectIdentifier, artifactId);
         exemptedComponentCount = exemptedComponents.size();
         policyEvaluationResult.getDenyListViolations().forEach(
             resultEntity -> checkAndMarkViolationAsExempted(exemptedComponents, resultEntity));
         policyEvaluationResult.getAllowListViolations().forEach(
             resultEntity -> checkAndMarkViolationAsExempted(exemptedComponents, resultEntity));
       }
+    } else {
+      log.info(
+          "FF is disabled, not applying exemptions for accountId {} orgIdentifier {} projectIdentifier {} artifactId null or {} ",
+          accountId, orgIdentifier, projectIdentifier, artifactId);
     }
     enforcementResultRepo.saveAll(Stream
                                       .concat(policyEvaluationResult.getDenyListViolations().stream(),
@@ -157,6 +166,8 @@ public class EnforcementStepServiceImpl implements EnforcementStepService {
       String projectIdentifier, String artifactId, PolicyEvaluationResult policyEvaluationResult) {
     Set<String> componentNames = new HashSet<>();
     Set<String> uniqueComponents = new HashSet<>();
+    log.info("Finding unique components for accountId {} orgIdentifier {} projectIdentifier {} artifactId null or {} ",
+        accountId, orgIdentifier, projectIdentifier, artifactId);
     for (EnforcementResultEntity resultEntity : policyEvaluationResult.getDenyListViolations()) {
       componentNames.add(resultEntity.getName());
       uniqueComponents.add(ExemptionHelper.getUniqueComponentKeyFromEnforcementResultEntity(resultEntity));
@@ -165,8 +176,13 @@ public class EnforcementStepServiceImpl implements EnforcementStepService {
       componentNames.add(resultEntity.getName());
       uniqueComponents.add(ExemptionHelper.getUniqueComponentKeyFromEnforcementResultEntity(resultEntity));
     }
+    log.info("Found {} unique components for accountId {} orgIdentifier {} projectIdentifier {} artifactId null or {} ",
+        uniqueComponents.size(), accountId, orgIdentifier, projectIdentifier, artifactId);
     List<Exemption> exemptions = exemptionService.getApplicableExemptionsForEnforcement(
         accountId, orgIdentifier, projectIdentifier, artifactId, componentNames.stream().toList());
+    log.info(
+        "Found {} exemptions for accountId {} orgIdentifier {} projectIdentifier {} artifactId null or {} for {} componentNames",
+        exemptions.size(), accountId, orgIdentifier, projectIdentifier, artifactId, componentNames.size());
     return ExemptionHelper.getExemptedComponents(uniqueComponents, exemptions);
   }
 

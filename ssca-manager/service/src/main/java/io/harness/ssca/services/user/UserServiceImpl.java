@@ -7,6 +7,8 @@
 
 package io.harness.ssca.services.user;
 
+import io.harness.annotations.dev.HarnessTeam;
+import io.harness.annotations.dev.OwnedBy;
 import io.harness.exception.UnexpectedException;
 import io.harness.network.SafeHttpCall;
 import io.harness.ng.core.user.UserInfo;
@@ -18,6 +20,7 @@ import java.io.IOException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 
+@OwnedBy(HarnessTeam.SSCA)
 @Slf4j
 public class UserServiceImpl implements UserService {
   @Inject UserClient userClient;

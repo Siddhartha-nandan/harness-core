@@ -7,6 +7,8 @@
 
 package io.harness.ssca.api;
 
+import io.harness.annotations.dev.HarnessTeam;
+import io.harness.annotations.dev.OwnedBy;
 import io.harness.security.annotations.NextGenManagerAuth;
 import io.harness.spec.server.ssca.v1.ExemptionsApi;
 import io.harness.spec.server.ssca.v1.model.ExemptionInitiatorDTO;
@@ -25,6 +27,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import org.springframework.data.domain.PageRequest;
 
+@OwnedBy(HarnessTeam.SSCA)
 @NextGenManagerAuth
 public class ExemptionsApiImpl implements ExemptionsApi {
   @Inject ExemptionService exemptionService;

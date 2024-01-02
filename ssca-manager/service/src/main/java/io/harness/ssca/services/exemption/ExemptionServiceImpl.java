@@ -124,6 +124,8 @@ public class ExemptionServiceImpl implements ExemptionService {
     existingExemption =
         ExemptionMapper.toExemption(exemptionRequestDTO, existingExemption).toBuilder().updatedBy(userId).build();
     Exemption updatedExemption = exemptionRepository.save(existingExemption);
+    log.info("Updated exemption {} for accountId {} orgIdentifier {} projectIdentifier {} artifactId {} ", exemptionId,
+        accountId, orgIdentifier, projectIdentifier, artifactId);
     return ExemptionMapper.toExemptionResponseDTO(updatedExemption, fetchUsers(List.of(updatedExemption)));
   }
 
@@ -133,18 +135,19 @@ public class ExemptionServiceImpl implements ExemptionService {
     Exemption exemption =
         getExemptionByScopeAndUuid(accountId, orgIdentifier, projectIdentifier, artifactId, exemptionId);
     validateCurrentExemptionStatus(exemption, ExemptionStatus.PENDING);
+    log.info("Deleted exemption {} for accountId {} orgIdentifier {} projectIdentifier {} artifactId {} ", exemptionId,
+        accountId, orgIdentifier, projectIdentifier, artifactId);
     exemptionRepository.deleteById(exemptionId);
   }
 
   @Override
   public ExemptionResponseDTO reviewExemption(String accountId, String orgIdentifier, String projectIdentifier,
       String artifactId, String exemptionId, ExemptionReviewRequestDTO exemptionReviewRequestDTO) {
+    Exemption existingExemption =
+        getExemptionByScopeAndUuid(accountId, orgIdentifier, projectIdentifier, artifactId, exemptionId);
     validateReviewStatus(exemptionReviewRequestDTO);
     Instant now = Instant.now();
     String userId = userProvider.activeUser().getUuid();
-    Exemption existingExemption =
-        getExemptionByScopeAndUuid(accountId, orgIdentifier, projectIdentifier, artifactId, exemptionId);
-
     ExemptionStatus updatedStatus = ExemptionMapper.toExemptionStatus(exemptionReviewRequestDTO.getExemptionStatus());
     existingExemption.setExemptionStatus(updatedStatus);
     existingExemption.setReviewedBy(userId);
@@ -156,6 +159,8 @@ public class ExemptionServiceImpl implements ExemptionService {
       existingExemption.setValidUntil(0L);
     }
     Exemption updatedExemption = exemptionRepository.save(existingExemption);
+    log.info("Reviewed exemption {} for accountId {} orgIdentifier {} projectIdentifier {} artifactId {} ", exemptionId,
+        accountId, orgIdentifier, projectIdentifier, artifactId);
     return ExemptionMapper.toExemptionResponseDTO(updatedExemption, fetchUsers(List.of(updatedExemption)));
   }
 
@@ -250,7 +255,7 @@ public class ExemptionServiceImpl implements ExemptionService {
                                      .build();
     Exemption createdExemption = exemptionRepository.createExemption(exemptionRequest);
     log.info(
-        "Created new exemption: Creating new exemption {} for accountId {} orgIdentifier {} projectIdentifier {} artifactId {} ",
+        "Create new exemption: Created new exemption {} for accountId {} orgIdentifier {} projectIdentifier {} artifactId {} ",
         createdExemption.getUuid(), accountId, orgIdentifier, projectIdentifier, artifactId);
     return createdExemption;
   }

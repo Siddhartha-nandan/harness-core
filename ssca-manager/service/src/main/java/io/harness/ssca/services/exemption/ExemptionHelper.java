@@ -7,18 +7,24 @@
 
 package io.harness.ssca.services.exemption;
 
+import io.harness.annotations.dev.HarnessTeam;
+import io.harness.annotations.dev.OwnedBy;
 import io.harness.ssca.entities.EnforcementResultEntity;
 import io.harness.ssca.entities.OperatorEntity;
 import io.harness.ssca.entities.exemption.Exemption;
+import io.harness.ssca.utils.VersionUtils;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.experimental.UtilityClass;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
+@OwnedBy(HarnessTeam.SSCA)
 @UtilityClass
+@Slf4j
 public class ExemptionHelper {
   private static final String COMPONENT_KEY_DELIMITER = ",";
   public String getUniqueComponentKeyFromEnforcementResultEntity(EnforcementResultEntity entity) {
@@ -39,9 +45,13 @@ public class ExemptionHelper {
       if (componentKeyAttributes.length == 2) {
         componentVersion = componentKeyAttributes[1];
       }
+      log.info("Finding applicable exemptions for component key {} name {} version {}", uniqueComponent, componentName,
+          componentVersion);
       for (Exemption exemption : exemptions) {
         if (isComponentExempted(componentName, componentVersion, exemption)) {
           exemptedComponents.put(uniqueComponent, exemption.getUuid());
+          log.info("Found applicable exemption {} for component key {} name {} version {}", exemption.getUuid(),
+              uniqueComponent, componentName, componentVersion);
           break;
         }
       }
@@ -62,7 +72,6 @@ public class ExemptionHelper {
     if (StringUtils.isBlank(componentVersion)) {
       return false;
     }
-    // TODO: Add logic to compare semantic and non-semantic versions using operatorEntity
-    return false;
+    return VersionUtils.compareVersions(componentVersion, operatorEntity, exemptionVersion);
   }
 }

@@ -255,7 +255,7 @@ public class SSCAManagerTestRule implements InjectorRuleMixin, MethodRule, Mongo
         bind(ElasticSearchIndexManager.class).annotatedWith(Names.named("SSCA")).to(SSCAIndexManager.class);
         bind(RemediationTrackerService.class).to(RemediationTrackerServiceImpl.class);
         bind(TicketServiceRestClientService.class).toInstance(mock(TicketServiceRestClientService.class));
-        bind(ExemptionService.class).toInstance(mock(ExemptionServiceImpl.class));
+        bind(ExemptionService.class).to(ExemptionServiceImpl.class);
         bind(UserService.class).toInstance(mock(UserServiceImpl.class));
         MapBinder<PolicyType, PolicyEvaluationService> policyEvaluationServiceMapBinder =
             MapBinder.newMapBinder(binder(), PolicyType.class, PolicyEvaluationService.class);

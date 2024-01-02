@@ -7,10 +7,13 @@
 
 package io.harness.ssca.services.user;
 
+import io.harness.annotations.dev.HarnessTeam;
+import io.harness.annotations.dev.OwnedBy;
 import io.harness.ng.core.user.UserInfo;
 
 import java.util.List;
 
+@OwnedBy(HarnessTeam.SSCA)
 public interface UserService {
   List<UserInfo> getUsersWithIds(String accountId, List<String> userIds);
 }
