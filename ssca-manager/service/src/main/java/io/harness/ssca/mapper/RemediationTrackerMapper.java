@@ -7,6 +7,8 @@
 package io.harness.ssca.mapper;
 
 import static io.harness.spec.server.ssca.v1.model.Operator.EQUALS;
+import static io.harness.spec.server.ssca.v1.model.Operator.LESSTHAN;
+import static io.harness.spec.server.ssca.v1.model.Operator.LESSTHANEQUALS;
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
@@ -385,18 +387,15 @@ public class RemediationTrackerMapper {
   }
 
   private boolean anyCountIsGreaterThanZero(io.harness.spec.server.ssca.v1.model.DeploymentsCount deployments) {
-    return (deployments.getPendingProdCount() != null && deployments.getPendingProdCount() > 0)
-        || (deployments.getPendingNonProdCount() != null && deployments.getPendingNonProdCount() > 0)
-        || (deployments.getPatchedProdCount() != null && deployments.getPatchedProdCount() > 0)
-        || (deployments.getPatchedNonProdCount() != null && deployments.getPatchedNonProdCount() > 0);
+    return !(allCountsAreZero(deployments));
   }
 
   public Operator mapConditionOperator(RemediationCondition.Operator operator) {
     switch (operator) {
       case LESS_THAN:
-        return Operator.LESSTHAN;
+        return LESSTHAN;
       case LESS_THAN_EQUALS:
-        return Operator.LESSTHANEQUALS;
+        return LESSTHANEQUALS;
       case EQUALS:
         return EQUALS;
       case ALL:
