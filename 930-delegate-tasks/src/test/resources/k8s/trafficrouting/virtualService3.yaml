@@ -11,8 +11,8 @@ spec:
   http:
   - route:
     - destination:
-        host: stableService
-      weight: 70
-    - destination:
         host: stageService
       weight: 30
+    - destination:
+        host: stableService
+      weight: 70

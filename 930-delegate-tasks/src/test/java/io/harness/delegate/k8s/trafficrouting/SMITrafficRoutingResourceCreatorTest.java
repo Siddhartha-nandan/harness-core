@@ -8,8 +8,11 @@
 package io.harness.delegate.k8s.trafficrouting;
 
 import static io.harness.rule.OwnerRule.BUHA;
+import static io.harness.rule.OwnerRule.MLUKIC;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.joor.Reflect.on;
+import static org.mockito.Mockito.doThrow;
 
 import io.harness.CategoryTest;
 import io.harness.category.element.UnitTests;
@@ -24,17 +27,26 @@ import io.harness.delegate.task.k8s.trafficrouting.TrafficRoutingDestination;
 import io.harness.exception.HintException;
 import io.harness.k8s.model.KubernetesResource;
 import io.harness.k8s.model.KubernetesResourceId;
+import io.harness.k8s.model.istio.HttpRouteDestination;
+import io.harness.k8s.model.smi.Backend;
 import io.harness.logging.LogCallback;
 import io.harness.rule.Owner;
 
 import com.google.api.client.util.Charsets;
 import com.google.common.io.Resources;
+import com.google.gson.Gson;
+import com.google.gson.JsonParseException;
 import java.io.IOException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -52,11 +64,18 @@ public class SMITrafficRoutingResourceCreatorTest extends CategoryTest {
   private final KubernetesResource stageService =
       KubernetesResource.builder().resourceId(KubernetesResourceId.builder().name("stageService").build()).build();
 
+  SMITrafficRoutingResourceCreator smiTrafficRoutingResourceCreator;
+  @Mock Gson gson;
   @Mock LogCallback logCallback;
 
   @Before
   public void setup() {
     MockitoAnnotations.initMocks(this);
+    smiTrafficRoutingResourceCreator = getSMITrafficRoutingResourceCreator();
+  }
+
+  public SMITrafficRoutingResourceCreator getSMITrafficRoutingResourceCreator() {
+    return new SMITrafficRoutingResourceCreator();
   }
 
   @Test
@@ -88,10 +107,8 @@ public class SMITrafficRoutingResourceCreatorTest extends CategoryTest {
             .build();
     String path = "/k8s/trafficrouting/TrafficSplit2.yaml";
 
-    SMITrafficRoutingResourceCreator smiTrafficRoutingResourceCreator =
-        new SMITrafficRoutingResourceCreator(k8sTrafficRoutingConfig);
     List<KubernetesResource> trafficRoutingManifests = smiTrafficRoutingResourceCreator.createTrafficRoutingResources(
-        namespace, releaseName, apiVersions, logCallback);
+        k8sTrafficRoutingConfig, namespace, releaseName, apiVersions, logCallback);
 
     assertThat(trafficRoutingManifests.size()).isEqualTo(1);
     assertEqualYaml(trafficRoutingManifests.get(0), path);
@@ -110,9 +127,8 @@ public class SMITrafficRoutingResourceCreatorTest extends CategoryTest {
             .providerConfig(SMIProviderConfig.builder().build())
             .build();
 
-    SMITrafficRoutingResourceCreator smiTrafficRoutingResourceCreator =
-        new SMITrafficRoutingResourceCreator(k8sTrafficRoutingConfig);
-    smiTrafficRoutingResourceCreator.createTrafficRoutingResources(namespace, releaseName, apiVersions, logCallback);
+    smiTrafficRoutingResourceCreator.createTrafficRoutingResources(
+        k8sTrafficRoutingConfig, namespace, releaseName, apiVersions, logCallback);
   }
 
   @Test
@@ -215,7 +231,7 @@ public class SMITrafficRoutingResourceCreatorTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testGetSwapTrafficRoutingPatch() {
     String expectedPatch =
-        "[ { \"op\": \"replace\", \"path\": \"/spec/backends\", \"value\": [{\"service\":\"service\",\"weight\":100},{\"service\":\"service-stage\",\"weight\":0}] }]";
+        "[{ \"op\": \"replace\", \"path\": \"/spec/backends\", \"value\": [{\"service\":\"service\",\"weight\":100},{\"service\":\"service-stage\",\"weight\":0}]}]";
 
     Optional<String> optionalPatch =
         new SMITrafficRoutingResourceCreator().getSwapTrafficRoutingPatch("service", "service-stage");
@@ -233,16 +249,147 @@ public class SMITrafficRoutingResourceCreatorTest extends CategoryTest {
   }
   private void testK8sResourceCreation(K8sTrafficRoutingConfig k8sTrafficRoutingConfig, String... paths)
       throws IOException {
-    SMITrafficRoutingResourceCreator smiTrafficRoutingResourceCreator =
-        new SMITrafficRoutingResourceCreator(k8sTrafficRoutingConfig);
     List<KubernetesResource> trafficRoutingManifests = smiTrafficRoutingResourceCreator.createTrafficRoutingResources(
-        namespace, releaseName, stableService, stageService, apiVersions, logCallback);
+        k8sTrafficRoutingConfig, namespace, releaseName, stableService, stageService, apiVersions, logCallback);
 
     assertThat(trafficRoutingManifests.size()).isEqualTo(paths.length);
 
     for (int i = 0; i < paths.length; i++) {
       assertEqualYaml(trafficRoutingManifests.get(i), paths[i]);
     }
+  }
+
+  @Test
+  @Owner(developers = MLUKIC)
+  @Category(UnitTests.class)
+  public void testGenerateTrafficRoutingPatch() {
+    Object trafficRoutingClusterResource = new Object();
+    on(smiTrafficRoutingResourceCreator).set("gson", gson);
+    doThrow(new JsonParseException("json parsing error")).when(gson).toJson(trafficRoutingClusterResource);
+    Optional<String> patch = smiTrafficRoutingResourceCreator.generateTrafficRoutingPatch(
+        K8sTrafficRoutingConfig.builder().build(), trafficRoutingClusterResource, logCallback);
+    assertThat(patch).isEmpty();
+  }
+
+  @Test
+  @Owner(developers = MLUKIC)
+  @Category(UnitTests.class)
+  public void testCreatePatchForTrafficRoutingResourceDestinations() {
+    List<Backend> backendList = List.of(Backend.builder().service("host1").weight(10).build(),
+        Backend.builder().service("host2").weight(20).build(), Backend.builder().service("host3").weight(30).build(),
+        Backend.builder().service("host4").weight(40).build());
+
+    Map<String, Pair<Integer, Integer>> configuredDestinations = new LinkedHashMap<>();
+    configuredDestinations.put("host1", Pair.of(40, null));
+
+    Collection<String> patches = smiTrafficRoutingResourceCreator.createPatchForTrafficRoutingResourceDestinations(
+        configuredDestinations, backendList, logCallback);
+
+    assertThat(patches).contains(
+        "{ \"op\": \"replace\", \"path\": \"/spec/backends\", \"value\": [{\"service\":\"host2\",\"weight\":13},{\"service\":\"host3\",\"weight\":20},{\"service\":\"host4\",\"weight\":27},{\"service\":\"host1\",\"weight\":40}]}");
+  }
+
+  @Test
+  @Owner(developers = MLUKIC)
+  @Category(UnitTests.class)
+  public void testDestinationsToMap_NullDestinations() {
+    List<HttpRouteDestination> destinations = null;
+    Map<String, Pair<Integer, Integer>> outDestinations =
+        smiTrafficRoutingResourceCreator.destinationsToMap(destinations);
+    assertThat(outDestinations).isNotNull();
+    assertThat(outDestinations).isEmpty();
+  }
+
+  @Test
+  @Owner(developers = MLUKIC)
+  @Category(UnitTests.class)
+  public void testDestinationsToMap_EmptyDestinations() {
+    List<HttpRouteDestination> destinations = new ArrayList<>();
+    Map<String, Pair<Integer, Integer>> outDestinations =
+        smiTrafficRoutingResourceCreator.destinationsToMap(destinations);
+    assertThat(outDestinations).isNotNull();
+    assertThat(outDestinations).isEmpty();
+  }
+
+  @Test
+  @Owner(developers = MLUKIC)
+  @Category(UnitTests.class)
+  public void testDestinationsToMap() {
+    List<Backend> destinations = List.of(Backend.builder().service("svc1").weight(null).build(),
+        Backend.builder().service("svc2").build(), Backend.builder().service("svc3").weight(0).build(),
+        Backend.builder().service("svc4").weight(-10).build(), Backend.builder().service("svc5").weight(22).build());
+
+    Map<String, Pair<Integer, Integer>> outDestinations =
+        smiTrafficRoutingResourceCreator.destinationsToMap(destinations);
+    assertThat(outDestinations).isNotNull();
+    assertThat(outDestinations).isNotEmpty();
+    assertThat(outDestinations).size().isEqualTo(5);
+    assertThat(outDestinations.get("svc1")).isNotNull();
+    assertThat(outDestinations.get("svc1").getLeft()).isNull();
+    assertThat(outDestinations.get("svc1").getRight()).isNull();
+    assertThat(outDestinations.get("svc2")).isNotNull();
+    assertThat(outDestinations.get("svc2").getLeft()).isNull();
+    assertThat(outDestinations.get("svc2").getRight()).isNull();
+    assertThat(outDestinations.get("svc3")).isNotNull();
+    assertThat(outDestinations.get("svc3").getLeft()).isEqualTo(0);
+    assertThat(outDestinations.get("svc3").getRight()).isNull();
+    assertThat(outDestinations.get("svc4")).isNotNull();
+    assertThat(outDestinations.get("svc4").getLeft()).isNull();
+    assertThat(outDestinations.get("svc4").getRight()).isNull();
+    assertThat(outDestinations.get("svc5")).isNotNull();
+    assertThat(outDestinations.get("svc5").getLeft()).isEqualTo(22);
+    assertThat(outDestinations.get("svc5").getRight()).isNull();
+  }
+
+  @Test
+  @Owner(developers = MLUKIC)
+  @Category(UnitTests.class)
+  public void testMapToDestinations_NullMap() {
+    Map<String, Pair<Integer, Integer>> destinations = null;
+    List<Backend> outDestinations = smiTrafficRoutingResourceCreator.mapToDestinations(destinations);
+    assertThat(outDestinations).isNotNull();
+    assertThat(outDestinations).isEmpty();
+  }
+
+  @Test
+  @Owner(developers = MLUKIC)
+  @Category(UnitTests.class)
+  public void testMapToDestinations_EmptyMap() {
+    Map<String, Pair<Integer, Integer>> destinations = new LinkedHashMap<>();
+    List<Backend> outDestinations = smiTrafficRoutingResourceCreator.mapToDestinations(destinations);
+    assertThat(outDestinations).isNotNull();
+    assertThat(outDestinations).isEmpty();
+  }
+
+  @Test
+  @Owner(developers = MLUKIC)
+  @Category(UnitTests.class)
+  public void testMapToDestinations() {
+    Map<String, Pair<Integer, Integer>> destinations = new LinkedHashMap<>();
+    destinations.put("svc1", Pair.of(null, null));
+    destinations.put("svc2", Pair.of(-10, null));
+    destinations.put("svc3", Pair.of(null, -10));
+    destinations.put("svc4", Pair.of(-10, -10));
+    destinations.put("svc5", Pair.of(20, null));
+    destinations.put("svc6", Pair.of(null, 20));
+    destinations.put("svc7", Pair.of(30, 40));
+
+    List<Backend> outDestinations = smiTrafficRoutingResourceCreator.mapToDestinations(destinations);
+    assertThat(outDestinations).isNotNull();
+    assertThat(outDestinations).isNotEmpty();
+    assertThat(outDestinations).size().isEqualTo(7);
+
+    Map<String, Integer> tmp = new LinkedHashMap<>();
+    outDestinations.stream().forEach(trd -> tmp.put(trd.getService(), trd.getWeight()));
+    assertThat(tmp).isNotEmpty();
+    assertThat(tmp).size().isEqualTo(7);
+    assertThat(tmp.get("svc1")).isNull();
+    assertThat(tmp.get("svc2")).isNull();
+    assertThat(tmp.get("svc3")).isNull();
+    assertThat(tmp.get("svc4")).isNull();
+    assertThat(tmp.get("svc5")).isEqualTo(20);
+    assertThat(tmp.get("svc6")).isEqualTo(20);
+    assertThat(tmp.get("svc7")).isEqualTo(40);
   }
 
   private void assertEqualYaml(KubernetesResource k8sResource, String path) throws IOException {

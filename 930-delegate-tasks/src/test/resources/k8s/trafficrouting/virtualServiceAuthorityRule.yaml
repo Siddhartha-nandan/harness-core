@@ -14,8 +14,8 @@ spec:
         regex: dummyValue
     route:
     - destination:
-        host: stableService
-      weight: 80
-    - destination:
         host: stageService
       weight: 20
+    - destination:
+        host: stableService
+      weight: 80

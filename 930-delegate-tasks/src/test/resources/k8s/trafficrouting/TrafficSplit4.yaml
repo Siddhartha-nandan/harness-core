@@ -7,10 +7,10 @@ metadata:
   namespace: namespace
 spec:
   backends:
-  - service: stableService
-    weight: 80
   - service: stageService
     weight: 20
+  - service: stableService
+    weight: 80
   matches:
   - kind: HTTPRouteGroup
     name: method-http-route-group

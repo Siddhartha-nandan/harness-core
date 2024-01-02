@@ -7,10 +7,10 @@ metadata:
   namespace: namespace
 spec:
   backends:
-  - service: first
-    weight: 30
   - service: second
     weight: 20
+  - service: first
+    weight: 30
   - service: third
     weight: 50
   service: rootSvc

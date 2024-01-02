@@ -11,11 +11,11 @@ spec:
   http:
   - route:
     - destination:
-        host: firstService
-      weight: 60
-    - destination:
         host: secondService
       weight: 20
     - destination:
         host: thirdService
       weight: 20
+    - destination:
+        host: firstService
+      weight: 60
