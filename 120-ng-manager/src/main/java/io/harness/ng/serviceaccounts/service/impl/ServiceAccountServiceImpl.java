@@ -10,6 +10,7 @@ package io.harness.ng.serviceaccounts.service.impl;
 import static io.harness.accesscontrol.principals.PrincipalType.SERVICE_ACCOUNT;
 import static io.harness.annotations.dev.HarnessTeam.PL;
 import static io.harness.data.structure.EmptyPredicate.isEmpty;
+import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.enforcement.constants.FeatureRestrictionName.MULTIPLE_SERVICE_ACCOUNTS;
 import static io.harness.exception.WingsException.USER_SRE;
 import static io.harness.ng.accesscontrol.PlatformPermissions.VIEW_SERVICEACCOUNT_PERMISSION;
@@ -149,7 +150,7 @@ public class ServiceAccountServiceImpl implements ServiceAccountService {
     ServiceAccount newAccount = ServiceAccountDTOMapper.getServiceAccountFromDTO(requestDTO);
     newAccount.setUuid(serviceAccount.getUuid());
     newAccount.setCreatedAt(serviceAccount.getCreatedAt());
-    if (serviceAccount.getUniqueId() != null) {
+    if (isNotEmpty(serviceAccount.getUniqueId())) {
       newAccount.setUniqueId(serviceAccount.getUniqueId());
     }
     validate(newAccount);
