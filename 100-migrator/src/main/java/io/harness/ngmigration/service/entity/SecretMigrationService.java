@@ -152,6 +152,20 @@ public class SecretMigrationService extends NgMigrationService {
       return handleResp(yamlFile, resp);
     }
 
+    if (secretRequestWrapper.getSecret().getType().equals(SecretType.SecretText)
+        && StringUtils.isNoneBlank(
+            secretRequestWrapper.getEncryptionKey(), secretRequestWrapper.getEncryptionValue())) {
+      Response<ResponseDTO<SecretResponseWrapper>> resp =
+          ngClient
+              .createSecretTextInternal(inputDTO.getDestinationAuthToken(), inputDTO.getDestinationAccountIdentifier(),
+                  secretRequestWrapper.getSecret().getOrgIdentifier(),
+                  secretRequestWrapper.getSecret().getProjectIdentifier(), secretRequestWrapper.getEncryptionKey(),
+                  secretRequestWrapper.getEncryptionValue(), JsonUtils.asTree(yamlFile.getYaml()))
+              .execute();
+      log.info("Secret creation using internal API Response details {} {}", resp.code(), resp.message());
+      return handleResp(yamlFile, resp);
+    }
+
     // If the secret type is SecretFile then we use the YAML API to create.
     if (secretRequestWrapper.getSecret().getType().equals(SecretType.SecretFile)) {
       Response<ResponseDTO<SecretResponseWrapper>> resp =

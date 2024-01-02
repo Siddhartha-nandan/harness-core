@@ -6,7 +6,6 @@
  */
 
 package io.harness.ngmigration.secrets;
-import static io.harness.ngmigration.utils.NGMigrationConstants.PLEASE_FIX_ME;
 import static io.harness.secretmanagerclient.SecretType.SecretText;
 
 import io.harness.annotations.dev.CodePulse;
@@ -51,7 +50,6 @@ public class GcpKmsSecretMigrator implements io.harness.ngmigration.secrets.Secr
         .type(SecretText)
         .spec(SecretTextSpecDTO.builder()
                   .valueType(ValueType.Inline)
-                  .value(PLEASE_FIX_ME)
                   .secretManagerIdentifier(secretManagerIdentifier)
                   .build());
   }

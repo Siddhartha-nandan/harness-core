@@ -172,10 +172,6 @@ public class SecretFactory {
       return null;
     }
     SecretManagerConfig secretManagerConfig = (SecretManagerConfig) entities.get(secretManagerId).getEntity();
-    // Support secret file
-    if (!SettingVariableTypes.CONFIG_FILE.equals(encryptedData.getType())) {
-      return null;
-    }
     // Support secret text
     return getSecretMigrator(secretManagerConfig).getEncryptionKey(encryptedData, secretManagerConfig);
   }
@@ -187,10 +183,6 @@ public class SecretFactory {
       return null;
     }
     SecretManagerConfig secretManagerConfig = (SecretManagerConfig) entities.get(secretManagerId).getEntity();
-    // Support secret file
-    if (!SettingVariableTypes.CONFIG_FILE.equals(encryptedData.getType())) {
-      return null;
-    }
     // Support secret text
     return getSecretMigrator(secretManagerConfig).getEncryptionValue(encryptedData, secretManagerConfig);
   }

@@ -53,6 +53,14 @@ public interface NGClient {
       @Query(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
       @Query(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier, @Body JsonNode secretDTO);
 
+  @POST("v2/secrets/textMigration")
+  Call<ResponseDTO<SecretResponseWrapper>> createSecretTextInternal(@Header(X_API_KEY) String auth,
+      @Query(NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
+      @Query(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
+      @Query(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
+      @Query("encryptionKey") String encryptionKey, @Query("encryptedValue") String encryptedValue,
+      @Body JsonNode secretDTO);
+
   @POST("v2/secrets/yaml")
   @Headers({"Content-Type: application/yaml"})
   Call<ResponseDTO<SecretResponseWrapper>> createSecretUsingYaml(@Header(X_API_KEY) String auth,

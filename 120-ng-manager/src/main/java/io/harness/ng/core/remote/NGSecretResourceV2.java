@@ -559,7 +559,7 @@ public class NGSecretResourceV2 {
         @io.swagger.v3.oas.annotations.responses.
         ApiResponse(responseCode = "default", description = "Returns created Secret file")
       })
-  @Consumes(MediaType.MULTIPART_FORM_DATA)
+  @Consumes({"application/json", "application/yaml"})
   public ResponseDTO<SecretResponseWrapper>
   createSecretText(@Parameter(description = ACCOUNT_PARAM_MESSAGE) @QueryParam(
                        NGCommonEntityConstants.ACCOUNT_KEY) @NotNull String accountIdentifier,
@@ -573,8 +573,8 @@ public class NGSecretResourceV2 {
           "encryptionKey") @NotNull String encryptionKey,
       @Parameter(description = "encryptionValue of the file secret from cg") @QueryParam(
           "encryptedValue") @NotNull String encryptedValue,
-      @Parameter(description = "Specification of Secret file") @FormDataParam("spec") String spec) {
-    SecretRequestWrapper dto = JsonUtils.asObject(spec, SecretRequestWrapper.class);
+      @Parameter(description = "Specification of Secret file") @RequestBody(required = true,
+          description = "Details required to create the Secret") @Valid @NotNull SecretRequestWrapper dto) {
     validateRequestPayload(dto);
 
     if (!Objects.equals(orgIdentifier, dto.getSecret().getOrgIdentifier())
