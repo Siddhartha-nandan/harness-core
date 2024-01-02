@@ -51,7 +51,9 @@ public class AccessControlOutboxEventHandler implements OutboxEventHandler {
           return false;
       }
     } catch (Exception exception) {
-      log.error(String.format("Unexpected error occurred during handling event of type %s", outboxEvent.getEventType()),
+      String resourceIdentifier = outboxEvent.getResource() != null ? outboxEvent.getResource().getIdentifier() : "";
+      log.error(String.format("Unexpected error occurred during handling event of type %s id %s resourceIdentifier %s",
+                      outboxEvent.getEventType(), outboxEvent.getId(), resourceIdentifier),
           exception);
       return false;
     }
