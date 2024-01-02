@@ -170,6 +170,7 @@ public class ServiceOverridesServiceV2Impl implements ServiceOverridesServiceV2 
   @Override
   public Optional<NGServiceOverridesEntity> getOverridesContainingYaml(@NonNull String accountId, String orgIdentifier,
       String projectIdentifier, @NonNull String serviceOverridesIdentifier) {
+    // get overrides with yaml field from db since v1 overrides do not exist remotely
     return serviceOverrideRepositoryV2
         .findByAccountIdAndOrgIdentifierAndProjectIdentifierAndIdentifierAndTypeAndYamlExistsAndYamlNotNull(accountId,
             orgIdentifier, projectIdentifier, serviceOverridesIdentifier, ServiceOverridesType.ENV_SERVICE_OVERRIDE);
@@ -818,8 +819,12 @@ public class ServiceOverridesServiceV2Impl implements ServiceOverridesServiceV2 
             "Found more than one override at project scope. Only one entity will be considered at execution time",
             LogLevel.WARN);
       }
-      projectScopedEntity.stream().findFirst().ifPresent(
-          overrideEntity -> scopedEntities.put(Scope.PROJECT, overrideEntity));
+      projectScopedEntity.stream().findFirst().ifPresent(overrideEntity -> {
+        if (GitXUtils.isRemoteEntity(overrideEntity)) {
+          serviceOverrideRepositoryV2.getRemoteOverridesWithYaml(overrideEntity, true, false);
+        }
+        scopedEntities.put(Scope.PROJECT, overrideEntity);
+      });
     }
 
     if (isNotEmpty(orgId)) {
@@ -829,7 +834,12 @@ public class ServiceOverridesServiceV2Impl implements ServiceOverridesServiceV2 
             "Found more than one override at org scope. Only one entity will be considered at execution time",
             LogLevel.WARN);
       }
-      orgScopedEntity.stream().findFirst().ifPresent(overrideEntity -> scopedEntities.put(Scope.ORG, overrideEntity));
+      orgScopedEntity.stream().findFirst().ifPresent(overrideEntity -> {
+        if (GitXUtils.isRemoteEntity(overrideEntity)) {
+          serviceOverrideRepositoryV2.getRemoteOverridesWithYaml(overrideEntity, true, false);
+        }
+        scopedEntities.put(Scope.ORG, overrideEntity);
+      });
     }
 
     List<NGServiceOverridesEntity> accountScopedEntity = findAll(addAccountScopeCriteria(accountId, criteria));
@@ -838,8 +848,12 @@ public class ServiceOverridesServiceV2Impl implements ServiceOverridesServiceV2 
           "Found more than one override at account scope. Only one entity will be considered at execution time",
           LogLevel.WARN);
     }
-    accountScopedEntity.stream().findFirst().ifPresent(
-        overrideEntity -> scopedEntities.put(Scope.ACCOUNT, overrideEntity));
+    accountScopedEntity.stream().findFirst().ifPresent(overrideEntity -> {
+      if (GitXUtils.isRemoteEntity(overrideEntity)) {
+        serviceOverrideRepositoryV2.getRemoteOverridesWithYaml(overrideEntity, true, false);
+      }
+      scopedEntities.put(Scope.ACCOUNT, overrideEntity);
+    });
     return scopedEntities;
   }
 

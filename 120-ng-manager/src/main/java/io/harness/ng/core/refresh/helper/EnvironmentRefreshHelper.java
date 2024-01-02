@@ -19,6 +19,7 @@ import io.harness.cdng.visitor.YamlTypes;
 import io.harness.common.NGExpressionUtils;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.exception.InvalidRequestException;
+import io.harness.gitx.GitXTransientBranchGuard;
 import io.harness.ng.core.environment.services.EnvironmentService;
 import io.harness.ng.core.infrastructure.dto.NoInputMergeInputAction;
 import io.harness.ng.core.infrastructure.services.InfrastructureEntityService;
@@ -498,11 +499,13 @@ public class EnvironmentRefreshHelper {
     String envInputsYaml = null;
     boolean overridesV2Enabled = overrideV2ValidationHelper.isOverridesV2Enabled(
         context.getAccountId(), context.getOrgId(), context.getProjectId());
+    String gitBranch = envObjectNode.get(GIT_BRANCH) != null ? envObjectNode.get(GIT_BRANCH).asText() : null;
     if (overridesV2Enabled) {
-      envInputsYaml = serviceOverridesServiceV2.createEnvOverrideInputsYaml(
-          context.getAccountId(), context.getOrgId(), context.getProjectId(), envRefValue);
+      try (GitXTransientBranchGuard ignore = new GitXTransientBranchGuard(gitBranch)) {
+        envInputsYaml = serviceOverridesServiceV2.createEnvOverrideInputsYaml(
+            context.getAccountId(), context.getOrgId(), context.getProjectId(), envRefValue);
+      }
     } else {
-      String gitBranch = envObjectNode.get(GIT_BRANCH) != null ? envObjectNode.get(GIT_BRANCH).asText() : null;
       envInputsYaml = environmentService.createEnvironmentInputsYaml(
           context.getAccountId(), context.getOrgId(), context.getProjectId(), envRefValue, gitBranch);
     }
@@ -576,8 +579,10 @@ public class EnvironmentRefreshHelper {
 
     String envInputsYaml = null;
     if (overridesV2Enabled) {
-      envInputsYaml = serviceOverridesServiceV2.createEnvOverrideInputsYaml(
-          context.getAccountId(), context.getOrgId(), context.getProjectId(), envRefValue);
+      try (GitXTransientBranchGuard ignore = new GitXTransientBranchGuard(gitBranch)) {
+        envInputsYaml = serviceOverridesServiceV2.createEnvOverrideInputsYaml(
+            context.getAccountId(), context.getOrgId(), context.getProjectId(), envRefValue);
+      }
     } else {
       envInputsYaml = environmentService.createEnvironmentInputsYaml(
           context.getAccountId(), context.getOrgId(), context.getProjectId(), envRefValue, gitBranch);

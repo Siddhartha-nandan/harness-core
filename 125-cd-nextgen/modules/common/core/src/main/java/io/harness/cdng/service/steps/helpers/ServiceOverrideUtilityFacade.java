@@ -24,6 +24,7 @@ import io.harness.cdng.service.steps.helpers.beans.ServiceStepV3Parameters;
 import io.harness.cdng.visitor.YamlTypes;
 import io.harness.encryption.Scope;
 import io.harness.exception.InvalidRequestException;
+import io.harness.gitx.GitXTransientBranchGuard;
 import io.harness.logging.CommandExecutionStatus;
 import io.harness.logging.LogLevel;
 import io.harness.logstreaming.NGLogCallback;
@@ -246,16 +247,24 @@ public class ServiceOverrideUtilityFacade {
     Map<Scope, NGServiceOverridesEntity> infraOverride = new HashMap<>();
     Map<Scope, NGServiceOverridesEntity> infraServiceOverride = new HashMap<>();
 
-    envOverride = serviceOverridesServiceV2.getEnvOverride(
-        accountId, orgId, projectId, parameters.getEnvRef().getValue(), overrideLogCallback);
+    String envGitBranch = parameters.getEnvGitBranch();
+    String serviceGitBranch = parameters.getServiceGitBranch();
+    try (GitXTransientBranchGuard ignore = new GitXTransientBranchGuard(envGitBranch)) {
+      envOverride = serviceOverridesServiceV2.getEnvOverride(
+          accountId, orgId, projectId, parameters.getEnvRef().getValue(), overrideLogCallback);
+    }
+
     if (isNotEmpty(envOverride)) {
       overridesForStep.put(ServiceOverridesType.ENV_GLOBAL_OVERRIDE, new ArrayList<>(envOverride.values()));
     }
 
     if (ParameterField.isNotNull(parameters.getServiceRef()) && !parameters.getServiceRef().isExpression()
         && isNotBlank(parameters.getServiceRef().getValue())) {
-      envServiceOverride = serviceOverridesServiceV2.getEnvServiceOverride(accountId, orgId, projectId,
-          parameters.getEnvRef().getValue(), parameters.getServiceRef().getValue(), overrideLogCallback);
+      // use service branch to fetch env-service type of overrides
+      try (GitXTransientBranchGuard ignore = new GitXTransientBranchGuard(serviceGitBranch)) {
+        envServiceOverride = serviceOverridesServiceV2.getEnvServiceOverride(accountId, orgId, projectId,
+            parameters.getEnvRef().getValue(), parameters.getServiceRef().getValue(), overrideLogCallback);
+      }
       if (isNotEmpty(envServiceOverride)) {
         overridesForStep.put(ServiceOverridesType.ENV_SERVICE_OVERRIDE, new ArrayList<>(envServiceOverride.values()));
       }
@@ -263,17 +272,23 @@ public class ServiceOverrideUtilityFacade {
 
     if (ParameterField.isNotNull(parameters.getInfraId()) && !parameters.getInfraId().isExpression()
         && isNotBlank(parameters.getInfraId().getValue())) {
-      infraOverride = serviceOverridesServiceV2.getInfraOverride(accountId, orgId, projectId,
-          parameters.getEnvRef().getValue(), parameters.getInfraId().getValue(), overrideLogCallback);
+      try (GitXTransientBranchGuard ignore = new GitXTransientBranchGuard(envGitBranch)) {
+        // use env branch to fetch env-infra type of overrides
+        infraOverride = serviceOverridesServiceV2.getInfraOverride(accountId, orgId, projectId,
+            parameters.getEnvRef().getValue(), parameters.getInfraId().getValue(), overrideLogCallback);
+      }
       if (isNotEmpty(infraOverride)) {
         overridesForStep.put(ServiceOverridesType.INFRA_GLOBAL_OVERRIDE, new ArrayList<>(infraOverride.values()));
       }
 
       if (ParameterField.isNotNull(parameters.getServiceRef()) && !parameters.getServiceRef().isExpression()
           && isNotBlank(parameters.getServiceRef().getValue())) {
-        infraServiceOverride = serviceOverridesServiceV2.getInfraServiceOverride(accountId, orgId, projectId,
-            parameters.getEnvRef().getValue(), parameters.getServiceRef().getValue(),
-            parameters.getInfraId().getValue(), overrideLogCallback);
+        // use service branch to fetch env-infra-service type of overrides
+        try (GitXTransientBranchGuard ignore = new GitXTransientBranchGuard(serviceGitBranch)) {
+          infraServiceOverride = serviceOverridesServiceV2.getInfraServiceOverride(accountId, orgId, projectId,
+              parameters.getEnvRef().getValue(), parameters.getServiceRef().getValue(),
+              parameters.getInfraId().getValue(), overrideLogCallback);
+        }
         if (isNotEmpty(infraServiceOverride)) {
           overridesForStep.put(
               ServiceOverridesType.INFRA_SERVICE_OVERRIDE, new ArrayList<>(infraServiceOverride.values()));

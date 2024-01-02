@@ -64,4 +64,8 @@ public class GitXUtils {
   public static boolean isInlineEntity(GitAware gitAwareEntity) {
     return !StoreType.REMOTE.equals(gitAwareEntity.getStoreType());
   }
+
+  public static boolean isRemoteEntity(GitAware gitAwareEntity) {
+    return StoreType.REMOTE.equals(gitAwareEntity.getStoreType());
+  }
 }

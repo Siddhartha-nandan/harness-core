@@ -819,6 +819,7 @@ public class ArtifactResourceUtils {
         Optional<Environment> optionalEnvironment =
             environmentService.get(accountId, orgIdentifier, projectIdentifier, environmentId, false);
         if (optionalEnvironment.isPresent()) {
+          // use envGitBranch to fetch env global overrides
           YamlField envYamlField =
               getYamlField(optionalEnvironment.get().fetchNonEmptyYaml(), YAMLFieldNameConstants.ENVIRONMENT);
           addGlobalEnvOverrideYamlField(envYamlField, accountId, orgIdentifier, projectIdentifier, environmentId);
