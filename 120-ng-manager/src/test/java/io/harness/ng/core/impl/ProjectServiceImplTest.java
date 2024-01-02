@@ -867,7 +867,7 @@ public class ProjectServiceImplTest extends CategoryTest {
 
     BasicDBList orList = (BasicDBList) finaAllCriteriaArgumentCaptorValue.getCriteriaObject().get("$or");
     assertEquals(2, orList.size());
-    assertThat(((Document) orList.get(0))).containsKey(ProjectKeys.parentUniqueId);
+    assertThat((Document) orList.get(0)).containsKey(ProjectKeys.parentUniqueId);
 
     assertNotNull(projectsResponse);
     assertEquals(projectsResponse, projects.stream().map(ProjectMapper::writeDTO).collect(Collectors.toList()));
