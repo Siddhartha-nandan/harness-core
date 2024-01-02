@@ -46,10 +46,8 @@ public class STOServiceUtils {
   private static final long INITIAL_DELAY_MS = 1000;
   private static final long MAX_DELAY_MS = 5000;
   private static final long DELAY_FACTOR = 2;
-  private static final String FAILED_ATTEMPT_MESSAGE = "Retrying STO Call Operation. Attempt No. {}";
-  private static final String FAILURE_MESSAGE = "Operation Failed. Attempt No. {}";
-  private static final RetryPolicy<Object> RETRY_POLICY = getSTORetryPolicy(FAILED_ATTEMPT_MESSAGE, FAILURE_MESSAGE);
-  private static final RetryPolicy<Object> TOKEN_RETRY_POLICY = getSTORetryPolicyForToken(FAILED_ATTEMPT_MESSAGE, FAILURE_MESSAGE);
+  private static final RetryPolicy<Object> RETRY_POLICY = getSTORetryPolicy("Retrying STO Call Operation. Attempt No. {}", "Operation Failed. Attempt No. {}");
+  private static final RetryPolicy<Object> TOKEN_RETRY_POLICY = getSTORetryPolicyForToken("Retrying STO Call Operation. Attempt No. {}", "Operation Failed. Attempt No. {}");
   private static final String DEFAULT_PAGE = "1";
   private static final String DEFAULT_NAME = "NodeGoat";
   private static final String DEFAULT_PAGE_SIZE = "100";
