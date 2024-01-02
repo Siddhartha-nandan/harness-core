@@ -10,7 +10,7 @@ FROM ubuntu:latest as builder
 RUN apt-get update -y && apt-get install -y curl
 
 # Download the Go distribution archive
-RUN curl -O https://dl.google.com/go/go1.19.8.linux-amd64.tar.gz
+RUN curl -O https://dl.google.com/go/go1.21.5.linux-amd64.tar.gz
 
 RUN mkdir -p /app
 ARG GCP_KEY
