@@ -13,6 +13,7 @@ import static io.harness.ng.core.mapper.TagMapper.convertToList;
 import static io.harness.ng.core.mapper.TagMapper.convertToMap;
 import static io.harness.security.SimpleEncryption.CHARSET;
 
+import io.harness.beans.ScopeInfo;
 import io.harness.delegate.beans.FileUploadLimit;
 import io.harness.exception.FileReadException;
 import io.harness.exception.InvalidRequestException;
@@ -55,14 +56,13 @@ import org.bouncycastle.asn1.x500.style.IETFUtils;
 public class NgCertificateMapper {
   private final FileUploadLimit fileUploadLimit;
 
-  public NgCertificate toNgCertificate(
-      String accountIdentifier, CertificateDTO certificateDTO, @Nullable InputStream uploadedInputStream) {
+  public NgCertificate toNgCertificate(String accountIdentifier, ScopeInfo scopeInfo, CertificateDTO certificateDTO,
+      @Nullable InputStream uploadedInputStream) {
     return NgCertificate.builder()
         .identifier(certificateDTO.getIdentifier())
         .name(certificateDTO.getName())
         .accountIdentifier(accountIdentifier)
-        .orgIdentifier(certificateDTO.getOrg())
-        .projectIdentifier(certificateDTO.getProject())
+        .parentUniqueId(scopeInfo.getUniqueId())
         .tags(convertToList(certificateDTO.getTags()))
         .description(certificateDTO.getDescription())
         .inputSpecType(certificateDTO.getInputSpec().getType())
@@ -70,20 +70,21 @@ public class NgCertificateMapper {
         .build();
   }
 
-  public CertificateDTO toCertificateDTO(NgCertificate ngCertificate) {
+  public CertificateDTO toCertificateDTO(NgCertificate ngCertificate, ScopeInfo scopeInfo) {
     CertificateDTO certificateDTO = new CertificateDTO().inputSpec(getCertificateInputSpecDTO(ngCertificate));
     certificateDTO.identifier(ngCertificate.getIdentifier())
         .name(ngCertificate.getName())
-        .org(ngCertificate.getOrgIdentifier())
-        .project(ngCertificate.getProjectIdentifier())
+        .org(scopeInfo.getOrgIdentifier())
+        .project(scopeInfo.getProjectIdentifier())
         .certificateValue(decodeBase64ToString(ngCertificate.getCertificate()))
         .description(ngCertificate.getDescription())
         .tags(convertToMap(ngCertificate.getTags()));
     return certificateDTO;
   }
 
-  public CertificateResponseDTO toCertificateResponseDTO(NgCertificate certificate) throws CertificateException {
-    CertificateDTO certificateDTO = toCertificateDTO(certificate);
+  public CertificateResponseDTO toCertificateResponseDTO(NgCertificate certificate, ScopeInfo scopeInfo)
+      throws CertificateException {
+    CertificateDTO certificateDTO = toCertificateDTO(certificate, scopeInfo);
     return new CertificateResponseDTO()
         .certificate(certificateDTO)
         .certificateDetails(getCertificateDetailsDTO(decodeBase64ToString(certificate.getCertificate())))

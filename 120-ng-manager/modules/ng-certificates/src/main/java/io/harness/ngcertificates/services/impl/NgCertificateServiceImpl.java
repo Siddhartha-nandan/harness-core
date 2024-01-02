@@ -8,6 +8,7 @@
 package io.harness.ngcertificates.services.impl;
 
 import io.harness.beans.Scope;
+import io.harness.beans.ScopeInfo;
 import io.harness.errorhandling.ErrorMessageUtils;
 import io.harness.exception.DuplicateEntityException;
 import io.harness.ngcertificates.entities.NgCertificate;
@@ -27,17 +28,17 @@ public class NgCertificateServiceImpl implements NgCertificateService {
   private final NgCertificateMapper ngCertificateMapper;
   private final NgCertificateRepository ngCertificateRepository;
   @Override
-  public NgCertificate create(
-      String accountIdentifier, CertificateDTO certificateDTO, @Nullable InputStream uploadedInputStream) {
+  public NgCertificate create(String accountIdentifier, ScopeInfo scopeInfo, CertificateDTO certificateDTO,
+      @Nullable InputStream uploadedInputStream) {
     NgCertificate ngCertificate =
-        ngCertificateMapper.toNgCertificate(accountIdentifier, certificateDTO, uploadedInputStream);
+        ngCertificateMapper.toNgCertificate(accountIdentifier, scopeInfo, certificateDTO, uploadedInputStream);
     try {
       return ngCertificateRepository.save(ngCertificate);
     } catch (DuplicateKeyException ex) {
       String errorMessage =
-          String.format("Certificate with identifier [%s] exists in [%s]", certificateDTO.getIdentifier(),
+          String.format("Certificate with identifier [%s] already exists %s", certificateDTO.getIdentifier(),
               ErrorMessageUtils.getScopeLogString(
-                  Scope.of(accountIdentifier, certificateDTO.getOrg(), certificateDTO.getProject()), false));
+                  Scope.of(accountIdentifier, certificateDTO.getOrg(), certificateDTO.getProject()), true, "in "));
       throw new DuplicateEntityException(errorMessage);
     }
   }

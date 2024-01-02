@@ -11,7 +11,9 @@ import static io.harness.exception.WingsException.USER;
 
 import static java.util.Objects.nonNull;
 
+import io.harness.beans.ScopeInfo;
 import io.harness.exception.InvalidRequestException;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.ngcertificates.entities.NgCertificate;
 import io.harness.ngcertificates.mapper.NgCertificateMapper;
 import io.harness.ngcertificates.services.NgCertificateService;
@@ -20,6 +22,7 @@ import io.harness.spec.server.ng.v1.model.CertificateDTO;
 
 import com.google.inject.Inject;
 import java.io.InputStream;
+import java.util.Optional;
 import javax.validation.Valid;
 import javax.ws.rs.core.Response;
 import lombok.AllArgsConstructor;
@@ -29,6 +32,7 @@ import lombok.SneakyThrows;
 public class AccountCertificateApiImpl implements AccountCertificateApi {
   private final NgCertificateService ngCertificateService;
   private final NgCertificateMapper ngCertificateMapper;
+  private final ScopeInfoService scopeInfoService;
 
   @SneakyThrows
   @Override
@@ -36,9 +40,11 @@ public class AccountCertificateApiImpl implements AccountCertificateApi {
     if (nonNull(certificateDTO.getOrg()) || nonNull(certificateDTO.getProject())) {
       throw new InvalidRequestException("Account scoped request is having non null org or project", USER);
     }
-    NgCertificate ngCertificate = ngCertificateService.create(harnessAccount, certificateDTO, null);
+    Optional<ScopeInfo> scopeInfo = scopeInfoService.getScopeInfo(harnessAccount, null, null);
+    NgCertificate ngCertificate =
+        ngCertificateService.create(harnessAccount, scopeInfo.orElseThrow(), certificateDTO, null);
     return Response.status(Response.Status.CREATED)
-        .entity(ngCertificateMapper.toCertificateResponseDTO(ngCertificate))
+        .entity(ngCertificateMapper.toCertificateResponseDTO(ngCertificate, scopeInfo.get()))
         .build();
   }
 
@@ -49,9 +55,11 @@ public class AccountCertificateApiImpl implements AccountCertificateApi {
     if (nonNull(certificateDTO.getOrg()) || nonNull(certificateDTO.getProject())) {
       throw new InvalidRequestException("Account scoped request is having non null org or project", USER);
     }
-    NgCertificate ngCertificate = ngCertificateService.create(harnessAccount, certificateDTO, fileInputStream);
+    Optional<ScopeInfo> scopeInfo = scopeInfoService.getScopeInfo(harnessAccount, null, null);
+    NgCertificate ngCertificate =
+        ngCertificateService.create(harnessAccount, scopeInfo.orElseThrow(), certificateDTO, fileInputStream);
     return Response.status(Response.Status.CREATED)
-        .entity(ngCertificateMapper.toCertificateResponseDTO(ngCertificate))
+        .entity(ngCertificateMapper.toCertificateResponseDTO(ngCertificate, scopeInfo.get()))
         .build();
   }
 

@@ -10,10 +10,12 @@ package io.harness.ngcertificates.entities;
 import io.harness.annotations.StoreIn;
 import io.harness.data.validator.EntityIdentifier;
 import io.harness.mongo.index.CompoundMongoIndex;
+import io.harness.mongo.index.FdUniqueIndex;
 import io.harness.mongo.index.MongoIndex;
 import io.harness.mongo.index.SortCompoundMongoIndex;
 import io.harness.ng.DbAliases;
 import io.harness.ng.core.common.beans.NGTag;
+import io.harness.persistence.UniqueIdAware;
 import io.harness.spec.server.ng.v1.model.CertificateInputSpecType;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -23,6 +25,7 @@ import java.util.List;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 import lombok.Builder;
+import lombok.Data;
 import lombok.Getter;
 import lombok.experimental.FieldNameConstants;
 import org.springframework.data.annotation.CreatedDate;
@@ -32,7 +35,7 @@ import org.springframework.data.annotation.Persistent;
 import org.springframework.data.annotation.TypeAlias;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-@Getter
+@Data
 @Builder
 @Persistent
 @FieldNameConstants(innerTypeName = "NgCertificateKeys")
@@ -41,32 +44,29 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Document("ngCertificates")
 @TypeAlias("ngCertificates")
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class NgCertificate {
+public class NgCertificate implements UniqueIdAware {
   public static List<MongoIndex> mongoIndexes() {
     return ImmutableList.<MongoIndex>builder()
         .add(CompoundMongoIndex.builder()
-                 .name("account_org_project_identifier_unique_index")
+                 .name("parentUniqueId_identifier_unique_index")
                  .unique(true)
-                 .field(NgCertificateKeys.accountIdentifier)
-                 .field(NgCertificateKeys.orgIdentifier)
-                 .field(NgCertificateKeys.projectIdentifier)
+                 .field(NgCertificateKeys.parentUniqueId)
                  .field(NgCertificateKeys.identifier)
                  .build())
         .add(SortCompoundMongoIndex.builder()
-                 .name("account_org_project_createdAt_desc_sort_index")
+                 .name("account_parentUniqueId_createdAt_desc_sort_index")
                  .field(NgCertificateKeys.accountIdentifier)
-                 .field(NgCertificateKeys.orgIdentifier)
-                 .field(NgCertificateKeys.projectIdentifier)
+                 .field(NgCertificateKeys.parentUniqueId)
                  .descSortField(NgCertificateKeys.createdAt)
                  .build())
         .build();
   }
   @Id @dev.morphia.annotations.Id String id;
+  @FdUniqueIndex String uniqueId;
   @NotEmpty String name;
   @NotEmpty @EntityIdentifier String identifier;
   @NotEmpty String accountIdentifier;
-  String orgIdentifier;
-  String projectIdentifier;
+  String parentUniqueId;
   @NotEmpty String certificate;
   String description;
   List<NGTag> tags;

@@ -12,7 +12,7 @@ import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import io.harness.beans.Scope;
 
 public class ErrorMessageUtils {
-  public static String getScopeLogString(Scope scope, boolean includeAccountIdentifier) {
+  public static String getScopeLogString(Scope scope, boolean includeAccountIdentifier, String prefix) {
     StringBuilder message = new StringBuilder();
     if (includeAccountIdentifier) {
       message.append(String.format("account [%s] ", scope.getAccountIdentifier()));
@@ -21,6 +21,9 @@ public class ErrorMessageUtils {
       message.append(String.format("org [%s], project [%s]", scope.getOrgIdentifier(), scope.getProjectIdentifier()));
     } else if (isNotEmpty(scope.getOrgIdentifier())) {
       message.append(String.format("org [%s]", scope.getOrgIdentifier()));
+    }
+    if (!message.isEmpty()) {
+      message.insert(0, prefix);
     }
     return message.toString();
   }
