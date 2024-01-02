@@ -42,6 +42,7 @@ import io.harness.ssca.entities.remediation_tracker.VulnerabilitySeverity;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -415,6 +416,7 @@ public class RemediationTrackerMapper {
                    .name(info.getEnvName())
                    .type(RemediationTrackerMapper.mapEnvType(info.getEnvType())))
         .distinct()
+        .sorted(Comparator.comparing(io.harness.spec.server.ssca.v1.model.EnvironmentInfo::getName))
         .collect(Collectors.toList());
   }
 

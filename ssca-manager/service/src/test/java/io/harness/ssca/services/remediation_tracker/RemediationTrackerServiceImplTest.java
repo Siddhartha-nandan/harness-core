@@ -897,7 +897,7 @@ public class RemediationTrackerServiceImplTest extends SSCAManagerTestBase {
     assertThat(environmentInfos.get(0).getName()).isEqualTo("envName");
     assertThat(environmentInfos.get(0).getType()).isEqualTo(EnvironmentType.PROD);
     assertThat(environmentInfos.get(1).getIdentifier()).isEqualTo("envId");
-    assertThat(environmentInfos.get(0).getName()).isEqualTo("envName");
+    assertThat(environmentInfos.get(1).getName()).isEqualTo("envName");
     assertThat(environmentInfos.get(1).getType()).isEqualTo(EnvironmentType.PROD);
   }
 
@@ -915,7 +915,7 @@ public class RemediationTrackerServiceImplTest extends SSCAManagerTestBase {
 
     assertThat(environmentInfos.size()).isEqualTo(2);
     assertThat(environmentInfos.get(0).getIdentifier()).isEqualTo("env1");
-    assertThat(environmentInfos.get(0).getName()).isEqualTo("env1");
+    assertThat(environmentInfos.get(0).getName()).isEqualTo("envName");
     assertThat(environmentInfos.get(0).getType()).isEqualTo(EnvironmentType.PROD);
     assertThat(environmentInfos.get(1).getIdentifier()).isEqualTo("envId");
     assertThat(environmentInfos.get(1).getName()).isEqualTo("envName");
