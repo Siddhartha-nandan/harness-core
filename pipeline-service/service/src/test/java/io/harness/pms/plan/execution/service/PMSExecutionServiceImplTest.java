@@ -233,6 +233,11 @@ public class PMSExecutionServiceImplTest extends CategoryTest {
     assertThat(form1.getCriteriaObject().toString())
         .isEqualTo(
             "Document{{accountId=account_id, orgIdentifier=orgId, projectIdentifier=projId, pipelineIdentifier=Document{{$in=[basichttpFail]}}, isLatestExecution=Document{{$ne=false}}, $and=[Document{{$and=[Document{{executionTriggerInfo.triggeredBy.triggerIdentifier=Document{{$in=[triggerIdentifier]}}}}]}}]}}");
+    Criteria form_1 = pmsExecutionService.formCriteria(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER,
+        null, pipelineExecutionFilterPropertiesDTO, null, null, null, false, !PIPELINE_DELETED, false);
+    assertThat(form_1.getCriteriaObject().toString())
+        .isEqualTo(
+            "Document{{accountId=account_id, orgIdentifier=orgId, projectIdentifier=projId, pipelineIdentifier=Document{{$in=[basichttpFail]}}, isLatestExecution=Document{{$ne=false}}, $and=[Document{{$and=[Document{{executionTriggerInfo.triggeredBy.triggerIdentifier=Document{{$in=[triggerIdentifier]}}}}]}}]}}");
     PipelineExecutionFilterPropertiesDTO pipelineExecutionFilterPropertiesDTO1 =
         PipelineExecutionFilterPropertiesDTO.builder()
             .triggerTypes(Collections.singletonList(TriggerType.WEBHOOK))
@@ -246,6 +251,11 @@ public class PMSExecutionServiceImplTest extends CategoryTest {
     assertThat(form2.getCriteriaObject().toString())
         .isEqualTo(
             "Document{{accountId=account_id, orgIdentifier=orgId, projectIdentifier=projId, pipelineIdentifier=Document{{$in=[basichttpFail]}}, isLatestExecution=Document{{$ne=false}}, $and=[Document{{$and=[Document{{executionTriggerInfo.triggerType=Document{{$in=[WEBHOOK]}}}}]}}]}}");
+    Criteria form_2 = pmsExecutionService.formCriteria(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER,
+        null, pipelineExecutionFilterPropertiesDTO1, null, null, null, false, !PIPELINE_DELETED, false);
+    assertThat(form_2.getCriteriaObject().toString())
+        .isEqualTo(
+            "Document{{accountId=account_id, orgIdentifier=orgId, projectIdentifier=projId, pipelineIdentifier=Document{{$in=[basichttpFail]}}, isLatestExecution=Document{{$ne=false}}, $and=[Document{{$and=[Document{{executionTriggerInfo.triggerType=Document{{$in=[WEBHOOK]}}}}]}}]}}");
     filterDTO = FilterDTO.builder().filterProperties(pipelineExecutionFilterPropertiesDTO1).build();
     doReturn(filterDTO)
         .when(filterService)
@@ -253,6 +263,11 @@ public class PMSExecutionServiceImplTest extends CategoryTest {
     Criteria form3 = pmsExecutionService.formCriteria(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER,
         FILTER_IDENTIFIER_2, null, null, null, null, false, !PIPELINE_DELETED, true);
     assertThat(form3.getCriteriaObject().toString())
+        .isEqualTo(
+            "Document{{accountId=account_id, orgIdentifier=orgId, projectIdentifier=projId, pipelineIdentifier=Document{{$in=[basichttpFail]}}, $and=[Document{{$and=[Document{{executionTriggerInfo.triggerType=Document{{$in=[WEBHOOK]}}}}]}}]}}");
+    Criteria form_3 = pmsExecutionService.formCriteria(ACCOUNT_ID, ORG_IDENTIFIER, PROJ_IDENTIFIER, PIPELINE_IDENTIFIER,
+        null, pipelineExecutionFilterPropertiesDTO1, null, null, null, false, !PIPELINE_DELETED, true);
+    assertThat(form_3.getCriteriaObject().toString())
         .isEqualTo(
             "Document{{accountId=account_id, orgIdentifier=orgId, projectIdentifier=projId, pipelineIdentifier=Document{{$in=[basichttpFail]}}, $and=[Document{{$and=[Document{{executionTriggerInfo.triggerType=Document{{$in=[WEBHOOK]}}}}]}}]}}");
   }

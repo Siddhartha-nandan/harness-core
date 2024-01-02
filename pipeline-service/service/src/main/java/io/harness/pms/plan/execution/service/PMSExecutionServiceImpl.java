@@ -41,6 +41,7 @@ import io.harness.execution.PlanExecutionMetadata.PlanExecutionMetadataKeys;
 import io.harness.execution.StagesExecutionMetadata;
 import io.harness.filter.FilterType;
 import io.harness.filter.dto.FilterDTO;
+import io.harness.filter.dto.FilterPropertiesDTO;
 import io.harness.filter.service.FilterService;
 import io.harness.gitaware.helper.GitAwareContextHelper;
 import io.harness.gitaware.helper.GitAwareEntityHelper;
@@ -173,15 +174,15 @@ public class PMSExecutionServiceImpl implements PMSExecutionService {
       throw new InvalidRequestException("Can not apply both filter properties and saved filter together");
     }
 
-    FilterDTO filterDTO = fetchFilterPropertiesDTO(accountId, orgId, projectId, filterIdentifier);
+    FilterPropertiesDTO filterPropertiesDTO =
+        fetchFilterPropertiesDTO(accountId, orgId, projectId, filterIdentifier, filterProperties);
 
-    if (!(showAllExecutions || isAllExecutionModeFilterPresent(filterDTO))) {
+    if (!(showAllExecutions || isAllExecutionModeFilterPresent(filterPropertiesDTO))) {
       criteria.and(PlanExecutionSummaryKeys.isLatestExecution).ne(false);
     }
 
     if (EmptyPredicate.isNotEmpty(filterIdentifier) || filterProperties != null) {
-      populatePipelineFilterANDOperator(filterCriteria,
-          ((PipelineExecutionFilterPropertiesDTO) filterDTO.getFilterProperties()),
+      populatePipelineFilterANDOperator(filterCriteria, ((PipelineExecutionFilterPropertiesDTO) filterPropertiesDTO),
           EmptyPredicate.isNotEmpty(pipelineIdentifier));
     } else {
       // If filterIdentifier and filterCriteria both are null then we need default behaviour.
@@ -272,25 +273,25 @@ public class PMSExecutionServiceImpl implements PMSExecutionService {
     return criteria;
   }
 
-  private FilterDTO fetchFilterPropertiesDTO(
-      String accountIdentifier, String orgIdentifier, String projectIdentifier, String filterIdentifier) {
+  private FilterPropertiesDTO fetchFilterPropertiesDTO(String accountIdentifier, String orgIdentifier,
+      String projectIdentifier, String filterIdentifier, FilterPropertiesDTO filterPropertiesDTO) {
     if (filterIdentifier != null) {
       FilterDTO filterDTO = filterService.get(
           accountIdentifier, orgIdentifier, projectIdentifier, filterIdentifier, FilterType.PIPELINEEXECUTION);
       if (filterDTO == null) {
         throw new InvalidRequestException("Could not find a pipeline filter with the identifier ");
       }
-      return filterDTO;
+      return filterDTO.getFilterProperties();
     }
-    return null;
+    return filterPropertiesDTO;
   }
 
-  public boolean isAllExecutionModeFilterPresent(FilterDTO filterDTO) {
-    if (filterDTO == null || filterDTO.getFilterProperties() == null) {
+  public boolean isAllExecutionModeFilterPresent(FilterPropertiesDTO filterPropertiesDTO) {
+    if (filterPropertiesDTO == null) {
       return false;
     }
     return ExecutionModeFilter.ALL.equals(
-            ((PipelineExecutionFilterPropertiesDTO) filterDTO.getFilterProperties()).getExecutionModeFilter());
+        ((PipelineExecutionFilterPropertiesDTO) filterPropertiesDTO).getExecutionModeFilter());
   }
 
   @Override
