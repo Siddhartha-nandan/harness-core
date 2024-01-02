@@ -30,7 +30,7 @@ public class EncryptedDataDetailToSecretMapper {
         .setConfig(dataDetail.getEncryptionConfig() instanceof CustomSecretNGManagerConfig
                 ? SecretConfig.newBuilder()
                       .setBinaryData(ByteString.copyFrom(
-                          CustomSmMapper.pojoProtoMapper((CustomSecretNGManagerConfig) dataDetail.getEncryptionConfig())
+                          CustomSmPojoProtoMapper.map((CustomSecretNGManagerConfig) dataDetail.getEncryptionConfig())
                               .toByteArray()))
                       .build()
                 : SecretConfig.newBuilder()
