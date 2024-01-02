@@ -29,7 +29,6 @@ import io.harness.spec.server.notification.v1.model.NotificationRuleDTONotificat
 import io.harness.spec.server.notification.v1.model.NotificationRuleDTONotificationEventConfigs;
 import io.harness.spec.server.notification.v1.model.Status;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
