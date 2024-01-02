@@ -7,6 +7,7 @@
 
 package io.harness.ssca.services.remediation_tracker;
 
+import static io.harness.rule.OwnerRule.HUMANSHU_ARORA;
 import static io.harness.rule.OwnerRule.VARSHA_LALWANI;
 import static io.harness.rule.TestUserProvider.testUserProvider;
 import static io.harness.ssca.entities.remediation_tracker.RemediationStatus.COMPLETED;
@@ -27,6 +28,7 @@ import io.harness.ng.core.user.UserInfo;
 import io.harness.repositories.remediation_tracker.RemediationTrackerRepository;
 import io.harness.rest.RestResponse;
 import io.harness.rule.Owner;
+import io.harness.spec.server.ssca.v1.model.CreateTicketRequest;
 import io.harness.spec.server.ssca.v1.model.EnvironmentInfo;
 import io.harness.spec.server.ssca.v1.model.EnvironmentType;
 import io.harness.spec.server.ssca.v1.model.EnvironmentTypeFilter;
@@ -58,6 +60,7 @@ import io.harness.ssca.entities.remediation_tracker.VulnerabilityInfoType;
 import io.harness.ssca.services.ArtifactService;
 import io.harness.ssca.services.CdInstanceSummaryService;
 import io.harness.ssca.services.NormalisedSbomComponentService;
+import io.harness.ssca.ticket.TicketServiceRestClientService;
 import io.harness.ssca.utils.PageResponseUtils;
 import io.harness.ssca.utils.PipelineUtils;
 import io.harness.user.remote.UserClient;
@@ -89,6 +92,8 @@ public class RemediationTrackerServiceImplTest extends SSCAManagerTestBase {
   @Mock CdInstanceSummaryService cdInstanceSummaryService;
 
   @Mock NormalisedSbomComponentService normalisedSbomComponentService;
+
+  @Mock TicketServiceRestClientService ticketServiceRestClientService;
 
   @Mock private UserClient userClient;
 
@@ -124,6 +129,10 @@ public class RemediationTrackerServiceImplTest extends SSCAManagerTestBase {
             builderFactory.getCdInstanceSummaryBuilder().artifactCorrelationId("patched").envIdentifier("env1").build(),
             builderFactory.getCdInstanceSummaryBuilder().artifactCorrelationId("pending").build()));
     FieldUtils.writeField(remediationTrackerService, "userClient", userClient, true);
+    when(ticketServiceRestClientService.createTicket(any(), any(), any(), any(), any()))
+        .thenReturn(builderFactory.getTicketResponseDto());
+    FieldUtils.writeField(
+        remediationTrackerService, "ticketServiceRestClientService", ticketServiceRestClientService, true);
     FieldUtils.writeField(remediationTrackerService, "artifactService", artifactService, true);
     FieldUtils.writeField(remediationTrackerService, "cdInstanceSummaryService", cdInstanceSummaryService, true);
     FieldUtils.writeField(remediationTrackerService, "pipelineUtils", pipelineUtils, true);
@@ -976,7 +985,45 @@ public class RemediationTrackerServiceImplTest extends SSCAManagerTestBase {
     repository.save(remediationTrackerEntity);
   }
 
-  private RemediationTrackerEntity createRemediationTrackerEntity(RemediationTrackerCreateRequestBody requestBody) {
+  @Test
+  @Owner(developers = HUMANSHU_ARORA)
+  @Category(UnitTests.class)
+  public void testCreateTicketStatusCompleted() {
+    RemediationTrackerEntity remediationTrackerEntity =
+        getRemediationTrackerEntity(remediationTrackerCreateRequestBody);
+
+    assertThatExceptionOfType(InvalidArgumentsException.class)
+        .isThrownBy(()
+                        -> remediationTrackerService.createTicket(builderFactory.getContext().getProjectIdentifier(),
+                            remediationTrackerEntity.getUuid(), builderFactory.getContext().getOrgIdentifier(),
+                            builderFactory.getCreateTicketRequest(), builderFactory.getContext().getAccountId()))
+        .withMessage(String.format("Remediation Tracker: %s is already closed.", remediationTrackerEntity.getUuid()));
+  }
+
+  @Test
+  @Owner(developers = HUMANSHU_ARORA)
+  @Category(UnitTests.class)
+  public void testCreateTicketWhenArtifactIdNull() {
+    RemediationTrackerEntity remediationTrackerEntity =
+        getRemediationTrackerEntity(remediationTrackerCreateRequestBody);
+
+    remediationTrackerEntity.setStatus(ON_GOING);
+
+    repository.save(remediationTrackerEntity);
+
+    CreateTicketRequest createTicketRequest = builderFactory.getCreateTicketRequest();
+    createTicketRequest.artifactId(null);
+
+    String ticketId = remediationTrackerService.createTicket(builderFactory.getContext().getProjectIdentifier(),
+        remediationTrackerEntity.getUuid(), builderFactory.getContext().getOrgIdentifier(), createTicketRequest,
+        builderFactory.getContext().getAccountId());
+
+    remediationTrackerEntity = remediationTrackerService.getRemediationTracker(remediationTrackerEntity.getUuid());
+
+    assertThat(ticketId).isEqualTo("external");
+    assertThat(remediationTrackerEntity.getTicketId()).isEqualTo("external");
+    
+    private RemediationTrackerEntity createRemediationTrackerEntity(RemediationTrackerCreateRequestBody requestBody) {
     String remediationTrackerId = remediationTrackerService.createRemediationTracker(
         builderFactory.getContext().getAccountId(), builderFactory.getContext().getOrgIdentifier(),
         builderFactory.getContext().getProjectIdentifier(), requestBody);
