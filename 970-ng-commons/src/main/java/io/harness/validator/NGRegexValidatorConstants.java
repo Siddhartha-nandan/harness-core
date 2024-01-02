@@ -18,7 +18,6 @@ import io.harness.annotations.dev.ProductModule;
 @OwnedBy(PIPELINE)
 public interface NGRegexValidatorConstants {
   String IDENTIFIER_PATTERN = "^[a-zA-Z_][0-9a-zA-Z_]{0,127}$";
-  String BRANCH_NAME_PATTERN = "^[a-zA-Z][a-zA-Z0-9._/-]*$";
   String PIPELINE_IDENTIFIER_PATTERN = "^[a-zA-Z_][0-9a-zA-Z_]{0,127}$";
   String NON_EMPTY_STRING_PATTERN = "^(?=\\s*\\S).*$";
   String VARIABLE_NAME_PATTERN = "^[a-zA-Z_][0-9a-zA-Z_\\.$-]{0,127}$";
@@ -32,6 +31,7 @@ public interface NGRegexValidatorConstants {
       "^(([1-9])+\\d+[s])|(([5-9])+[s])|(((([1-9])+\\d*[mhwd])+([\\s]?\\d+[smhwd])*)|(<\\+input>.*)|(.*<\\+.*>.*)|(^$))$";
   String VERSION_LABEL_PATTERN = "^[0-9a-zA-Z][^\\s/&]{0,63}$";
   String RUNTIME_OR_FIXED_IDENTIFIER_PATTERN = "\\<\\+input\\>|^[a-zA-Z_][0-9a-zA-Z_$]{0,63}$";
+  String EXPRESSION_OR_FIXED_VALUE_WITH_NO_SPACE = "^[a-zA-Z0-9_-]*(<\\+[^ ]+>)?[a-zA-Z0-9_.()-]*$";
   // Use this pattern when want a string to have any value but not execution input.
   String STRING_BUT_NOT_EXECUTION_INPUT_PATTERN = "^(?!<\\+input>.*\\.executionInput\\(\\).*)(.*)";
 }

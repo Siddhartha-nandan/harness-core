@@ -10,9 +10,8 @@ package io.harness.delegate.task.k8s;
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
-import io.harness.k8s.model.KubernetesResourceId;
+import io.harness.k8s.trafficrouting.TrafficRoutingInfoDTO;
 
-import java.util.List;
 import lombok.Builder;
 import lombok.Data;
 
@@ -20,5 +19,5 @@ import lombok.Data;
 @Data
 @Builder
 public class K8sTrafficRoutingResponse implements K8sNGTaskResponse {
-  List<KubernetesResourceId> trafficRoutingCreatedResourceIds;
+  TrafficRoutingInfoDTO info;
 }
