@@ -16,7 +16,6 @@ import io.harness.ng.core.user.UserInfo;
 import io.harness.persistence.UserProvider;
 import io.harness.remote.client.CGRestUtils;
 import io.harness.repositories.remediation_tracker.RemediationTrackerRepository;
-import io.harness.security.NextGenAuthenticationFilter;
 import io.harness.security.ServiceTokenGenerator;
 import io.harness.spec.server.ssca.v1.model.ComponentFilter;
 import io.harness.spec.server.ssca.v1.model.CreateTicketRequest;
