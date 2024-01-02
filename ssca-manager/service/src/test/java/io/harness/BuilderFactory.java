@@ -9,6 +9,7 @@ package io.harness;
 
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
 
+import io.harness.k8s.model.K8sContainer;
 import io.harness.ng.core.environment.beans.EnvironmentType;
 import io.harness.spec.server.ssca.v1.model.Artifact;
 import io.harness.spec.server.ssca.v1.model.Attestation;
@@ -33,9 +34,8 @@ import io.harness.ssca.beans.instance.ArtifactCorrelationDetailsDTO;
 import io.harness.ssca.beans.instance.ArtifactDetailsDTO;
 import io.harness.ssca.beans.instance.InstanceDTO;
 import io.harness.ssca.beans.instance.InstanceDTO.InstanceDTOBuilder;
+import io.harness.ssca.beans.instance.K8sInstanceInfoDTO;
 import io.harness.ssca.beans.remediation_tracker.PatchedPendingArtifactEntitiesResult;
-import io.harness.ssca.entities.ArtifactEntity;
-import io.harness.ssca.entities.ArtifactEntity.ArtifactEntityBuilder;
 import io.harness.ssca.entities.BaselineEntity;
 import io.harness.ssca.entities.BaselineEntity.BaselineEntityBuilder;
 import io.harness.ssca.entities.CdInstanceSummary;
@@ -49,6 +49,8 @@ import io.harness.ssca.entities.EnforcementSummaryEntity;
 import io.harness.ssca.entities.EnforcementSummaryEntity.EnforcementSummaryEntityBuilder;
 import io.harness.ssca.entities.NormalizedSBOMComponentEntity;
 import io.harness.ssca.entities.NormalizedSBOMComponentEntity.NormalizedSBOMComponentEntityBuilder;
+import io.harness.ssca.entities.artifact.ArtifactEntity;
+import io.harness.ssca.entities.artifact.ArtifactEntity.ArtifactEntityBuilder;
 import io.harness.ssca.entities.remediation_tracker.DefaultVulnerability;
 import io.harness.ssca.entities.remediation_tracker.RemediationCondition;
 import io.harness.ssca.entities.remediation_tracker.RemediationTrackerEntity;
@@ -58,6 +60,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -219,6 +222,7 @@ public class BuilderFactory {
                                .type("Default")
                                .severity(io.harness.spec.server.ssca.v1.model.VulnerabilitySeverity.HIGH)
                                .componentName("log4j"))
+        .targetEndDate(LocalDate.of(2020, 5, 22))
         .remediationCondition(new io.harness.spec.server.ssca.v1.model.RemediationCondition().operator(
             io.harness.spec.server.ssca.v1.model.RemediationCondition.OperatorEnum.ALL));
   }
@@ -401,6 +405,15 @@ public class BuilderFactory {
                 .artifactIdentity(ArtifactCorrelationDetailsDTO.builder().image("artifactCorrelationId").build())
                 .build())
         .isDeleted(false);
+  }
+
+  public InstanceDTOBuilder getK8sInstanceDTOBuilder() {
+    return getInstanceNGEntityBuilder().instanceInfo(
+        K8sInstanceInfoDTO.builder()
+            .containerList(List.of(K8sContainer.builder().image("image1:tag1").build(),
+                K8sContainer.builder().image("image2:tag2").build(),
+                K8sContainer.builder().image("some/path/to/image3:tag3").build()))
+            .build());
   }
 
   public EnforcementResultEntityBuilder getEnforcementResultEntityBuilder() {
