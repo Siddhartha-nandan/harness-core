@@ -47,7 +47,8 @@ import io.kubernetes.client.util.Yaml;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -146,13 +147,13 @@ public class IstioTrafficRoutingResourceCreator extends TrafficRoutingResourceCr
     }
     Map<String, Pair<Integer, Integer>> destinations =
         super.destinationsToMap(k8sTrafficRoutingConfig.getDestinations());
-    normalizeDestinations(destinations);
+    Map<String, Pair<Integer, Integer>> normalizedDestinations = normalizeDestinations(destinations, 100);
 
     return VirtualServiceSpec.builder()
         .gateways(providerConfig.getGateways())
         .hosts(hosts)
-        .http(getHttpRouteSpec(
-            k8sTrafficRoutingConfig.getRoutes(), super.mapToDestinations(destinations), stableName, stageName))
+        .http(getHttpRouteSpec(k8sTrafficRoutingConfig.getRoutes(), super.mapToDestinations(normalizedDestinations),
+            stableName, stageName))
         .build();
   }
 
@@ -233,7 +234,7 @@ public class IstioTrafficRoutingResourceCreator extends TrafficRoutingResourceCr
     return Optional.empty();
   }
 
-  private Collection<String> createPatchForTrafficRoutingResourceDestinations(
+  protected Collection<String> createPatchForTrafficRoutingResourceDestinations(
       Map<String, Pair<Integer, Integer>> configuredDestinations, List<VirtualServiceDetails> virtualServiceDetailsList,
       LogCallback logCallback) {
     List<String> patches = new ArrayList<>();
@@ -256,14 +257,17 @@ public class IstioTrafficRoutingResourceCreator extends TrafficRoutingResourceCr
           }
         }
 
-        if (normalizeDestinations(clusterResourceDestinations)) {
-          logDestinationsNormalization(clusterResourceDestinations, logCallback);
+        Pair<Map, Map> filteredDestinations = filterDestinations(clusterResourceDestinations);
+        if (shouldNormalizeDestinations(filteredDestinations)) {
+          Map<String, Pair<Integer, Integer>> normalizedDestinations =
+              normalizeFilteredDestinations(filteredDestinations);
+          logDestinationsNormalization(normalizedDestinations, logCallback);
           // creating a patch for this particular route type and route with updated destinations
           try {
             patches.add(format(PATCH_REPLACE_JSON_FORMAT, format(HTTP_ROUTE_TYPE_ROUTE_DESTINATION_PATH, i),
                 new ObjectMapper()
                     .setSerializationInclusion(JsonInclude.Include.NON_NULL)
-                    .writeValueAsString(mapToDestinations(clusterResourceDestinations))));
+                    .writeValueAsString(mapToDestinations(normalizedDestinations))));
           } catch (JsonProcessingException e) {
             log.warn("Failed to Deserialize List of VirtualServiceDetails", e);
           }
@@ -276,14 +280,18 @@ public class IstioTrafficRoutingResourceCreator extends TrafficRoutingResourceCr
 
   @Override
   public Map<String, Pair<Integer, Integer>> destinationsToMap(List sourceDestinations) {
-    Map<String, Pair<Integer, Integer>> outDestinations = new HashMap<>();
-    if (sourceDestinations != null) {
+    Map<String, Pair<Integer, Integer>> outDestinations = new LinkedHashMap<>();
+    if (sourceDestinations != null && sourceDestinations.size() > 0) {
       if (sourceDestinations.get(0) instanceof TrafficRoutingDestination) {
         return super.destinationsToMap(sourceDestinations);
       }
 
       ((List<HttpRouteDestination>) sourceDestinations).forEach(sourceDestination -> {
-        outDestinations.put(sourceDestination.getDestination().getHost(), Pair.of(sourceDestination.getWeight(), null));
+        outDestinations.put(sourceDestination.getDestination().getHost(),
+            Pair.of(sourceDestination.getWeight() == null || sourceDestination.getWeight() < 0
+                    ? null
+                    : sourceDestination.getWeight(),
+                null));
       });
     }
     return outDestinations;
@@ -291,13 +299,15 @@ public class IstioTrafficRoutingResourceCreator extends TrafficRoutingResourceCr
 
   @Override
   protected List<HttpRouteDestination> mapToDestinations(Map<String, Pair<Integer, Integer>> sourceDestinations) {
-    List<HttpRouteDestination> outDestinations = new ArrayList<>();
-    if (sourceDestinations != null) {
+    List<HttpRouteDestination> outDestinations = new LinkedList<>();
+    if (sourceDestinations != null && sourceDestinations.size() > 0) {
       for (String sourceDestinationKey : sourceDestinations.keySet()) {
         Pair<Integer, Integer> weights = sourceDestinations.get(sourceDestinationKey);
         outDestinations.add(HttpRouteDestination.builder()
                                 .destination(Destination.builder().host(sourceDestinationKey).build())
-                                .weight(weights.getRight() != null ? weights.getRight() : weights.getLeft())
+                                .weight(weights.getRight() != null && weights.getRight() >= 0 ? weights.getRight()
+                                        : weights.getLeft() != null && weights.getLeft() >= 0 ? weights.getLeft()
+                                                                                              : null)
                                 .build());
       }
     }

@@ -24,5 +24,5 @@ import lombok.NoArgsConstructor;
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = false, components = {HarnessModuleComponent.CDS_K8S})
 public class Backend {
   @NotNull String service;
-  int weight;
+  Integer weight;
 }

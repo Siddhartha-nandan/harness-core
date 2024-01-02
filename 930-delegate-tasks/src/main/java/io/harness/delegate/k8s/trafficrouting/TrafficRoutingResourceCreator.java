@@ -30,9 +30,11 @@ import io.harness.logging.CommandExecutionStatus;
 import io.harness.logging.LogCallback;
 import io.harness.logging.LogLevel;
 
-import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -152,114 +154,143 @@ public abstract class TrafficRoutingResourceCreator {
   }
 
   public Map<String, Pair<Integer, Integer>> destinationsToMap(List sourceDestinations) {
-    Map<String, Pair<Integer, Integer>> outDestinations = new HashMap<>();
+    Map<String, Pair<Integer, Integer>> outDestinations = new LinkedHashMap<>();
     if (sourceDestinations != null) {
       ((List<TrafficRoutingDestination>) sourceDestinations).forEach(sourceDestination -> {
-        outDestinations.put(sourceDestination.getHost(), Pair.of(sourceDestination.getWeight(), null));
+        outDestinations.put(sourceDestination.getHost(),
+            Pair.of(sourceDestination.getWeight() == null || sourceDestination.getWeight() < 0
+                    ? null
+                    : sourceDestination.getWeight(),
+                null));
       });
     }
     return outDestinations;
   }
 
-  public boolean normalizeDestinations(Map<String, Pair<Integer, Integer>> destinations) {
-    // recognizing matched and unmatched destinations
-    int matchedDestinationsWeightsSum = 0;
-    Map<String, Pair<Integer, Integer>> matchedDestinations = new HashMap<>();
-    Map<String, Pair<Integer, Integer>> nonMatchedDestinations = new HashMap<>();
-    for (String destinationHost : destinations.keySet()) {
-      Pair<Integer, Integer> destWeights = destinations.get(destinationHost);
-      if (destWeights.getRight() != null) {
-        matchedDestinationsWeightsSum += destWeights.getRight();
-        matchedDestinations.put(destinationHost, Pair.of(destWeights.getLeft(), destWeights.getRight()));
-      } else {
-        nonMatchedDestinations.put(destinationHost, Pair.of(destWeights.getLeft(), null));
+  protected List mapToDestinations(Map<String, Pair<Integer, Integer>> sourceDestinations) {
+    List<TrafficRoutingDestination> outDestinations = new LinkedList<>();
+    if (sourceDestinations != null) {
+      for (String sourceDestinationKey : sourceDestinations.keySet()) {
+        Pair<Integer, Integer> weights = sourceDestinations.get(sourceDestinationKey);
+        outDestinations.add(TrafficRoutingDestination.builder()
+                                .host(sourceDestinationKey)
+                                .weight(weights.getRight() != null && weights.getRight() >= 0 ? weights.getRight()
+                                        : weights.getLeft() != null && weights.getLeft() >= 0 ? weights.getLeft()
+                                                                                              : null)
+                                .build());
       }
     }
-
-    return normalizeDestinations(
-        destinations, matchedDestinationsWeightsSum, matchedDestinations, nonMatchedDestinations);
-  }
-
-  protected boolean normalizeDestinations(Map<String, Pair<Integer, Integer>> destinations,
-      int matchedDestinationsWeightsSum, Map<String, Pair<Integer, Integer>> matchedDestinations,
-      Map<String, Pair<Integer, Integer>> nonMatchedDestinations) {
-    // normalizing matched and unmatched destinations
-    if (matchedDestinations.size() > 0) {
-      if (matchedDestinationsWeightsSum < 100) {
-        destinations.putAll(normalizeDestinations(nonMatchedDestinations, 100 - matchedDestinationsWeightsSum));
-        destinations.putAll(matchedDestinations);
-      } else {
-        destinations.putAll(normalizeDestinations(matchedDestinations, 100));
-        destinations.putAll(normalizeDestinations(nonMatchedDestinations, 0));
-      }
-      return true;
-    }
-
-    return false;
+    return outDestinations;
   }
 
   public int sumDestinationsWeights(Map<String, Pair<Integer, Integer>> destinations) {
-    return destinations != null
+    return destinations != null && destinations.size() > 0
         ? destinations.keySet()
               .stream()
               .mapToInt(host
-                  -> destinations.get(host).getRight() != null ? destinations.get(host).getRight()
-                                                               : destinations.get(host).getLeft())
+                  -> destinations.get(host).getRight() != null && destinations.get(host).getRight() >= 0
+                      ? destinations.get(host).getRight()
+                      : destinations.get(host).getLeft() != null && destinations.get(host).getLeft() >= 0
+                      ? destinations.get(host).getLeft()
+                      : 0)
               .sum()
         : 0;
   }
 
-  public Map<String, Pair<Integer, Integer>> normalizeDestinations(
-      Map<String, Pair<Integer, Integer>> sourceDestinations, int cap) {
-    int sum = sumDestinationsWeights(sourceDestinations);
-
-    Map<String, Pair<Integer, Integer>> normalizedDestinations = new HashMap<>();
-    AtomicInteger normalizedSum = new AtomicInteger();
-    for (String host : sourceDestinations.keySet()) {
-      Pair<Integer, Integer> weights = sourceDestinations.get(host);
-      int normalizedWeight = normalizeWeight(
-          sum, weights.getRight() != null ? weights.getRight() : weights.getLeft(), sourceDestinations.size(), cap);
-      normalizedDestinations.put(host, Pair.of(weights.getLeft(), normalizedWeight));
-      normalizedSum.addAndGet(normalizedWeight);
-    }
-    return normalizeDestinations(normalizedDestinations, normalizedSum.get(), cap);
-  }
-
-  private Map<String, Pair<Integer, Integer>> normalizeDestinations(
-      Map<String, Pair<Integer, Integer>> normalizedDestinations, int normalizedSum, int cap) {
-    int correctionCount = Math.abs(cap - normalizedSum);
-    int step = 1;
-    if (normalizedSum > cap) {
-      step = -1;
-    }
-
-    Map<String, Pair<Integer, Integer>> normalizedCorrectedDestinations = new HashMap<>();
-    for (String host : normalizedDestinations.keySet()) {
-      Pair<Integer, Integer> weights = normalizedDestinations.get(host);
-      if (weights.getRight() != null && weights.getRight() > 0 && correctionCount > 0) {
-        normalizedCorrectedDestinations.put(host, Pair.of(weights.getLeft(), weights.getRight() + step));
-        correctionCount--;
-      } else {
-        normalizedCorrectedDestinations.put(host, Pair.of(weights.getLeft(), weights.getRight()));
-      }
-    }
-
-    return normalizedCorrectedDestinations;
-  }
-
-  protected int normalizeWeight(int sum, Integer weight, int groupSize, int cap) {
+  int normalizeWeight(int sum, Integer weight, int groupSize, int cap) {
     if (sum == 0) {
       return (int) Math.round((double) cap / (double) groupSize);
     }
     return weight == null ? 0 : (int) Math.round((double) weight * (double) cap / (double) sum);
   }
 
-  public boolean isNormalizationNeeded(List destinations, int cap) {
-    return sumDestinationsWeights(destinationsToMap(destinations)) != cap;
+  protected boolean shouldNormalizeDestinations(Pair<Map, Map> filteredDestinations) {
+    if (filteredDestinations != null && filteredDestinations.getRight() != null
+        && filteredDestinations.getRight().size() > 0) {
+      return true;
+    }
+    return false;
   }
 
-  public boolean isNormalizationNeeded(List destinations) {
-    return isNormalizationNeeded(destinations, 100);
+  public Pair<Map, Map> filterDestinations(Map<String, Pair<Integer, Integer>> destinations) {
+    // recognizing matched and unmatched destinations
+    Map<String, Pair<Integer, Integer>> matchedDestinations = new LinkedHashMap<>();
+    Map<String, Pair<Integer, Integer>> nonMatchedDestinations = new LinkedHashMap<>();
+    if (destinations != null) {
+      for (String destinationHost : destinations.keySet()) {
+        Pair<Integer, Integer> destWeights = destinations.get(destinationHost);
+        if (destWeights != null) {
+          if (destWeights.getRight() != null) {
+            matchedDestinations.put(destinationHost, Pair.of(destWeights.getLeft(), destWeights.getRight()));
+          } else {
+            nonMatchedDestinations.put(destinationHost, Pair.of(destWeights.getLeft(), null));
+          }
+        }
+      }
+    }
+
+    return Pair.of(nonMatchedDestinations, matchedDestinations);
+  }
+
+  protected Map<String, Pair<Integer, Integer>> normalizeFilteredDestinations(Pair<Map, Map> filteredDestinations) {
+    // normalizing matched and unmatched destinations
+    Map<String, Pair<Integer, Integer>> normalizedDestinations = new LinkedHashMap<>();
+    Map nonMatchedDestinations = filteredDestinations.getLeft();
+    Map matchedDestinations = filteredDestinations.getRight();
+    int matchedDestinationsWeightsSum = sumDestinationsWeights(matchedDestinations);
+    if (matchedDestinationsWeightsSum < 100) {
+      normalizedDestinations.putAll(normalizeDestinations(nonMatchedDestinations, 100 - matchedDestinationsWeightsSum));
+      normalizedDestinations.putAll(matchedDestinations);
+    } else {
+      normalizedDestinations.putAll(normalizeDestinations(nonMatchedDestinations, 0));
+      normalizedDestinations.putAll(normalizeDestinations(matchedDestinations, 100));
+    }
+    return normalizedDestinations;
+  }
+
+  public Map<String, Pair<Integer, Integer>> normalizeDestinations(
+      Map<String, Pair<Integer, Integer>> sourceDestinations, int cap) {
+    Map<String, Pair<Integer, Integer>> normalizedDestinations = new LinkedHashMap<>();
+    AtomicInteger normalizedSum = new AtomicInteger();
+    if (sourceDestinations != null && sourceDestinations.size() > 0) {
+      int sum = sumDestinationsWeights(sourceDestinations);
+
+      for (String host : sourceDestinations.keySet()) {
+        Pair<Integer, Integer> weights = sourceDestinations.get(host);
+        int normalizedWeight = normalizeWeight(
+            sum, weights.getRight() != null ? weights.getRight() : weights.getLeft(), sourceDestinations.size(), cap);
+        normalizedDestinations.put(host, Pair.of(weights.getLeft(), normalizedWeight));
+        normalizedSum.addAndGet(normalizedWeight);
+      }
+    }
+    return correctNormalizedDestinations(normalizedDestinations, normalizedSum.get(), cap);
+  }
+
+  private Map<String, Pair<Integer, Integer>> correctNormalizedDestinations(
+      Map<String, Pair<Integer, Integer>> normalizedDestinations, int normalizedSum, int cap) {
+    Map<String, Pair<Integer, Integer>> normalizedCorrectedDestinations = new LinkedHashMap<>();
+    if (normalizedDestinations != null && normalizedDestinations.size() > 0) {
+      AtomicInteger correctionCount = new AtomicInteger(Math.abs(cap - normalizedSum));
+      Comparator<Map.Entry<String, Pair<Integer, Integer>>> comparator =
+          Map.Entry.comparingByValue(Comparator.comparing(Pair::getRight));
+      int step = normalizedSum > cap ? -1 : 1;
+
+      if (step < 0) {
+        comparator = comparator.reversed();
+      }
+
+      normalizedDestinations.entrySet().stream().sorted(comparator).forEach(entry -> {
+        if (correctionCount.get() > 0) {
+          normalizedCorrectedDestinations.put(
+              entry.getKey(), Pair.of(entry.getValue().getLeft(), entry.getValue().getRight() + step));
+          correctionCount.getAndDecrement();
+        } else {
+          normalizedCorrectedDestinations.put(
+              entry.getKey(), Pair.of(entry.getValue().getLeft(), entry.getValue().getRight()));
+        }
+      });
+    }
+    return normalizedCorrectedDestinations;
   }
 
   protected abstract String getMainResourceKind();
@@ -269,18 +300,4 @@ public abstract class TrafficRoutingResourceCreator {
 
   public abstract Optional<String> generateTrafficRoutingPatch(
       K8sTrafficRoutingConfig k8sTrafficRoutingConfig, Object trafficRoutingClusterResource, LogCallback logCallback);
-
-  protected List mapToDestinations(Map<String, Pair<Integer, Integer>> sourceDestinations) {
-    List<TrafficRoutingDestination> outDestinations = new ArrayList<>();
-    if (sourceDestinations != null) {
-      for (String sourceDestinationKey : sourceDestinations.keySet()) {
-        Pair<Integer, Integer> weights = sourceDestinations.get(sourceDestinationKey);
-        outDestinations.add(TrafficRoutingDestination.builder()
-                                .host(sourceDestinationKey)
-                                .weight(weights.getLeft() != null ? weights.getLeft() : weights.getRight())
-                                .build());
-      }
-    }
-    return outDestinations;
-  }
 }

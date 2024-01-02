@@ -48,7 +48,7 @@ import com.google.gson.GsonBuilder;
 import io.kubernetes.client.util.Yaml;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -137,13 +137,14 @@ public class SMITrafficRoutingResourceCreator extends TrafficRoutingResourceCrea
     rootService = updatePlaceHoldersIfExist(rootService, stableName, stageName);
 
     Map<String, Pair<Integer, Integer>> destinations = destinationsToMap(k8sTrafficRoutingConfig.getDestinations());
-    normalizeDestinations(destinations);
+
+    Map<String, Pair<Integer, Integer>> normalizedDestinations = normalizeDestinations(destinations, 100);
 
     return TrafficSplit.builder()
         .metadata(metadata)
         .apiVersion(apiVersion)
         .spec(TrafficSplitSpec.builder()
-                  .backends(getBackends(destinations, stableName, stageName))
+                  .backends(getBackends(normalizedDestinations, stableName, stageName))
                   .service(rootService)
                   .build())
         .build();
@@ -256,7 +257,7 @@ public class SMITrafficRoutingResourceCreator extends TrafficRoutingResourceCrea
     return Optional.empty();
   }
 
-  private Collection<String> createPatchForTrafficRoutingResourceDestinations(
+  protected Collection<String> createPatchForTrafficRoutingResourceDestinations(
       Map<String, Pair<Integer, Integer>> configuredDestinations, List<Backend> backendList, LogCallback logCallback) {
     List<String> patches = new ArrayList<>();
     if (backendList != null) {
@@ -276,14 +277,17 @@ public class SMITrafficRoutingResourceCreator extends TrafficRoutingResourceCrea
         }
       }
 
-      if (normalizeDestinations(clusterResourceDestinations)) {
-        logDestinationsNormalization(clusterResourceDestinations, logCallback);
+      Pair<Map, Map> filteredDestinations = filterDestinations(clusterResourceDestinations);
+      if (shouldNormalizeDestinations(filteredDestinations)) {
+        Map<String, Pair<Integer, Integer>> normalizedDestinations =
+            normalizeFilteredDestinations(filteredDestinations);
+        logDestinationsNormalization(normalizedDestinations, logCallback);
         // creating a patch for this particular route type and route with updated destinations
         try {
           patches.add(format(PATCH_REPLACE_JSON_FORMAT, BACKENDS_PATH,
               new ObjectMapper()
                   .setSerializationInclusion(JsonInclude.Include.NON_NULL)
-                  .writeValueAsString(mapToDestinations(clusterResourceDestinations))));
+                  .writeValueAsString(mapToDestinations(normalizedDestinations))));
         } catch (JsonProcessingException e) {
           log.warn("Failed to Deserialize List of VirtualServiceDetails", e);
         }
@@ -294,14 +298,18 @@ public class SMITrafficRoutingResourceCreator extends TrafficRoutingResourceCrea
 
   @Override
   public Map<String, Pair<Integer, Integer>> destinationsToMap(List sourceDestinations) {
-    Map<String, Pair<Integer, Integer>> outDestinations = new HashMap<>();
-    if (sourceDestinations != null) {
+    Map<String, Pair<Integer, Integer>> outDestinations = new LinkedHashMap<>();
+    if (sourceDestinations != null && sourceDestinations.size() > 0) {
       if (sourceDestinations.get(0) instanceof TrafficRoutingDestination) {
         return super.destinationsToMap(sourceDestinations);
       }
 
       ((List<Backend>) sourceDestinations).forEach(sourceDestination -> {
-        outDestinations.put(sourceDestination.getService(), Pair.of(sourceDestination.getWeight(), null));
+        outDestinations.put(sourceDestination.getService(),
+            Pair.of(sourceDestination.getWeight() == null || sourceDestination.getWeight() < 0
+                    ? null
+                    : sourceDestination.getWeight(),
+                null));
       });
     }
     return outDestinations;
@@ -310,12 +318,14 @@ public class SMITrafficRoutingResourceCreator extends TrafficRoutingResourceCrea
   @Override
   protected List<Backend> mapToDestinations(Map<String, Pair<Integer, Integer>> sourceDestinations) {
     List<Backend> outDestinations = new ArrayList<>();
-    if (sourceDestinations != null) {
+    if (sourceDestinations != null && sourceDestinations.size() > 0) {
       for (String sourceDestinationKey : sourceDestinations.keySet()) {
         Pair<Integer, Integer> weights = sourceDestinations.get(sourceDestinationKey);
         outDestinations.add(Backend.builder()
                                 .service(sourceDestinationKey)
-                                .weight(weights.getRight() != null ? weights.getRight() : weights.getLeft())
+                                .weight(weights.getRight() != null && weights.getRight() >= 0 ? weights.getRight()
+                                        : weights.getLeft() != null && weights.getLeft() >= 0 ? weights.getLeft()
+                                                                                              : null)
                                 .build());
       }
     }
