@@ -20,6 +20,7 @@ import io.harness.exception.InvalidRequestException;
 import io.harness.gitsync.gitxwebhooks.dtos.CreateGitXWebhookRequestDTO;
 import io.harness.gitsync.gitxwebhooks.dtos.CreateGitXWebhookResponseDTO;
 import io.harness.gitsync.gitxwebhooks.dtos.DeleteGitXWebhookRequestDTO;
+import io.harness.gitsync.gitxwebhooks.dtos.DeleteGitXWebhookResponseDTO;
 import io.harness.gitsync.gitxwebhooks.dtos.GetGitXWebhookRequestDTO;
 import io.harness.gitsync.gitxwebhooks.dtos.GetGitXWebhookResponseDTO;
 import io.harness.gitsync.gitxwebhooks.dtos.GitXEventDTO;
@@ -31,6 +32,7 @@ import io.harness.gitsync.gitxwebhooks.dtos.UpdateGitXWebhookRequestDTO;
 import io.harness.gitsync.gitxwebhooks.dtos.UpdateGitXWebhookResponseDTO;
 import io.harness.spec.server.ng.v1.model.CreateGitXWebhookRequest;
 import io.harness.spec.server.ng.v1.model.CreateGitXWebhookResponse;
+import io.harness.spec.server.ng.v1.model.DeleteGitXWebhookResponse;
 import io.harness.spec.server.ng.v1.model.GitXWebhookEventResponse;
 import io.harness.spec.server.ng.v1.model.GitXWebhookEventResponse.EventStatusEnum;
 import io.harness.spec.server.ng.v1.model.GitXWebhookResponse;
@@ -102,6 +104,13 @@ public class GitXWebhookMapper {
       UpdateGitXWebhookResponseDTO updateGitXWebhookResponseDTO) {
     UpdateGitXWebhookResponse responseBody = new UpdateGitXWebhookResponse();
     responseBody.setWebhookIdentifier(updateGitXWebhookResponseDTO.getWebhookIdentifier());
+    return responseBody;
+  }
+
+  public DeleteGitXWebhookResponse buildDeleteGitXWebhookResponse(
+      DeleteGitXWebhookResponseDTO deleteGitXWebhookResponse) {
+    DeleteGitXWebhookResponse responseBody = new DeleteGitXWebhookResponse();
+    responseBody.setWebhookIdentifier(deleteGitXWebhookResponse.getWebhookIdentifier());
     return responseBody;
   }
 

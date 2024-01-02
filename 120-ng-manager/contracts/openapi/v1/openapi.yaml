@@ -1608,24 +1608,6 @@ paths:
       responses:
         '204':
           $ref: '#/components/responses/DeleteGitXWebhookResponse'
-        '403':
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                type: object
-                properties: { }
-              examples:
-                example-resp:
-                  value: { }
-            application/yaml:
-              schema:
-                type: object
-                properties: { }
-              examples:
-                example-resp:
-                  value: |
-                    {}
       description: Deletes a gitx webhooks
       security:
         - x-api-key: []
@@ -1788,24 +1770,6 @@ paths:
           description: No Content
         '400':
           description: Bad Request
-        '403':
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                type: object
-                properties: { }
-              examples:
-                example-resp:
-                  value: { }
-            application/yaml:
-              schema:
-                type: object
-                properties: { }
-              examples:
-                example-resp:
-                  value: |
-                    {}
       description: Deletes a org level gitx webhooks
       security:
         - x-api-key: []
@@ -1952,24 +1916,6 @@ paths:
       responses:
         '204':
           description: No Content
-        '403':
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                type: object
-                properties: { }
-              examples:
-                example-resp:
-                  value: { }
-            application/yaml:
-              schema:
-                type: object
-                properties: { }
-              examples:
-                example-resp:
-                  value: |
-                    {}
       description: Deletes a project level gitx webhooks
       tags:
         - Project Gitx Webhooks
@@ -3240,6 +3186,15 @@ components:
             - SUCCESSFUL
             - PROCESSING
             - UNKNOWN
+    DeleteGitXWebhookResponse:
+      title: DeleteGitXWebhookResponse
+      x-stoplight:
+        id: gvkjrsw94a9nq
+      type: object
+      description: Contains information about the GitX webhooks that was deleted.
+      properties:
+        webhook_identifier:
+          type: string
     ReleaseDetailsResponse:
       title: ReleaseDetailsResponse
       x-stoplight:
@@ -4092,6 +4047,12 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/GitXWebhookEventResponse'
+    DeleteGitXWebhookResponse:
+      description: Example response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/DeleteGitXWebhookResponse'
   requestBodies:
     ServiceRequest:
       content:
