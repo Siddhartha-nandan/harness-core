@@ -376,9 +376,10 @@ public class GraphGenerationServiceImpl implements GraphGenerationService {
       pmsExecutionSummaryService.regenerateStageLayoutGraph(planExecutionId, stageNodeExecutions);
       return graph;
     } catch (Exception ex) {
-      log.error("Exception occurred while generating graph from nodeExecutions", ex);
-      throw new InvalidRequestException(
-          "Could not fetch graph for the given execution. It might have been deleted or does not exist");
+      throw ex;
+//      log.error("Exception occurred while generating graph from nodeExecutions", ex);
+//      throw new InvalidRequestException(
+//          "Could not fetch graph for the given execution. It might have been deleted or does not exist");
     }
   }
 

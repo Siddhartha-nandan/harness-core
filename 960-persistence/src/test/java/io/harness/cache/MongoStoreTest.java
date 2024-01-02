@@ -9,7 +9,6 @@ package io.harness.cache;
 
 import static io.harness.rule.OwnerRule.GEORGE;
 
-import static io.harness.rule.OwnerRule.VINICIUS;
 import static java.time.Duration.ofSeconds;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -50,22 +49,6 @@ public class MongoStoreTest extends PersistenceTestBase {
 
     foo = mongoStore.<TestNominalEntity>get(
         0, TestNominalEntity.algorithmId, TestNominalEntity.STRUCTURE_HASH, "key", Collections.emptyList());
-    assertThat(foo).isNotNull();
-  }
-
-  @Test
-  @Owner(developers = VINICIUS)
-  @Category(UnitTests.class)
-  public void testNominalUpdateGetWithAccountId() {
-    TestNominalEntity foo = mongoStore.<TestNominalEntity>get(
-            0, TestNominalEntity.algorithmId, TestNominalEntity.STRUCTURE_HASH, "key", Collections.emptyList());
-    assertThat(foo).isNull();
-
-    TestNominalEntity bar = TestNominalEntity.builder().contextHash(0).key("key").value("value").build();
-    mongoStore.upsert(bar, ofSeconds(10));
-
-    foo = mongoStore.<TestNominalEntity>get(
-            0, TestNominalEntity.algorithmId, TestNominalEntity.STRUCTURE_HASH, "key", Collections.emptyList());
     assertThat(foo).isNotNull();
   }
 

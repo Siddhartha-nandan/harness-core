@@ -51,7 +51,9 @@ import io.harness.pms.contracts.plan.ExecutionMetadata;
 import io.harness.pms.contracts.steps.SkipType;
 import io.harness.pms.contracts.steps.StepCategory;
 import io.harness.pms.contracts.steps.StepType;
+import io.harness.pms.plan.execution.SetupAbstractionKeys;
 import io.harness.pms.plan.execution.service.PmsExecutionSummaryService;
+import io.harness.repositories.PlanExecutionRepository;
 import io.harness.repositories.orchestrationEventLog.OrchestrationEventLogRepository;
 import io.harness.rule.Owner;
 import io.harness.service.GraphGenerationService;
@@ -73,11 +75,13 @@ import org.junit.experimental.categories.Category;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.Spy;
 
 /**
  * Test class for {@link GraphGenerationServiceImpl}
  */
 public class GraphGenerationServiceImplTest extends OrchestrationVisualizationTestBase {
+  @Inject @Spy private PlanExecutionRepository planExecutionRepository;
   @Inject @InjectMocks private PlanExecutionService planExecutionService;
   @Inject @InjectMocks private NodeExecutionService nodeExecutionService;
   @Inject @InjectMocks private SpringMongoStore mongoStore;
@@ -101,6 +105,8 @@ public class GraphGenerationServiceImplTest extends OrchestrationVisualizationTe
   @Owner(developers = ALEXEI)
   @Category(UnitTests.class)
   public void shouldReturnOrchestrationGraphWithoutCache() {
+    doReturn(PlanExecution.builder().ambiance(
+            Ambiance.newBuilder().putSetupAbstractions(SetupAbstractionKeys.accountId, "accountIdentifier").build()).build()).when(planExecutionRepository).getPlanExecutionWithProjections(any(), any());
     PlanExecution planExecution = planExecutionService.save(PlanExecution.builder().build());
     NodeExecution dummyStart =
         NodeExecution.builder()
