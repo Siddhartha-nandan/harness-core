@@ -116,7 +116,6 @@ public class MatrixConfigServiceHelper {
 
       String modifiedIdentifier = AmbianceUtils.getStrategyPostFixUsingMetadata(strategyMetadata, useMatrixFieldName);
       modifiedIdentifier = getUniqueModifiedIdentifier(ambiance, modifiedIdentifierStringMap, modifiedIdentifier);
-      modifiedIdentifierStringMap.putIfAbsent(modifiedIdentifier, 0);
 
       strategyMetadata = strategyMetadata.toBuilder().setIdentifierPostFix(modifiedIdentifier).build();
       // Setting the nodeName in MatrixMetadata to empty string in case user has not given nodeName while defining
@@ -132,7 +131,8 @@ public class MatrixConfigServiceHelper {
     return children;
   }
 
-  private String getUniqueModifiedIdentifier(Ambiance ambiance, Map<String, Integer> modifiedIdentifierStringMap, String modifiedIdentifier) {
+  private String getUniqueModifiedIdentifier(
+      Ambiance ambiance, Map<String, Integer> modifiedIdentifierStringMap, String modifiedIdentifier) {
     if (modifiedIdentifierStringMap.containsKey(modifiedIdentifier)) {
       /* If this modifiedIdentifier is a duplicate (it can happen for long identifiers which are truncated),
        we need deduplicate it by appending a counter at the end: */
@@ -145,13 +145,14 @@ public class MatrixConfigServiceHelper {
       if (!modifiedIdentifier.equals(modifiedIdentifierWithTruncationFix)) {
         log.warn(String.format(
             "modifiedIdentifier mismatch for matrix combination: modifiedIdentifier is %s while modifiedIdentifierWithTruncationFix is %s",
-                modifiedIdentifier, modifiedIdentifierWithTruncationFix));
+            modifiedIdentifier, modifiedIdentifierWithTruncationFix));
       }
       if (AmbianceUtils.checkIfFeatureFlagEnabled(
               ambiance, CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name())) {
         modifiedIdentifier = modifiedIdentifierWithTruncationFix;
       }
     }
+    modifiedIdentifierStringMap.putIfAbsent(modifiedIdentifier, 0);
     return modifiedIdentifier;
   }
 

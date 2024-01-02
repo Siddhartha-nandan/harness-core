@@ -281,8 +281,10 @@ public class NodeExecutionMap extends LateBindingMap {
 
   private Map<String, Object> extractStrategyMetadata(NodeExecution nodeExecution) {
     if (nodeExecution.getUuid() != null) {
-      return nodeExecutionInfoService.fetchStrategyObjectMap(
-          nodeExecution.getUuid(), AmbianceUtils.shouldUseMatrixFieldName(ambiance), AmbianceUtils.checkIfFeatureFlagEnabled(ambiance, FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name()));
+      return nodeExecutionInfoService.fetchStrategyObjectMap(nodeExecution.getUuid(),
+          AmbianceUtils.shouldUseMatrixFieldName(ambiance),
+          AmbianceUtils.checkIfFeatureFlagEnabled(
+              ambiance, FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name()));
     }
     return new HashMap<>();
   }

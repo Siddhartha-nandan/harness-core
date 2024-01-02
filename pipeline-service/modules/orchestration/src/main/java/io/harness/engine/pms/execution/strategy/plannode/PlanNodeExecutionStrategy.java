@@ -119,9 +119,12 @@ public class PlanNodeExecutionStrategy extends AbstractNodeExecutionStrategy<Pla
     String name = node.getName();
     String identifier = node.getIdentifier();
     if (metadata != null && metadata.getStrategyMetadata() != null) {
-      boolean useNewStrategyPostFixTruncation = AmbianceUtils.checkIfFeatureFlagEnabled(ambiance, FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name());
-      name = AmbianceUtils.modifyIdentifier(metadata.getStrategyMetadata(), node.getName(), ambiance, useNewStrategyPostFixTruncation);
-      identifier = AmbianceUtils.modifyIdentifier(metadata.getStrategyMetadata(), node.getIdentifier(), ambiance, useNewStrategyPostFixTruncation);
+      boolean useNewStrategyPostFixTruncation = AmbianceUtils.checkIfFeatureFlagEnabled(
+          ambiance, FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name());
+      name = AmbianceUtils.modifyIdentifier(
+          metadata.getStrategyMetadata(), node.getName(), ambiance, useNewStrategyPostFixTruncation);
+      identifier = AmbianceUtils.modifyIdentifier(
+          metadata.getStrategyMetadata(), node.getIdentifier(), ambiance, useNewStrategyPostFixTruncation);
     }
     NodeExecution nodeExecution =
         NodeExecution.builder()

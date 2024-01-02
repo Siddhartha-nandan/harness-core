@@ -306,19 +306,13 @@ public class AmbianceUtils {
     return ambiance.getLevels(ambiance.getLevelsCount() - 2).getRuntimeId();
   }
 
-  public static String modifyIdentifier(StrategyMetadata metadata, String identifier, Ambiance ambiance, boolean useNewStrategyPostFixTruncation) {
-    String strategyPostFix;
-    if (useNewStrategyPostFixTruncation) {
-      strategyPostFix = metadata.getIdentifierPostFix();
-    } else {
-      strategyPostFix =
-          getStrategyPostFixUsingMetadata(metadata, ambiance != null && shouldUseMatrixFieldName(ambiance));
-    }
-    return identifier.replaceAll(StrategyValidationUtils.STRATEGY_IDENTIFIER_POSTFIX_ESCAPED, strategyPostFix);
+  public static String modifyIdentifier(
+      StrategyMetadata metadata, String identifier, Ambiance ambiance, boolean useNewStrategyPostFixTruncation) {
+    return modifyIdentifier(metadata, identifier, shouldUseMatrixFieldName(ambiance), useNewStrategyPostFixTruncation);
   }
 
-  public static String modifyIdentifier(
-          StrategyMetadata strategyMetadata, String identifier, boolean useMatrixFieldName, boolean useNewStrategyPostFixTruncation) {
+  public static String modifyIdentifier(StrategyMetadata strategyMetadata, String identifier,
+      boolean useMatrixFieldName, boolean useNewStrategyPostFixTruncation) {
     String strategyPostFix;
     if (useNewStrategyPostFixTruncation) {
       strategyPostFix = strategyMetadata.getIdentifierPostFix();

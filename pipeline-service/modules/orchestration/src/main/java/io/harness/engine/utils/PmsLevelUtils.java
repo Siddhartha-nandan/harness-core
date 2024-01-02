@@ -27,13 +27,14 @@ public class PmsLevelUtils {
     return buildLevelFromNode(runtimeId, retryIndex, node, null, false, false);
   }
 
-  public static Level buildLevelFromNode(
-      String runtimeId, Node node, StrategyMetadata strategyMetadata, boolean useMatrixFieldName, boolean useNewStrategyPostFixTruncation) {
-    return buildLevelFromNode(runtimeId, 0, node, strategyMetadata, useMatrixFieldName, useNewStrategyPostFixTruncation);
+  public static Level buildLevelFromNode(String runtimeId, Node node, StrategyMetadata strategyMetadata,
+      boolean useMatrixFieldName, boolean useNewStrategyPostFixTruncation) {
+    return buildLevelFromNode(
+        runtimeId, 0, node, strategyMetadata, useMatrixFieldName, useNewStrategyPostFixTruncation);
   }
 
-  public static Level buildLevelFromNode(
-      String runtimeId, int retryIndex, Node node, StrategyMetadata strategyMetadata, boolean useMatrixFieldName, boolean useNewStrategyPostFixTruncation) {
+  public static Level buildLevelFromNode(String runtimeId, int retryIndex, Node node, StrategyMetadata strategyMetadata,
+      boolean useMatrixFieldName, boolean useNewStrategyPostFixTruncation) {
     Level.Builder levelBuilder = Level.newBuilder()
                                      .setSetupId(node.getUuid())
                                      .setRuntimeId(runtimeId)
@@ -49,8 +50,8 @@ public class PmsLevelUtils {
     }
     if (strategyMetadata != null) {
       levelBuilder.setStrategyMetadata(strategyMetadata);
-      levelBuilder.setIdentifier(
-          AmbianceUtils.modifyIdentifier(strategyMetadata, node.getIdentifier(), useMatrixFieldName, useNewStrategyPostFixTruncation));
+      levelBuilder.setIdentifier(AmbianceUtils.modifyIdentifier(
+          strategyMetadata, node.getIdentifier(), useMatrixFieldName, useNewStrategyPostFixTruncation));
     }
     return levelBuilder.build();
   }

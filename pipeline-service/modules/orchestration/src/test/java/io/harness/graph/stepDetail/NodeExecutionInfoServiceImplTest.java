@@ -392,8 +392,7 @@ public class NodeExecutionInfoServiceImplTest extends OrchestrationTestBase {
         nodeExecutionsInfoRepository.findByNodeExecutionId(nodeExecutionId);
     assertThat(byNodeExecutionId).isPresent();
 
-    Map<String, Object> result =
-        pmsGraphStepDetailsService.fetchStrategyObjectMap(nodeExecutionId, false, false);
+    Map<String, Object> result = pmsGraphStepDetailsService.fetchStrategyObjectMap(nodeExecutionId, false, false);
     assertThat(result.keySet().size()).isEqualTo(3);
     assertThat(result.get(StrategyConstants.TOTAL_ITERATIONS)).isEqualTo(1);
     assertThat(result.get(StrategyConstants.ITERATION)).isEqualTo(0);
@@ -425,8 +424,7 @@ public class NodeExecutionInfoServiceImplTest extends OrchestrationTestBase {
         nodeExecutionsInfoRepository.findByNodeExecutionId(nodeExecutionId);
     assertThat(byNodeExecutionId).isPresent();
 
-    Map<String, Object> result =
-        pmsGraphStepDetailsService.fetchStrategyObjectMap(nodeExecutionId, false, false);
+    Map<String, Object> result = pmsGraphStepDetailsService.fetchStrategyObjectMap(nodeExecutionId, false, false);
     assertThat(result.keySet().size()).isEqualTo(6);
     assertThat(result.get(StrategyConstants.TOTAL_ITERATIONS)).isEqualTo(1);
     assertThat(result.get(StrategyConstants.ITERATION)).isEqualTo(0);
@@ -461,8 +459,7 @@ public class NodeExecutionInfoServiceImplTest extends OrchestrationTestBase {
         nodeExecutionsInfoRepository.findByNodeExecutionId(nodeExecutionId);
     assertThat(byNodeExecutionId).isPresent();
 
-    Map<String, Object> result =
-        pmsGraphStepDetailsService.fetchStrategyObjectMap(nodeExecutionId, true, false);
+    Map<String, Object> result = pmsGraphStepDetailsService.fetchStrategyObjectMap(nodeExecutionId, true, false);
     assertThat(result.keySet().size()).isEqualTo(6);
     assertThat(result.get(StrategyConstants.TOTAL_ITERATIONS)).isEqualTo(1);
     assertThat(result.get(StrategyConstants.ITERATION)).isEqualTo(0);
@@ -495,8 +492,7 @@ public class NodeExecutionInfoServiceImplTest extends OrchestrationTestBase {
         nodeExecutionsInfoRepository.findByNodeExecutionId(nodeExecutionId);
     assertThat(byNodeExecutionId).isPresent();
 
-    Map<String, Object> result =
-        pmsGraphStepDetailsService.fetchStrategyObjectMap(nodeExecutionId, true, false);
+    Map<String, Object> result = pmsGraphStepDetailsService.fetchStrategyObjectMap(nodeExecutionId, true, false);
     assertThat(result.keySet().size()).isEqualTo(6);
     assertThat(result.get(StrategyConstants.TOTAL_ITERATIONS)).isEqualTo(1);
     assertThat(result.get(StrategyConstants.ITERATION)).isEqualTo(0);

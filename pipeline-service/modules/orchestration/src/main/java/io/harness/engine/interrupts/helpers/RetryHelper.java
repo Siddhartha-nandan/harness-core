@@ -86,10 +86,12 @@ public class RetryHelper {
       strategyMetadata = currentLevel.getStrategyMetadata();
     }
     int newRetryIndex = currentLevel != null ? currentLevel.getRetryIndex() + 1 : 0;
-    Ambiance finalAmbiance =
-        ambiance.toBuilder()
-            .addLevels(PmsLevelUtils.buildLevelFromNode(newUuid, newRetryIndex, node, strategyMetadata, AmbianceUtils.shouldUseMatrixFieldName(ambiance), AmbianceUtils.checkIfFeatureFlagEnabled(ambiance, FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name())))
-            .build();
+    Ambiance finalAmbiance = ambiance.toBuilder()
+                                 .addLevels(PmsLevelUtils.buildLevelFromNode(newUuid, newRetryIndex, node,
+                                     strategyMetadata, AmbianceUtils.shouldUseMatrixFieldName(ambiance),
+                                     AmbianceUtils.checkIfFeatureFlagEnabled(ambiance,
+                                         FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name())))
+                                 .build();
     // TODO: Move nodeExecution creation to AbstractNodeExecutionStrategy
     // ambiance could be modified by this clone method
     NodeExecution newNodeExecution =

@@ -876,7 +876,8 @@ public enum FeatureName {
       "Follow delegate selector precedence in service/infra step", CDC),
   CDS_K8S_TRAFFIC_ROUTING_NG(
       "Providing Traffic Routing functionality for K8s - BG, Canary and TrafficRouting steps", HarnessTeam.CDP),
-  CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR("Refactor truncation logic for strategy's identifierPostFix", HarnessTeam.CDC),
+  CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR(
+      "Refactor truncation logic for strategy's identifierPostFix", HarnessTeam.CDC),
   CDS_USE_AMBIANCE_IN_EXPRESSION_ENGINE(
       "Uses ambiance in expression engine. Should be enabled only if we see any issues", PIPELINE),
 

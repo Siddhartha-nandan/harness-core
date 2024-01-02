@@ -45,14 +45,16 @@ public class ExpandedJsonFunctor {
     List<Level> levelsWithStrategyMetadata =
         ambiance.getLevelsList().stream().filter(AmbianceUtils::hasStrategyMetadata).collect(Collectors.toList());
     boolean useMatrixFieldName = AmbianceUtils.shouldUseMatrixFieldName(ambiance);
-    boolean useNewStrategyPostFixTruncation = AmbianceUtils.checkIfFeatureFlagEnabled(ambiance, FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name());
+    boolean useNewStrategyPostFixTruncation = AmbianceUtils.checkIfFeatureFlagEnabled(
+        ambiance, FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name());
     if (EmptyPredicate.isNotEmpty(levelsWithStrategyMetadata)) {
       response.put("strategy",
-          nodeExecutionInfoService.fetchStrategyObjectMap(levelsWithStrategyMetadata, useMatrixFieldName, useNewStrategyPostFixTruncation));
+          nodeExecutionInfoService.fetchStrategyObjectMap(
+              levelsWithStrategyMetadata, useMatrixFieldName, useNewStrategyPostFixTruncation));
     } else {
       response.put("strategy",
-          nodeExecutionInfoService.fetchStrategyObjectMap(
-              AmbianceUtils.obtainCurrentLevel(ambiance).getRuntimeId(), useMatrixFieldName, useNewStrategyPostFixTruncation));
+          nodeExecutionInfoService.fetchStrategyObjectMap(AmbianceUtils.obtainCurrentLevel(ambiance).getRuntimeId(),
+              useMatrixFieldName, useNewStrategyPostFixTruncation));
     }
     return response;
   }

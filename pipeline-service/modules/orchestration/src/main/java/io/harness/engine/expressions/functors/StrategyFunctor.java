@@ -53,8 +53,10 @@ public class StrategyFunctor extends LateBindingMap {
   public Optional<Object> getStrategyParams(String key) {
     List<Level> levelsWithStrategyMetadata =
         ambiance.getLevelsList().stream().filter(AmbianceUtils::hasStrategyMetadata).collect(Collectors.toList());
-    Map<String, Object> map = nodeExecutionInfoService.fetchStrategyObjectMap(
-        levelsWithStrategyMetadata, AmbianceUtils.shouldUseMatrixFieldName(ambiance), AmbianceUtils.checkIfFeatureFlagEnabled(ambiance, FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name()));
+    Map<String, Object> map = nodeExecutionInfoService.fetchStrategyObjectMap(levelsWithStrategyMetadata,
+        AmbianceUtils.shouldUseMatrixFieldName(ambiance),
+        AmbianceUtils.checkIfFeatureFlagEnabled(
+            ambiance, FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name()));
     return Optional.of(map.get(key));
   }
 

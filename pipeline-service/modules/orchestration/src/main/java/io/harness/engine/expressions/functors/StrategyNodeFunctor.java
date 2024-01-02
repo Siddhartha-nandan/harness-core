@@ -109,7 +109,9 @@ public class StrategyNodeFunctor extends LateBindingMap {
     if (childLevel == null) {
       return Collections.emptyMap();
     }
-    return nodeExecutionInfoService.fetchStrategyObjectMap(
-        Collections.singletonList(childLevel), AmbianceUtils.shouldUseMatrixFieldName(ambiance), AmbianceUtils.checkIfFeatureFlagEnabled(ambiance, FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name()));
+    return nodeExecutionInfoService.fetchStrategyObjectMap(Collections.singletonList(childLevel),
+        AmbianceUtils.shouldUseMatrixFieldName(ambiance),
+        AmbianceUtils.checkIfFeatureFlagEnabled(
+            ambiance, FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name()));
   }
 }

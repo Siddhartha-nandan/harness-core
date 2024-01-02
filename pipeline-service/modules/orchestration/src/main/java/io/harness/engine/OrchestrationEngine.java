@@ -66,8 +66,11 @@ public class OrchestrationEngine {
       @NonNull String runtimeId, PmsNodeExecutionMetadata metadata, StrategyMetadata strategyMetadata,
       InitiateMode initiateMode) {
     Node node = planService.fetchNode(ambiance.getPlanId(), nodeId);
-    Ambiance clonedAmbiance = AmbianceUtils.cloneForChild(
-        ambiance, PmsLevelUtils.buildLevelFromNode(runtimeId, node, strategyMetadata, AmbianceUtils.shouldUseMatrixFieldName(ambiance), AmbianceUtils.checkIfFeatureFlagEnabled(ambiance, FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name())));
+    Ambiance clonedAmbiance = AmbianceUtils.cloneForChild(ambiance,
+        PmsLevelUtils.buildLevelFromNode(runtimeId, node, strategyMetadata,
+            AmbianceUtils.shouldUseMatrixFieldName(ambiance),
+            AmbianceUtils.checkIfFeatureFlagEnabled(
+                ambiance, FeatureName.CDS_NG_STRATEGY_IDENTIFIER_POSTFIX_TRUNCATION_REFACTOR.name())));
     NodeExecutionStrategy strategy = strategyFactory.obtainStrategy(node.getNodeType());
     if (metadata == null) {
       metadata = strategy.createMetadata(strategyMetadata);

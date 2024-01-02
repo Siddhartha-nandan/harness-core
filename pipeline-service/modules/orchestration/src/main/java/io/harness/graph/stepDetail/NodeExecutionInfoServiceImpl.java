@@ -245,8 +245,8 @@ public class NodeExecutionInfoServiceImpl implements NodeExecutionInfoService {
     StrategyMetadata strategyMetadata = strategyMetadataMap.get(nodeExecutionId);
     Map<String, Object> matrixValuesMap = new HashMap<>();
     Map<String, Object> repeatValuesMap = new HashMap<>();
-    strategyObjectMap = getStrategyMapInternal(
-        strategyMetadata, matrixValuesMap, repeatValuesMap, strategyObjectMap, useMatrixFieldName, useNewStrategyPostFixTruncation);
+    strategyObjectMap = getStrategyMapInternal(strategyMetadata, matrixValuesMap, repeatValuesMap, strategyObjectMap,
+        useMatrixFieldName, useNewStrategyPostFixTruncation);
     strategyObjectMap.put(MATRIX, matrixValuesMap);
     strategyObjectMap.put(REPEAT, repeatValuesMap);
 
@@ -271,8 +271,8 @@ public class NodeExecutionInfoServiceImpl implements NodeExecutionInfoService {
                      .currentIteration(strategyMetadata.getCurrentIteration())
                      .totalIterations(strategyMetadata.getTotalIterations())
                      .build());
-      strategyObjectMap = getStrategyMapInternal(
-          strategyMetadata, matrixValuesMap, repeatValuesMap, strategyObjectMap, useMatrixFieldName, useNewStrategyPostFixTruncation);
+      strategyObjectMap = getStrategyMapInternal(strategyMetadata, matrixValuesMap, repeatValuesMap, strategyObjectMap,
+          useMatrixFieldName, useNewStrategyPostFixTruncation);
       if (LevelUtils.isStepLevel(level)) {
         StrategyUtils.fetchGlobalIterationsVariablesForStrategyObjectMap(strategyObjectMap, levels);
       }
