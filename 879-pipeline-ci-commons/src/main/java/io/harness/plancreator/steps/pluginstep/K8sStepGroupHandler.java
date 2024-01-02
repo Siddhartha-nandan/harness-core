@@ -7,6 +7,7 @@
 
 package io.harness.plancreator.steps;
 
+import io.harness.exception.InvalidArgumentsException;
 import io.harness.plancreator.execution.StepsExecutionConfig;
 import io.harness.pms.contracts.advisers.AdviserObtainment;
 import io.harness.pms.contracts.advisers.AdviserType;
@@ -46,15 +47,32 @@ public class K8sStepGroupHandler implements StepGroupInfraHandler {
   }
 
   private AdviserObtainment getAdviserObtainment(YamlField stepsField) {
-    YamlField siblingField = GenericPlanCreatorUtils.obtainNextSiblingField(stepsField);
-    if (siblingField != null && siblingField.getNode().getUuid() != null) {
+    String nextNodeId = getNextNodeId(stepsField);
+    if (nextNodeId != null) {
       return AdviserObtainment.newBuilder()
           .setType(AdviserType.newBuilder().setType(OrchestrationAdviserTypes.ON_SUCCESS.name()).build())
-          .setParameters(ByteString.copyFrom(kryoSerializer.asBytes(
-              OnSuccessAdviserParameters.builder().nextNodeId(siblingField.getNode().getUuid()).build())))
+          .setParameters(ByteString.copyFrom(
+              kryoSerializer.asBytes(OnSuccessAdviserParameters.builder().nextNodeId(nextNodeId).build())))
           .build();
     }
 
-    return null;
+    return AdviserObtainment.newBuilder().build();
+  }
+
+  private String getNextNodeId(YamlField stepsField) {
+    YamlField step = stepsField.getNode().asArray().get(0).getField("step");
+    if (step == null) {
+      step = stepsField.getNode().asArray().get(0).getField("parallel");
+    }
+    if (step == null) {
+      step = stepsField.getNode().asArray().get(0).getField("stepGroup");
+    }
+
+    if (step == null) {
+      throw new InvalidArgumentsException(String.format(
+          "Not found step or parallel steps in container step group, %s", stepsField.getNode().getField("identifier")));
+    }
+
+    return step.getUuid();
   }
 }
