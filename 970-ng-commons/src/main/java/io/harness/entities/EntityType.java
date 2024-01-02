@@ -684,18 +684,31 @@ public enum EntityType {
   IDP_STAGE(ModuleType.IDP, EntityTypeConstants.IDP_STAGE, IdentifierRef.class, EntityYamlRootNames.IDP_STAGE),
   @JsonProperty(EntityTypeConstants.CHAOS_HUB)
   CHAOS_HUB(ModuleType.CHAOS, EntityTypeConstants.CHAOS_HUB, IdentifierRef.class, EntityYamlRootNames.CHAOS_HUB),
-  @JsonProperty(EntityTypeConstants.IDP_COOKIECUTTER)
-  IDP_COOKIECUTTER(
-      ModuleType.IDP, EntityTypeConstants.IDP_COOKIECUTTER, IdentifierRef.class, EntityYamlRootNames.IDP_COOKIECUTTER),
-  @JsonProperty(EntityTypeConstants.IDP_CREATE_REPO)
-  IDP_CREATE_REPO(
-      ModuleType.IDP, EntityTypeConstants.IDP_CREATE_REPO, IdentifierRef.class, EntityYamlRootNames.IDP_CREATE_REPO),
+  @JsonProperty(EntityTypeConstants.COOKIECUTTER)
+  COOKIECUTTER(ModuleType.IDP, EntityTypeConstants.COOKIECUTTER, IdentifierRef.class, EntityYamlRootNames.COOKIECUTTER),
+  @JsonProperty(EntityTypeConstants.CREATE_REPO)
+  CREATE_REPO(ModuleType.IDP, EntityTypeConstants.CREATE_REPO, IdentifierRef.class, EntityYamlRootNames.CREATE_REPO),
   @JsonProperty(EntityTypeConstants.DOWNLOAD_AWS_S3)
   DOWNLOAD_AWS_S3(
       ModuleType.CD, EntityTypeConstants.DOWNLOAD_AWS_S3, IdentifierRef.class, EntityYamlRootNames.DOWNLOAD_AWS_S3),
-  @JsonProperty(EntityTypeConstants.IDP_CODE_PUSH)
-  IDP_CODE_PUSH(
-      ModuleType.IDP, EntityTypeConstants.IDP_CODE_PUSH, IdentifierRef.class, EntityYamlRootNames.IDP_CODE_PUSH);
+  @JsonProperty(EntityTypeConstants.DIRECT_PUSH)
+  DIRECT_PUSH(ModuleType.IDP, EntityTypeConstants.DIRECT_PUSH, IdentifierRef.class, EntityYamlRootNames.DIRECT_PUSH),
+
+  @JsonProperty(EntityTypeConstants.REGISTER_CATALOG)
+  REGISTER_CATALOG(
+      ModuleType.IDP, EntityTypeConstants.REGISTER_CATALOG, IdentifierRef.class, EntityYamlRootNames.REGISTER_CATALOG),
+  @JsonProperty(EntityTypeConstants.K8S_TRAFFIC_ROUTING)
+  K8S_TRAFFIC_ROUTING_STEP(ModuleType.CD, EntityTypeConstants.K8S_TRAFFIC_ROUTING, IdentifierRef.class,
+      EntityYamlRootNames.K8S_TRAFFIC_ROUTING),
+  @JsonProperty(EntityTypeConstants.DOWNLOAD_HARNESS_STORE)
+  DOWNLOAD_HARNESS_STORE(ModuleType.CD, EntityTypeConstants.DOWNLOAD_HARNESS_STORE, IdentifierRef.class,
+      EntityYamlRootNames.DOWNLOAD_HARNESS_STORE),
+
+  @JsonProperty(EntityTypeConstants.CREATE_CATALOG)
+  CREATE_CATALOG(
+      ModuleType.IDP, EntityTypeConstants.CREATE_CATALOG, IdentifierRef.class, EntityYamlRootNames.CREATE_CATALOG),
+  @JsonProperty(EntityTypeConstants.SLACK_NOTIFY)
+  SLACK_NOTIFY(ModuleType.IDP, EntityTypeConstants.SLACK_NOTIFY, IdentifierRef.class, EntityYamlRootNames.SLACK_NOTIFY);
 
   private final ModuleType moduleType;
   String yamlName;

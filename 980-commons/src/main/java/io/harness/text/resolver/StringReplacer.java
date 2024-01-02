@@ -42,7 +42,7 @@ public class StringReplacer {
     }
 
     StringBuffer buf = new StringBuffer(source);
-    return substitute(buf, source, false, false).getFinalExpressionValue();
+    return substitute(buf, source, false).getFinalExpressionValue();
   }
 
   public StringReplacerResponse replaceWithRenderCheck(String source) {
@@ -51,20 +51,10 @@ public class StringReplacer {
     }
 
     StringBuffer buf = new StringBuffer(source);
-    return substitute(buf, source, true, false);
+    return substitute(buf, source, true);
   }
 
-  public StringReplacerResponse replaceWithRenderCheckAndNewMethodInvocation(String source) {
-    if (source == null) {
-      return null;
-    }
-
-    StringBuffer buf = new StringBuffer(source);
-    return substitute(buf, source, true, true);
-  }
-
-  private StringReplacerResponse substitute(
-      StringBuffer buf, String source, boolean checkRenderExpression, boolean isNewMethodInvocation) {
+  private StringReplacerResponse substitute(StringBuffer buf, String source, boolean checkRenderExpression) {
     boolean altered = false;
     boolean onlyRenderedExpressions = true;
     int bufEnd = buf.length();
@@ -125,8 +115,7 @@ public class StringReplacer {
         // Resolve the expression
         String expressionValue = expressionResolver.resolve(expression);
         if (checkRenderExpression
-            && checkIfExpressionValueCanBeConcatenated(
-                expressionValue, expressionStartPos, expressionEndPos, buf, isNewMethodInvocation)) {
+            && checkIfExpressionValueCanBeConcatenated(expressionValue, expressionStartPos, expressionEndPos, buf)) {
           expressionValue = (String) expressionResolver.getContextValue(expressionValue);
         } else {
           onlyRenderedExpressions = false;
@@ -158,8 +147,8 @@ public class StringReplacer {
    * @param buf
    * @return
    */
-  private boolean checkIfExpressionValueCanBeConcatenated(String expressionValue, int expressionStartPos,
-      int expressionEndPos, StringBuffer buf, boolean isNewMethodInvocation) {
+  private boolean checkIfExpressionValueCanBeConcatenated(
+      String expressionValue, int expressionStartPos, int expressionEndPos, StringBuffer buf) {
     Object contextValue = expressionResolver.getContextValue(expressionValue);
     if (expressionValue == null || contextValue == null) {
       return false;
@@ -174,7 +163,7 @@ public class StringReplacer {
     }
 
     // Check if right substring has method invocation, then return false
-    if (checkIfValueHasMethodInvocation(buf, expressionEndPos, isNewMethodInvocation)) {
+    if (checkIfValueHasMethodInvocation(buf, expressionEndPos)) {
       return false;
     }
 
@@ -242,15 +231,9 @@ public class StringReplacer {
     return false;
   }
 
-  private boolean checkIfValueHasMethodInvocation(
-      StringBuffer buf, int expressionEndPos, boolean isNewMethodInvocation) {
+  private boolean checkIfValueHasMethodInvocation(StringBuffer buf, int expressionEndPos) {
     // Right substring
     CharSequence charSequence = buf.subSequence(expressionEndPos, buf.length());
-    if (!isNewMethodInvocation) {
-      Pattern pattern = Pattern.compile("\\.\\w+\\(");
-      Matcher matcher = pattern.matcher(charSequence);
-      return matcher.find();
-    }
     // method invocation should be true for <+expr> in <+expr>.method()
     Pattern pattern = Pattern.compile("^\\.\\w+\\(");
     Matcher matcher = pattern.matcher(charSequence);
@@ -335,11 +318,14 @@ public class StringReplacer {
 
   private boolean checkIfCommaIsInMethodInvocationInLeftSubstring(StringBuffer buf, int currentPos) {
     int i = currentPos - 1;
+    int x = 0;
     for (; i >= 0; i--) {
       if (buf.charAt(i) == ')') {
-        return false;
+        x--;
+      } else if (buf.charAt(i) == '(') {
+        x++;
       }
-      if (buf.charAt(i) == '(') {
+      if (x > 0) {
         break;
       }
     }
@@ -352,11 +338,14 @@ public class StringReplacer {
   private boolean checkIfCommaIsInMethodInvocationInRightSubstring(
       StringBuffer buf, int currentPos, int expressionEndPos) {
     int i = currentPos + 1;
+    int x = 0;
     for (; i < expressionEndPos; i++) {
       if (buf.charAt(i) == '(') {
-        return false;
+        x++;
+      } else if (buf.charAt(i) == ')') {
+        x--;
       }
-      if (buf.charAt(i) == ')') {
+      if (x < 0) {
         return true;
       }
     }

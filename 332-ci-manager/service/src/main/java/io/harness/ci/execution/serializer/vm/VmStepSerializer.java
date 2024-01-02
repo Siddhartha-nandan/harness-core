@@ -21,6 +21,7 @@ import io.harness.beans.steps.stepinfo.RunStepInfo;
 import io.harness.beans.steps.stepinfo.RunTestsStepInfo;
 import io.harness.beans.sweepingoutputs.StageInfraDetails;
 import io.harness.ci.execution.utils.CIVmSecretEvaluator;
+import io.harness.ci.execution.utils.CIVmSweepingOutputEvaluator;
 import io.harness.delegate.beans.ci.vm.steps.VmStepInfo;
 import io.harness.pms.contracts.ambiance.Ambiance;
 import io.harness.pms.execution.utils.AmbianceUtils;
@@ -44,11 +45,14 @@ public class VmStepSerializer {
   @Inject VmBitriseStepSerializer vmBitriseStepSerializer;
   @Inject VmIACMStepSerializer vmIACMPluginCompatibleStepSerializer;
   @Inject VmIACMApprovalStepSerializer vmIACMApprovalStepSerializer;
+  @Inject CIVmSweepingOutputEvaluator ciVmSweepingOutputEvaluator;
 
   public Set<String> getStepSecrets(VmStepInfo vmStepInfo, Ambiance ambiance) {
     CIVmSecretEvaluator ciVmSecretEvaluator = CIVmSecretEvaluator.builder().build();
-    return ciVmSecretEvaluator.resolve(
+    Set<String> secrets = ciVmSecretEvaluator.resolve(
         vmStepInfo, AmbianceUtils.getNgAccess(ambiance), ambiance.getExpressionFunctorToken());
+    secrets.addAll(ciVmSweepingOutputEvaluator.resolve(vmStepInfo));
+    return secrets;
   }
 
   public VmStepInfo serialize(Ambiance ambiance, CIStepInfo stepInfo, StageInfraDetails stageInfraDetails,
@@ -84,9 +88,12 @@ public class VmStepSerializer {
       case GIT_CLONE:
       case SSCA_ORCHESTRATION:
       case SSCA_ENFORCEMENT:
-      case IDP_COOKIECUTTER:
-      case IDP_CREATE_REPO:
-      case IDP_CODE_PUSH:
+      case COOKIECUTTER:
+      case CREATE_REPO:
+      case DIRECT_PUSH:
+      case REGISTER_CATALOG:
+      case CREATE_CATALOG:
+      case SLACK_NOTIFY:
         return vmPluginCompatibleStepSerializer.serialize(
             ambiance, (PluginCompatibleStep) stepInfo, stageInfraDetails, identifier, parameterFieldTimeout, stepName);
       case IACM_TERRAFORM_PLUGIN:

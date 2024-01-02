@@ -33,6 +33,8 @@ import io.harness.callback.DelegateCallbackToken;
 import io.harness.callback.MongoDatabase;
 import io.harness.cdstage.CDNGStageSummaryResourceClientModule;
 import io.harness.ci.CiServiceResourceClientModule;
+import io.harness.ci.metrics.ExecutionMetricsService;
+import io.harness.ci.metrics.ExecutionMetricsServiceImpl;
 import io.harness.cistatus.service.GithubService;
 import io.harness.cistatus.service.GithubServiceImpl;
 import io.harness.client.DelegateSelectionLogHttpClientModule;
@@ -122,6 +124,8 @@ import io.harness.pms.ngpipeline.inputset.resources.InputSetResourcePMS;
 import io.harness.pms.ngpipeline.inputset.resources.InputSetResourcePMSImpl;
 import io.harness.pms.ngpipeline.inputset.service.PMSInputSetService;
 import io.harness.pms.ngpipeline.inputset.service.PMSInputSetServiceImpl;
+import io.harness.pms.notification.WebhookNotificationService;
+import io.harness.pms.notification.WebhookNotificationServiceImpl;
 import io.harness.pms.opa.service.PMSOpaService;
 import io.harness.pms.opa.service.PMSOpaServiceImpl;
 import io.harness.pms.outbox.PMSOutboxEventHandler;
@@ -203,8 +207,6 @@ import io.harness.secrets.SecretNGManagerClientModule;
 import io.harness.secretusage.SecretRuntimeUsageService;
 import io.harness.secretusage.SecretRuntimeUsageServiceImpl;
 import io.harness.serializer.KryoRegistrar;
-import io.harness.serializer.NGTriggerRegistrars;
-import io.harness.serializer.OrchestrationStepsModuleRegistrars;
 import io.harness.serializer.PipelineServiceModuleRegistrars;
 import io.harness.service.DelegateServiceDriverModule;
 import io.harness.spec.server.pipeline.v1.ApprovalsApi;
@@ -221,6 +223,8 @@ import io.harness.steps.jira.JiraStepHelperService;
 import io.harness.steps.servicenow.ServiceNowStepHelperService;
 import io.harness.steps.shellscript.ShellScriptHelperService;
 import io.harness.steps.shellscript.ShellScriptHelperServiceImpl;
+import io.harness.steps.shellscript.ShellScriptHelperServiceImplOld;
+import io.harness.steps.shellscript.ShellScriptHelperServiceOld;
 import io.harness.steps.wait.WaitStepService;
 import io.harness.steps.wait.WaitStepServiceImpl;
 import io.harness.telemetry.AbstractTelemetryModule;
@@ -437,6 +441,7 @@ public class PipelineServiceModule extends AbstractModule {
     registerOutboxEventHandlers();
     bind(OutboxEventHandler.class).to(PMSOutboxEventHandler.class);
     bind(HPersistence.class).to(MongoPersistence.class);
+    bind(ExecutionMetricsService.class).to(ExecutionMetricsServiceImpl.class);
     bind(PipelineMetadataService.class).to(PipelineMetadataServiceImpl.class);
 
     bind(PMSPipelineService.class).to(PMSPipelineServiceImpl.class);
@@ -454,6 +459,8 @@ public class PipelineServiceModule extends AbstractModule {
     bind(PMSYamlSchemaService.class).to(PMSYamlSchemaServiceImpl.class);
     bind(ApprovalNotificationHandler.class).to(ApprovalNotificationHandlerImpl.class);
     bind(PMSOpaService.class).to(PMSOpaServiceImpl.class);
+    bind(WebhookNotificationService.class).to(WebhookNotificationServiceImpl.class);
+    bind(ShellScriptHelperServiceOld.class).to(ShellScriptHelperServiceImplOld.class);
     bind(ShellScriptHelperService.class).to(ShellScriptHelperServiceImpl.class);
     bind(ApprovalYamlSchemaService.class).to(ApprovalYamlSchemaServiceImpl.class).in(Singleton.class);
     bind(CustomStageYamlSchemaService.class).to(CustomStageYamlSchemaServiceImpl.class).in(Singleton.class);
@@ -635,10 +642,7 @@ public class PipelineServiceModule extends AbstractModule {
   @Provides
   @Singleton
   List<YamlSchemaRootClass> yamlSchemaRootClasses() {
-    return ImmutableList.<YamlSchemaRootClass>builder()
-        .addAll(OrchestrationStepsModuleRegistrars.yamlSchemaRegistrars)
-        .addAll(NGTriggerRegistrars.yamlSchemaRegistrars)
-        .build();
+    return ImmutableList.<YamlSchemaRootClass>builder().build();
   }
 
   @Provides

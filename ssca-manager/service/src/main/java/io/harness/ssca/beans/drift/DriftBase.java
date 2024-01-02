@@ -7,4 +7,4 @@
 
 package io.harness.ssca.beans.drift;
 
-public enum DriftBase { BASELINE, LAST_GENERATED_SBOM }
+public enum DriftBase { BASELINE, LAST_GENERATED_SBOM, MANUAL }

@@ -14,6 +14,7 @@ import io.harness.annotations.StoreIn;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.ng.DbAliases;
 import io.harness.persistence.PersistentEntity;
+import io.harness.ssca.beans.Scorecard;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import dev.morphia.annotations.Entity;
@@ -43,11 +44,11 @@ public class ArtifactEntity implements PersistentEntity {
   @Id String id;
   @Field("artifactid") String artifactId;
   @Field("orchestrationid") String orchestrationId;
-  String artifactCorrelationId;
+  @Setter @NonFinal String artifactCorrelationId;
   @NotEmpty String url;
   String name;
   String type;
-  String tag;
+  @Setter @NonFinal String tag;
   @Field("accountid") String accountId;
   @Field("orgid") String orgId;
   @Field("projectid") String projectId;
@@ -67,8 +68,7 @@ public class ArtifactEntity implements PersistentEntity {
   @Setter @NonFinal Long prodEnvCount;
   @Setter @NonFinal Long nonProdEnvCount;
 
-  @Setter @NonFinal String avgScore;
-  @Setter @NonFinal String maxScore;
+  @Setter @NonFinal Scorecard scorecard;
 
   @Value
   @Builder

@@ -7,6 +7,7 @@
 
 package io.harness.ssca.execution;
 
+import static io.harness.beans.serializer.RunTimeInputHandler.resolveListParameter;
 import static io.harness.beans.serializer.RunTimeInputHandler.resolveStringParameter;
 
 import io.harness.annotations.dev.HarnessTeam;
@@ -24,6 +25,7 @@ import io.harness.ssca.beans.source.SbomSourceType;
 import io.harness.ssca.beans.stepinfo.SscaEnforcementStepInfo;
 import io.harness.ssca.beans.store.HarnessStore;
 import io.harness.ssca.beans.store.StoreType;
+import io.harness.ssca.client.NgSettingsUtils;
 import io.harness.ssca.client.SSCAServiceUtils;
 import io.harness.ssca.execution.enforcement.SscaEnforcementStepPluginUtils;
 import io.harness.yaml.core.variables.SecretNGVariable;
@@ -31,11 +33,14 @@ import io.harness.yaml.utils.NGVariablesUtils;
 
 import com.google.inject.Inject;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import org.apache.commons.collections4.CollectionUtils;
 
 @OwnedBy(HarnessTeam.SSCA)
 public class SscaEnforcementPluginHelper {
   @Inject private SSCAServiceUtils sscaServiceUtils;
+  @Inject private NgSettingsUtils ngSettingsUtils;
 
   public Map<String, String> getSscaEnforcementStepEnvVariables(
       SscaEnforcementStepInfo stepInfo, String identifier, Ambiance ambiance, Type infraType) {
@@ -49,10 +54,24 @@ public class SscaEnforcementPluginHelper {
     if (stepInfo.getPolicy().getStore() != null
         && StoreType.HARNESS.equals(stepInfo.getPolicy().getStore().getType())) {
       policyFile = resolveStringParameter("file", SscaConstants.SSCA_ENFORCEMENT, identifier,
-          ((HarnessStore) stepInfo.getPolicy().getStore().getStoreSpec()).getFile(), true);
+          ((HarnessStore) stepInfo.getPolicy().getStore().getStoreSpec()).getFile(), false);
     }
 
+    String policySetRef = null;
+    if (stepInfo.getPolicy().getPolicySets() != null) {
+      List<String> policySetRefs = resolveListParameter(
+          "policySets", SscaConstants.SSCA_ENFORCEMENT, identifier, stepInfo.getPolicy().getPolicySets(), false);
+      if (CollectionUtils.isNotEmpty(policySetRefs)) {
+        policySetRef = policySetRefs.toString().replace("[", "").replace("]", "").replace(" ", "");
+      }
+    }
     String runtimeId = AmbianceUtils.obtainCurrentRuntimeId(ambiance);
+
+    boolean useBase64SecretForAttestation = ngSettingsUtils.getBaseEncodingEnabled(AmbianceUtils.getAccountId(ambiance),
+        AmbianceUtils.getOrgIdentifier(ambiance), AmbianceUtils.getProjectIdentifier(ambiance));
+
+    boolean airgapEnabled = ngSettingsUtils.getAirgapEnabled(AmbianceUtils.getAccountId(ambiance),
+        AmbianceUtils.getOrgIdentifier(ambiance), AmbianceUtils.getProjectIdentifier(ambiance));
 
     Map<String, String> envMap = SscaEnforcementStepPluginUtils.getSscaEnforcementStepEnvVariables(
         EnforcementStepEnvVariables.builder()
@@ -60,6 +79,9 @@ public class SscaEnforcementPluginHelper {
             .sbomSource(sbomSource)
             .harnessPolicyFileId(policyFile)
             .sscaManagerEnabled(sscaServiceUtils.isSSCAManagerEnabled())
+            .policySetRef(policySetRef)
+            .base64SecretAttestation(useBase64SecretForAttestation)
+            .airgapEnabled(airgapEnabled)
             .build());
     if (infraType == Type.VM) {
       envMap.putAll(getSscaEnforcementSecretEnvMap(stepInfo, identifier, ambiance.getExpressionFunctorToken()));

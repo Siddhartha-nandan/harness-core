@@ -35,6 +35,8 @@ import io.harness.accesscontrol.acl.api.AccessControlDTO;
 import io.harness.accesscontrol.acl.api.ResourceScope;
 import io.harness.accesscontrol.clients.AccessControlClient;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.category.element.UnitTests;
 import io.harness.exception.EntityNotFoundException;
 import io.harness.favorites.ResourceType;
@@ -50,6 +52,7 @@ import io.harness.ng.core.dto.ResponseDTO;
 import io.harness.ng.core.entities.Project;
 import io.harness.ng.core.services.OrganizationService;
 import io.harness.ng.core.services.ProjectService;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.rule.Owner;
 import io.harness.utils.UserHelperService;
 
@@ -69,9 +72,11 @@ public class ProjectResourceTest extends CategoryTest {
 
   private FavoritesService favoritesService;
   private UserHelperService userHelperService;
+  private ScopeInfoService scopeResolverService;
 
   String accountIdentifier = randomAlphabetic(10);
   String orgIdentifier = randomAlphabetic(10);
+  String orgUniqueIdentifier = randomAlphabetic(10);
   String identifier = randomAlphabetic(10);
   String name = randomAlphabetic(10);
 
@@ -82,7 +87,9 @@ public class ProjectResourceTest extends CategoryTest {
     accessControlClient = mock(AccessControlClient.class);
     favoritesService = mock(FavoritesService.class);
     userHelperService = mock(UserHelperService.class);
-    projectResource = new ProjectResource(projectService, organizationService, favoritesService, userHelperService);
+    scopeResolverService = mock(ScopeInfoService.class);
+    projectResource = new ProjectResource(projectService, organizationService, favoritesService, userHelperService,
+        accessControlClient, scopeResolverService);
   }
 
   private ProjectDTO getProjectDTO(String orgIdentifier, String identifier, String name) {
@@ -93,19 +100,35 @@ public class ProjectResourceTest extends CategoryTest {
   @Owner(developers = KARAN)
   @Category(UnitTests.class)
   public void testCreate() {
-    String parentId = randomAlphabetic(10);
+    String parentUniqueId = randomAlphabetic(10);
     ProjectDTO projectDTO = getProjectDTO(orgIdentifier, identifier, name);
     ProjectRequest projectRequestWrapper = ProjectRequest.builder().project(projectDTO).build();
     Project project = toProject(projectDTO);
     project.setVersion((long) 0);
-    project.setParentId(parentId);
+    project.setParentUniqueId(parentUniqueId);
 
-    when(projectService.create(accountIdentifier, orgIdentifier, projectDTO)).thenReturn(project);
+    when(projectService.create(eq(accountIdentifier), any(), eq(projectDTO))).thenReturn(project);
     when(favoritesService.getFavorites(anyString(), any(), any(), anyString(), anyString()))
         .thenReturn(Collections.emptyList());
 
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(orgIdentifier)
+                              .uniqueId(orgUniqueIdentifier)
+                              .build();
+    when(scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null)).thenReturn(Optional.of(scopeInfo));
+
     ResponseDTO<ProjectResponse> responseDTO =
         projectResource.create(accountIdentifier, orgIdentifier, projectRequestWrapper);
+
+    ArgumentCaptor<ScopeInfo> captor = ArgumentCaptor.forClass(ScopeInfo.class);
+    verify(projectService, times(1)).create(eq(accountIdentifier), captor.capture(), eq(projectDTO));
+    ScopeInfo actualScopeInfo = captor.getValue();
+    assertEquals(scopeInfo.getScopeType(), actualScopeInfo.getScopeType());
+    assertEquals(scopeInfo.getAccountIdentifier(), actualScopeInfo.getAccountIdentifier());
+    assertEquals(scopeInfo.getOrgIdentifier(), actualScopeInfo.getOrgIdentifier());
+    assertEquals(scopeInfo.getUniqueId(), actualScopeInfo.getUniqueId());
 
     assertEquals(project.getVersion().toString(), responseDTO.getEntityTag());
     assertEquals(orgIdentifier, responseDTO.getData().getProject().getOrgIdentifier());
@@ -118,11 +141,17 @@ public class ProjectResourceTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testGet() {
     ProjectDTO projectDTO = getProjectDTO(orgIdentifier, identifier, name);
-    ProjectRequest projectRequestWrapper = ProjectRequest.builder().project(projectDTO).build();
     Project project = toProject(projectDTO);
     project.setVersion((long) 0);
 
-    when(projectService.get(accountIdentifier, orgIdentifier, identifier)).thenReturn(Optional.of(project));
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(orgIdentifier)
+                              .uniqueId(orgUniqueIdentifier)
+                              .build();
+    when(scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null)).thenReturn(Optional.of(scopeInfo));
+    when(projectService.get(accountIdentifier, scopeInfo, identifier)).thenReturn(Optional.of(project));
     when(favoritesService.getFavorites(anyString(), any(), any(), anyString(), anyString()))
         .thenReturn(Collections.emptyList());
 
@@ -132,7 +161,7 @@ public class ProjectResourceTest extends CategoryTest {
     assertEquals(orgIdentifier, responseDTO.getData().getProject().getOrgIdentifier());
     assertEquals(identifier, responseDTO.getData().getProject().getIdentifier());
 
-    when(projectService.get(accountIdentifier, orgIdentifier, identifier)).thenReturn(Optional.empty());
+    when(projectService.get(accountIdentifier, scopeInfo, identifier)).thenReturn(Optional.empty());
 
     boolean exceptionThrown = false;
     try {
@@ -237,10 +266,25 @@ public class ProjectResourceTest extends CategoryTest {
     Project project = toProject(projectDTO);
     project.setVersion(parseLong(ifMatch) + 1);
 
-    when(projectService.update(accountIdentifier, orgIdentifier, identifier, projectDTO)).thenReturn(project);
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(orgIdentifier)
+                              .uniqueId(orgUniqueIdentifier)
+                              .build();
+    when(scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null)).thenReturn(Optional.of(scopeInfo));
+    when(projectService.update(accountIdentifier, scopeInfo, identifier, projectDTO)).thenReturn(project);
 
     ResponseDTO<ProjectResponse> response =
         projectResource.update(ifMatch, identifier, accountIdentifier, orgIdentifier, projectRequestWrapper);
+
+    ArgumentCaptor<ScopeInfo> captor = ArgumentCaptor.forClass(ScopeInfo.class);
+    verify(projectService, times(1)).update(eq(accountIdentifier), captor.capture(), eq(identifier), eq(projectDTO));
+    ScopeInfo actualScopeInfo = captor.getValue();
+    assertEquals(scopeInfo.getScopeType(), actualScopeInfo.getScopeType());
+    assertEquals(scopeInfo.getAccountIdentifier(), actualScopeInfo.getAccountIdentifier());
+    assertEquals(scopeInfo.getOrgIdentifier(), actualScopeInfo.getOrgIdentifier());
+    assertEquals(scopeInfo.getUniqueId(), actualScopeInfo.getUniqueId());
 
     assertEquals("1", response.getEntityTag());
     assertEquals(orgIdentifier, response.getData().getProject().getOrgIdentifier());
@@ -254,11 +298,19 @@ public class ProjectResourceTest extends CategoryTest {
   @Category(UnitTests.class)
   public void testDelete() {
     String ifMatch = "0";
+    ScopeInfo scopeInfo = ScopeInfo.builder()
+                              .accountIdentifier(accountIdentifier)
+                              .scopeType(ScopeLevel.ORGANIZATION)
+                              .orgIdentifier(orgIdentifier)
+                              .uniqueId(orgUniqueIdentifier)
+                              .build();
+    when(scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null)).thenReturn(Optional.of(scopeInfo));
 
-    when(projectService.delete(accountIdentifier, orgIdentifier, identifier, Long.valueOf(ifMatch))).thenReturn(true);
+    when(projectService.delete(accountIdentifier, scopeInfo, identifier, Long.valueOf(ifMatch))).thenReturn(true);
 
     ResponseDTO<Boolean> response = projectResource.delete(ifMatch, identifier, accountIdentifier, orgIdentifier);
 
+    verify(projectService, times(1)).delete(accountIdentifier, scopeInfo, identifier, Long.valueOf(ifMatch));
     assertNull(response.getEntityTag());
     assertTrue(response.getData());
   }

@@ -23,6 +23,7 @@ import io.harness.batch.processing.billing.timeseries.service.impl.K8sUtilizatio
 import io.harness.batch.processing.billing.timeseries.service.impl.PodCountComputationServiceImpl;
 import io.harness.batch.processing.billing.timeseries.service.impl.UtilizationDataServiceImpl;
 import io.harness.batch.processing.billing.timeseries.service.impl.WeeklyReportServiceImpl;
+import io.harness.batch.processing.billingdataverification.BillingDataVerificationService;
 import io.harness.batch.processing.budgets.service.impl.BudgetAlertsServiceImpl;
 import io.harness.batch.processing.budgets.service.impl.BudgetCostUpdateService;
 import io.harness.batch.processing.ccm.BatchJobBucket;
@@ -34,6 +35,7 @@ import io.harness.batch.processing.connectors.ConnectorsHealthUpdateService;
 import io.harness.batch.processing.datadeletion.CCMDataDeletionService;
 import io.harness.batch.processing.events.timeseries.service.intfc.CostEventService;
 import io.harness.batch.processing.governance.GovernanceRecommendationService;
+import io.harness.batch.processing.k8s.DelegateHealthCheckService;
 import io.harness.batch.processing.metrics.ProductMetricsService;
 import io.harness.batch.processing.reports.ScheduledReportServiceImpl;
 import io.harness.batch.processing.service.AccountExpiryCleanupService;
@@ -96,6 +98,7 @@ public class EventJobScheduler {
   @Autowired private ProductMetricsService productMetricsService;
   @Autowired private BudgetAlertsServiceImpl budgetAlertsService;
   @Autowired private BudgetCostUpdateService budgetCostUpdateService;
+  @Autowired private BillingDataVerificationService billingDataVerificationService;
   @Autowired private AccountExpiryCleanupService accountExpiryCleanupService;
   @Autowired private HarnessServiceInfoFetcher harnessServiceInfoFetcher;
   @Autowired private InstanceDataServiceImpl instanceDataService;
@@ -108,6 +111,7 @@ public class EventJobScheduler {
   @Autowired private CfClient cfClient;
   @Autowired private FeatureFlagService featureFlagService;
   @Autowired private ConnectorsHealthUpdateService connectorsHealthUpdateService;
+  @Autowired private DelegateHealthCheckService delegateHealthCheckService;
   @Autowired private K8SWorkloadService k8SWorkloadService;
   @Autowired private AwsAccountTagsCollectionService awsAccountTagsCollectionService;
   @Autowired private UtilizationDataServiceImpl utilizationDataService;
@@ -380,6 +384,16 @@ public class EventJobScheduler {
     }
   }
 
+  @Scheduled(cron = "${scheduler-jobs-config.billingDataVerificationJobCron}")
+  public void runBillingDataVerificationJob() {
+    try {
+      billingDataVerificationService.verifyBillingData();
+      log.info("Billing-data verification completed for all accounts across all cloud providers.");
+    } catch (Exception ex) {
+      log.error("Exception while running billingDataVerificationJob", ex);
+    }
+  }
+
   // Run once a day, midnight
   @Scheduled(cron = "${scheduler-jobs-config.governanceRecommendationJobCronAws}")
   public void runGovernanceRecommendationJob() {
@@ -416,6 +430,20 @@ public class EventJobScheduler {
       log.info("Updated health of the connectors in NG");
     } catch (Exception ex) {
       log.error("Exception while running runNGConnectorsHealthUpdateJob", ex);
+    }
+  }
+
+  @Scheduled(cron = "${scheduler-jobs-config.delegateHealthUpdateJobCron}")
+  public void runDelegateHealthCheckJob() {
+    try {
+      if (!batchMainConfig.getDelegateHealthUpdateJobConfig().isEnabled()) {
+        log.info("delegateHealthCheckJob is disabled in config");
+        return;
+      }
+      accountShardService.getCeEnabledAccountIds().forEach(accountId -> delegateHealthCheckService.run(accountId));
+      log.info("Delegate Health Check completed");
+    } catch (Exception ex) {
+      log.error("Exception while running delegateHealthCheckJob", ex);
     }
   }
 

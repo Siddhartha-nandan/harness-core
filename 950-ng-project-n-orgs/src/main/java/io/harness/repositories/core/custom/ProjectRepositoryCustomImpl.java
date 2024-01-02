@@ -11,6 +11,7 @@ import static io.harness.annotations.dev.HarnessTeam.PL;
 
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.beans.Scope;
+import io.harness.beans.ScopeInfo;
 import io.harness.ng.core.entities.Project;
 import io.harness.ng.core.entities.Project.ProjectKeys;
 
@@ -68,11 +69,11 @@ public class ProjectRepositoryCustomImpl implements ProjectRepositoryCustom {
   }
 
   @Override
-  public Project restore(String accountIdentifier, String orgIdentifier, String identifier) {
+  public Project restore(String accountIdentifier, String parentUniqueId, String identifier) {
     Criteria criteria = Criteria.where(ProjectKeys.accountIdentifier)
                             .is(accountIdentifier)
-                            .and(ProjectKeys.orgIdentifier)
-                            .is(orgIdentifier)
+                            .and(ProjectKeys.parentUniqueId)
+                            .is(parentUniqueId)
                             .and(ProjectKeys.identifier)
                             .is(identifier)
                             .and(ProjectKeys.deleted)
@@ -101,22 +102,18 @@ public class ProjectRepositoryCustomImpl implements ProjectRepositoryCustom {
     return mongoTemplate.findAndRemove(query, Project.class);
   }
 
-  @Override
-  public Project delete(String accountIdentifier, String orgIdentifier, String identifier, Long version) {
+  public Project hardDelete(String accountIdentifier, ScopeInfo scopeInfo, String identifier, Long version) {
     Criteria criteria = Criteria.where(ProjectKeys.accountIdentifier)
                             .is(accountIdentifier)
-                            .and(ProjectKeys.orgIdentifier)
-                            .is(orgIdentifier)
+                            .and(ProjectKeys.parentUniqueId)
+                            .is(scopeInfo.getUniqueId())
                             .and(ProjectKeys.identifier)
-                            .is(identifier)
-                            .and(ProjectKeys.deleted)
-                            .ne(Boolean.TRUE);
+                            .is(identifier);
     if (version != null) {
       criteria.and(ProjectKeys.version).is(version);
     }
     Query query = new Query(criteria);
-    Update update = new Update().set(ProjectKeys.deleted, Boolean.TRUE);
-    return mongoTemplate.findAndModify(query, update, Project.class);
+    return mongoTemplate.findAndRemove(query, Project.class);
   }
 
   @Override

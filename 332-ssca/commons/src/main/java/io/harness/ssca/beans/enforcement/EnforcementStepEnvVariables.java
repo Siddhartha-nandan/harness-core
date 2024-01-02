@@ -21,4 +21,7 @@ public class EnforcementStepEnvVariables {
   String harnessPolicyFileId;
   String stepExecutionId;
   boolean sscaManagerEnabled;
+  String policySetRef;
+  boolean base64SecretAttestation;
+  boolean airgapEnabled;
 }

@@ -282,7 +282,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPOutputStream;
 import javax.validation.ConstraintViolation;
@@ -3940,12 +3939,7 @@ public class DelegateServiceImpl implements DelegateService {
   @Override
   public List<Delegate> getConnectedDelegates(String accountId, List<Delegate> delegates) {
     return delegates.stream()
-        .filter(delegate -> {
-          // Ignore version from ring while checking heartbeat for immutable delegate because client can use any version
-          // which might be different from immutable delegate version in ring.
-          String version = delegate.isImmutable() ? null : getVersion(accountId);
-          return delegateDao.checkDelegateConnected(accountId, delegate.getUuid(), version);
-        })
+        .filter(delegate -> { return delegateDao.checkDelegateConnected(accountId, delegate.getUuid()); })
         .collect(toList());
   }
 
@@ -4087,7 +4081,7 @@ public class DelegateServiceImpl implements DelegateService {
 
   @Override
   public boolean checkDelegateConnected(String accountId, String delegateId) {
-    return delegateDao.checkDelegateConnected(accountId, delegateId, getVersion(accountId));
+    return delegateDao.checkDelegateConnected(accountId, delegateId);
   }
 
   private String getVersion(String accountId) {
@@ -4178,9 +4172,6 @@ public class DelegateServiceImpl implements DelegateService {
   @Override
   public File generateKubernetesYaml(String accountId, DelegateSetupDetails delegateSetupDetails, String managerHost,
       String verificationServiceUrl, MediaType fileFormat) throws IOException {
-    // check uniqueness and k8 name validation
-    checkUniquenessOfDelegateName(accountId, delegateSetupDetails.getName(), true);
-    checkK8NamingValidation(delegateSetupDetails.getName());
     // If token name is not provided, use default token
     DelegateEntityOwner owner = DelegateEntityOwnerHelper.buildOwner(
         delegateSetupDetails.getOrgIdentifier(), delegateSetupDetails.getProjectIdentifier());
@@ -4563,17 +4554,5 @@ public class DelegateServiceImpl implements DelegateService {
           : Optional.empty();
     }
     return Optional.empty();
-  }
-
-  private void checkK8NamingValidation(String delegateName) {
-    Pattern k8NameMatching = Pattern.compile("^[a-z][a-z0-9-]*[a-z]$");
-    if (!k8NameMatching.matcher(delegateName).matches()) {
-      throw new InvalidRequestException(
-          "Delegate name should be lowercase and can include only dash(-) between letters and cannot start or end with a number",
-          USER);
-    }
-    if (delegateName.length() > 63) {
-      throw new InvalidRequestException("Delegate name must be at most 63 characters", USER);
-    }
   }
 }

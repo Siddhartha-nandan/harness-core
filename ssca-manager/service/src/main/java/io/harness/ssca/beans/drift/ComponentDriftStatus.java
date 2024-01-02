@@ -10,11 +10,13 @@ package io.harness.ssca.beans.drift;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 @OwnedBy(HarnessTeam.SSCA)
 public enum ComponentDriftStatus {
-  ADDED("added"),
-  MODIFIED("modified"),
-  DELETED("deleted");
+  @JsonProperty("added") ADDED("added"),
+  @JsonProperty("modified") MODIFIED("modified"),
+  @JsonProperty("deleted") DELETED("deleted");
 
   private String status;
 

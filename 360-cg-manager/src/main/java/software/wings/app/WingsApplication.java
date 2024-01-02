@@ -15,6 +15,7 @@ import static io.harness.data.structure.EmptyPredicate.isNotEmpty;
 import static io.harness.eventsframework.EventsFrameworkConstants.ENTITY_CRUD;
 import static io.harness.lock.mongo.MongoPersistentLocker.LOCKS_STORE;
 import static io.harness.logging.LoggingInitializer.initializeLogging;
+import static io.harness.microservice.NotifyEngineTarget.ARTIFACT_COLLECTION;
 import static io.harness.microservice.NotifyEngineTarget.GENERAL;
 import static io.harness.ng.DbAliases.DMS;
 import static io.harness.persistence.HPersistence.ANALYTICS_STORE_NAME;
@@ -114,6 +115,7 @@ import io.harness.metrics.jobs.RecordMetricsJob;
 import io.harness.metrics.service.api.MetricService;
 import io.harness.migrations.MigrationModule;
 import io.harness.module.DelegateServiceModule;
+import io.harness.module.TaskResponseEventModule;
 import io.harness.mongo.AbstractMongoModule;
 import io.harness.mongo.QuartzCleaner;
 import io.harness.mongo.tracing.TraceMode;
@@ -155,8 +157,6 @@ import io.harness.queue.QueueListenerController;
 import io.harness.queue.QueuePublisher;
 import io.harness.queue.RedisConsumerControllerCg;
 import io.harness.queue.TimerScheduledExecutorService;
-import io.harness.queue.publishers.CgGeneralEventPublisher;
-import io.harness.queue.publishers.CgNotifyEventPublisher;
 import io.harness.redis.DelegateHeartBeatSyncFromRedis;
 import io.harness.redis.DelegateServiceCacheModule;
 import io.harness.reflection.HarnessReflections;
@@ -749,7 +749,7 @@ public class WingsApplication extends Application<MainConfiguration> {
 
     initMetrics(injector);
 
-    registerWaitEnginePublishers(injector, configuration.isRedisNotifyEvent());
+    registerWaitEnginePublishers(injector);
     if (isManager()) {
       registerQueueListeners(configuration, injector);
     }
@@ -977,6 +977,7 @@ public class WingsApplication extends Application<MainConfiguration> {
         return configuration.getGrpcServerConfig();
       }
     });
+    modules.add(new TaskResponseEventModule(configuration.getDelegateServiceRedisConfig()));
     modules.add(new GrpcServiceConfigurationModule(configuration.getGrpcServerConfig(),
         configuration.getPortal().getJwtNextGenManagerSecret(),
         configuration.getLogStreamingServiceConfig().getServiceToken()));
@@ -1241,20 +1242,15 @@ public class WingsApplication extends Application<MainConfiguration> {
     }
   }
 
-  private void registerWaitEnginePublishers(Injector injector, boolean redisNotifyEvent) {
-    if (redisNotifyEvent) {
-      final NotifyQueuePublisherRegister notifyQueuePublisherRegister =
-          injector.getInstance(NotifyQueuePublisherRegister.class);
-      notifyQueuePublisherRegister.register(GENERAL, injector.getInstance(CgGeneralEventPublisher.class));
-      notifyQueuePublisherRegister.register(ORCHESTRATION, injector.getInstance(CgNotifyEventPublisher.class));
-    } else {
-      final QueuePublisher<NotifyEvent> publisher =
-          injector.getInstance(Key.get(new TypeLiteral<QueuePublisher<NotifyEvent>>() {}));
-      final NotifyQueuePublisherRegister notifyQueuePublisherRegister =
-          injector.getInstance(NotifyQueuePublisherRegister.class);
-      notifyQueuePublisherRegister.register(GENERAL, payload -> publisher.send(asList(GENERAL), payload));
-      notifyQueuePublisherRegister.register(ORCHESTRATION, payload -> publisher.send(asList(ORCHESTRATION), payload));
-    }
+  private void registerWaitEnginePublishers(Injector injector) {
+    final QueuePublisher<NotifyEvent> publisher =
+        injector.getInstance(Key.get(new TypeLiteral<QueuePublisher<NotifyEvent>>() {}));
+    final NotifyQueuePublisherRegister notifyQueuePublisherRegister =
+        injector.getInstance(NotifyQueuePublisherRegister.class);
+    notifyQueuePublisherRegister.register(GENERAL, payload -> publisher.send(asList(GENERAL), payload));
+    notifyQueuePublisherRegister.register(ORCHESTRATION, payload -> publisher.send(asList(ORCHESTRATION), payload));
+    notifyQueuePublisherRegister.register(
+        ARTIFACT_COLLECTION, payload -> publisher.send(asList(ARTIFACT_COLLECTION), payload));
   }
 
   private void registerCorrelationFilter(Environment environment, Injector injector) {
@@ -1316,6 +1312,8 @@ public class WingsApplication extends Application<MainConfiguration> {
         injector.getInstance(GeneralNotifyEventListener.class), listenerConfig.getGeneralNotifyEventListenerCount());
     queueListenerController.register(injector.getInstance(OrchestrationNotifyEventListener.class),
         listenerConfig.getOrchestrationNotifyEventListenerCount());
+    queueListenerController.register(injector.getInstance(ArtifactCollectionNotifyEventListener.class),
+        listenerConfig.getArtifactCollectionNotifyEventListenerCount());
 
     RedisConsumerControllerCg controller = injector.getInstance(RedisConsumerControllerCg.class);
     controller.register(injector.getInstance(ApplicationTimeScaleRedisChangeEventConsumer.class),
@@ -1381,10 +1379,11 @@ public class WingsApplication extends Application<MainConfiguration> {
     taskPollExecutor.scheduleWithFixedDelay(
         new Schedulable("Failed cleaning up manager versions.", injector.getInstance(ManagerVersionsCleanUpJob.class)),
         1, 5L, TimeUnit.MINUTES);
-
-    ScheduledExecutorService cgJobExecutor =
-        injector.getInstance(Key.get(ScheduledExecutorService.class, Names.named("cgJobExecutor")));
-    cgJobExecutor.scheduleWithFixedDelay(injector.getInstance(AccountDeletionJob.class), 0, 1, TimeUnit.HOURS);
+    if (configuration.isEnableAccountDeletionJob()) {
+      ScheduledExecutorService cgJobExecutor =
+          injector.getInstance(Key.get(ScheduledExecutorService.class, Names.named("cgJobExecutor")));
+      cgJobExecutor.scheduleWithFixedDelay(injector.getInstance(AccountDeletionJob.class), 0, 1, TimeUnit.HOURS);
+    }
   }
 
   private void scheduleJobsDelegateService(

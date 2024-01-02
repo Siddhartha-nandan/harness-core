@@ -7,7 +7,8 @@
 
 package io.harness.ssca.services;
 
-import io.harness.entities.Instance;
+import io.harness.beans.FeatureName;
+import io.harness.data.structure.EmptyPredicate;
 import io.harness.exception.InvalidArgumentsException;
 import io.harness.pipeline.remote.PipelineServiceClient;
 import io.harness.repositories.CdInstanceSummaryRepo;
@@ -15,10 +16,14 @@ import io.harness.repositories.EnforcementSummaryRepo;
 import io.harness.spec.server.ssca.v1.model.ArtifactDeploymentViewRequestBody;
 import io.harness.ssca.beans.EnvType;
 import io.harness.ssca.beans.SLSAVerificationSummary;
+import io.harness.ssca.beans.instance.ArtifactCorrelationDetailsDTO;
+import io.harness.ssca.beans.instance.ArtifactDetailsDTO;
+import io.harness.ssca.beans.instance.InstanceDTO;
 import io.harness.ssca.entities.ArtifactEntity;
 import io.harness.ssca.entities.CdInstanceSummary;
 import io.harness.ssca.entities.CdInstanceSummary.CdInstanceSummaryKeys;
 import io.harness.ssca.entities.EnforcementSummaryEntity.EnforcementSummaryEntityKeys;
+import io.harness.ssca.helpers.CdInstanceSummaryServiceHelper;
 import io.harness.ssca.utils.PipelineUtils;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -29,6 +34,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -43,6 +49,8 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
   @Inject EnforcementSummaryRepo enforcementSummaryRepo;
   @Inject PipelineServiceClient pipelineServiceClient;
   @Inject PipelineUtils pipelineUtils;
+  @Inject FeatureFlagService featureFlagService;
+  @Inject CdInstanceSummaryServiceHelper cdInstanceSummaryServiceHelper;
 
   private static String IDENTIFIER = "identifier";
   private static String STEP_TYPE = "stepType";
@@ -67,12 +75,24 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
   private static String TAG = "tag";
 
   @Override
-  public boolean upsertInstance(Instance instance) {
-    if (Objects.isNull(instance.getPrimaryArtifact())
-        || Objects.isNull(instance.getPrimaryArtifact().getArtifactIdentity())
-        || Objects.isNull(instance.getPrimaryArtifact().getArtifactIdentity().getImage())) {
-      log.info(
-          String.format("Instance skipped because of missing artifact identity, {InstanceId: %s}", instance.getId()));
+  public boolean upsertInstance(InstanceDTO instance) {
+    if (isCDArtifactNull(instance)) {
+      if (featureFlagService.isFeatureFlagEnabled(
+              instance.getAccountIdentifier(), FeatureName.SSCA_MATCH_INSTANCE_IMAGE_NAME.name())) {
+        if (cdInstanceSummaryServiceHelper.isK8sInstanceInfo(instance)) {
+          Set<ArtifactEntity> artifactEntities =
+              cdInstanceSummaryServiceHelper.findCorrelatedArtifactsForK8sInstance(instance);
+          for (ArtifactEntity artifact : artifactEntities) {
+            setArtifactCorrelationIdInInstance(instance, artifact.getArtifactCorrelationId());
+            saveInstanceSummaryAndUpdateCorrelatedArtifact(instance, artifact);
+          }
+        } else {
+          log.info("Either instance info not populated or not an instance of K8s for instance ID " + instance.getId());
+        }
+      } else {
+        log.info(
+            String.format("Instance skipped because of missing artifact identity, {InstanceId: %s}", instance.getId()));
+      }
       return true;
     }
 
@@ -85,6 +105,13 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
       return true;
     }
 
+    saveInstanceSummaryAndUpdateCorrelatedArtifact(instance, artifact);
+    return true;
+  }
+
+  private void saveInstanceSummaryAndUpdateCorrelatedArtifact(InstanceDTO instance, ArtifactEntity artifact) {
+    log.info(String.format(
+        "Updating artifact with correlation id: %s, uuid: %s", artifact.getArtifactCorrelationId(), artifact.getId()));
     CdInstanceSummary cdInstanceSummary = getCdInstanceSummary(instance.getAccountIdentifier(),
         instance.getOrgIdentifier(), instance.getProjectIdentifier(),
         instance.getPrimaryArtifact().getArtifactIdentity().getImage(), instance.getEnvIdentifier());
@@ -103,18 +130,41 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
       artifactService.updateArtifactEnvCount(artifact, newCdInstanceSummary.getEnvType(), 1);
       cdInstanceSummaryRepo.save(newCdInstanceSummary);
     }
-    return true;
+  }
+
+  private boolean isCDArtifactNull(InstanceDTO instance) {
+    return Objects.isNull(instance.getPrimaryArtifact())
+        || Objects.isNull(instance.getPrimaryArtifact().getArtifactIdentity())
+        || EmptyPredicate.isEmpty(instance.getPrimaryArtifact().getArtifactIdentity().getImage());
   }
 
   @Override
-  public boolean removeInstance(Instance instance) {
-    if (Objects.isNull(instance.getPrimaryArtifact())
-        || Objects.isNull(instance.getPrimaryArtifact().getArtifactIdentity())
-        || Objects.isNull(instance.getPrimaryArtifact().getArtifactIdentity().getImage())) {
-      log.info(
-          String.format("Instance skipped because of missing artifact identity, {InstanceId: %s}", instance.getId()));
+  public boolean removeInstance(InstanceDTO instance) {
+    if (isCDArtifactNull(instance)) {
+      if (featureFlagService.isFeatureFlagEnabled(
+              instance.getAccountIdentifier(), FeatureName.SSCA_MATCH_INSTANCE_IMAGE_NAME.name())) {
+        if (cdInstanceSummaryServiceHelper.isK8sInstanceInfo(instance)) {
+          Set<ArtifactEntity> artifactEntities =
+              cdInstanceSummaryServiceHelper.findCorrelatedArtifactsForK8sInstance(instance);
+          for (ArtifactEntity artifact : artifactEntities) {
+            setArtifactCorrelationIdInInstance(instance, artifact.getArtifactCorrelationId());
+            deleteInstanceSummaryAndUpdateCorrelatedArtifact(instance);
+          }
+        } else {
+          log.info("For instance removal, either instance info not populated or not an instance of K8s for instance ID "
+              + instance.getId());
+        }
+      } else {
+        log.info(
+            String.format("Instance skipped because of missing artifact identity, {InstanceId: %s}", instance.getId()));
+      }
       return true;
     }
+    deleteInstanceSummaryAndUpdateCorrelatedArtifact(instance);
+    return true;
+  }
+
+  private void deleteInstanceSummaryAndUpdateCorrelatedArtifact(InstanceDTO instance) {
     CdInstanceSummary cdInstanceSummary = getCdInstanceSummary(instance.getAccountIdentifier(),
         instance.getOrgIdentifier(), instance.getProjectIdentifier(),
         instance.getPrimaryArtifact().getArtifactIdentity().getImage(), instance.getEnvIdentifier());
@@ -132,7 +182,6 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
         cdInstanceSummaryRepo.save(cdInstanceSummary);
       }
     }
-    return true;
   }
 
   @Override
@@ -152,6 +201,21 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
         getPolicyViolationTypeFilterCriteria(accountId, orgIdentifier, projectIdentifier, filterBody));
 
     return cdInstanceSummaryRepo.findAll(criteria, pageable);
+  }
+
+  @Override
+  public List<CdInstanceSummary> getCdInstanceSummaries(
+      String accountId, String orgIdentifier, String projectIdentifier, List<String> artifactCorelationIds) {
+    Criteria criteria = Criteria.where(CdInstanceSummaryKeys.accountIdentifier)
+                            .is(accountId)
+                            .and(CdInstanceSummaryKeys.orgIdentifier)
+                            .is(orgIdentifier)
+                            .and(CdInstanceSummaryKeys.projectIdentifier)
+                            .is(projectIdentifier)
+                            .and(CdInstanceSummaryKeys.artifactCorrelationId)
+                            .in(artifactCorelationIds);
+
+    return cdInstanceSummaryRepo.findAll(criteria);
   }
 
   private Criteria getEnvironmentFilterCriteria(ArtifactDeploymentViewRequestBody filterBody) {
@@ -241,7 +305,7 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
   }
 
   @VisibleForTesting
-  public CdInstanceSummary createInstanceSummary(Instance instance, ArtifactEntity artifact) {
+  public CdInstanceSummary createInstanceSummary(InstanceDTO instance, ArtifactEntity artifact) {
     JsonNode rootNode = pipelineUtils.getPipelineExecutionSummaryResponse(instance.getLastPipelineExecutionId(),
         instance.getAccountIdentifier(), instance.getOrgIdentifier(), instance.getProjectIdentifier(),
         instance.getStageSetupId());
@@ -255,7 +319,7 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
             .slsaVerificationSummary(getSlsaVerificationSummary(rootNode, instance, artifact))
             .envIdentifier(instance.getEnvIdentifier())
             .envName(instance.getEnvName())
-            .envType(EnvType.valueOf(instance.getEnvType().name()))
+            .envType(EnvType.valueOf(instance.getEnvType()))
             .createdAt(Instant.now().toEpochMilli())
             .instanceIds(Collections.singleton(instance.getId()))
             .build();
@@ -264,7 +328,7 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
   }
 
   private CdInstanceSummary setPipelineDetails(
-      CdInstanceSummary cdInstanceSummary, JsonNode rootNode, Instance instance) {
+      CdInstanceSummary cdInstanceSummary, JsonNode rootNode, InstanceDTO instance) {
     cdInstanceSummary.setLastPipelineName(pipelineUtils.parsePipelineName(rootNode));
     cdInstanceSummary.setLastPipelineExecutionName(instance.getLastPipelineExecutionName());
     cdInstanceSummary.setLastPipelineExecutionId(instance.getLastPipelineExecutionId());
@@ -278,7 +342,7 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
   }
 
   private SLSAVerificationSummary getSlsaVerificationSummary(
-      JsonNode rootNode, Instance instance, ArtifactEntity artifact) {
+      JsonNode rootNode, InstanceDTO instance, ArtifactEntity artifact) {
     if (rootNode == null) {
       return null;
     }
@@ -356,5 +420,12 @@ public class CdInstanceSummaryServiceImpl implements CdInstanceSummaryService {
       return null;
     }
     return node.asText();
+  }
+
+  private void setArtifactCorrelationIdInInstance(InstanceDTO instance, String artifactCorrelationId) {
+    instance.setPrimaryArtifact(
+        ArtifactDetailsDTO.builder()
+            .artifactIdentity(ArtifactCorrelationDetailsDTO.builder().image(artifactCorrelationId).build())
+            .build());
   }
 }

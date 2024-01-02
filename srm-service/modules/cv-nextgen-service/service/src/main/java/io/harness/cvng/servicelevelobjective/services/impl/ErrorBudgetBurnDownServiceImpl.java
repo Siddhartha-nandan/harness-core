@@ -13,6 +13,7 @@ import io.harness.cvng.servicelevelobjective.beans.ErrorBudgetBurnDownResponse;
 import io.harness.cvng.servicelevelobjective.entities.ErrorBudgetBurnDown;
 import io.harness.cvng.servicelevelobjective.entities.ErrorBudgetBurnDown.ErrorBudgetBurnDownKeys;
 import io.harness.cvng.servicelevelobjective.services.api.ErrorBudgetBurnDownService;
+import io.harness.exception.InvalidRequestException;
 import io.harness.persistence.HPersistence;
 
 import com.google.inject.Inject;
@@ -24,6 +25,10 @@ public class ErrorBudgetBurnDownServiceImpl implements ErrorBudgetBurnDownServic
   @Inject HPersistence hPersistence;
   @Override
   public ErrorBudgetBurnDownResponse save(ProjectParams projectParams, ErrorBudgetBurnDownDTO errorBudgetBurnDownDTO) {
+    List<ErrorBudgetBurnDownDTO> errorBudgetBurnDowns =
+        getByStartTimeAndEndTimeDto(projectParams, errorBudgetBurnDownDTO.getSloIdentifier(),
+            errorBudgetBurnDownDTO.getStartTime(), errorBudgetBurnDownDTO.getEndTime());
+    checkIfErrorBudgetOverlapping(errorBudgetBurnDowns, errorBudgetBurnDownDTO);
     ErrorBudgetBurnDown errorBudgetBurnDown = dtoToEntity(projectParams, errorBudgetBurnDownDTO);
     hPersistence.save(errorBudgetBurnDown);
     ErrorBudgetBurnDown savedErrorBudgetBurnDown =
@@ -35,6 +40,18 @@ public class ErrorBudgetBurnDownServiceImpl implements ErrorBudgetBurnDownServic
         .createdAt(savedErrorBudgetBurnDown.getCreatedAt())
         .lastModifiedAt(savedErrorBudgetBurnDown.getLastUpdatedAt())
         .build();
+  }
+
+  private void checkIfErrorBudgetOverlapping(
+      List<ErrorBudgetBurnDownDTO> errorBudgetBurnDowns, ErrorBudgetBurnDownDTO errorBudgetBurnDownDTO) {
+    for (ErrorBudgetBurnDownDTO errorBudgetBurnDown : errorBudgetBurnDowns) {
+      if ((errorBudgetBurnDownDTO.getStartTime() > errorBudgetBurnDown.getStartTime()
+              || errorBudgetBurnDownDTO.getEndTime() > errorBudgetBurnDown.getStartTime())
+          && (errorBudgetBurnDownDTO.getStartTime() < errorBudgetBurnDown.getEndTime()
+              || errorBudgetBurnDownDTO.getEndTime() < errorBudgetBurnDown.getEndTime())) {
+        throw new InvalidRequestException(String.format("Error Budget burndown overlaps with", errorBudgetBurnDownDTO));
+      }
+    }
   }
 
   @Override
@@ -52,6 +69,11 @@ public class ErrorBudgetBurnDownServiceImpl implements ErrorBudgetBurnDownServic
     return getErrorBudgetBurnDown(projectParams, sloIdentifier, startTime, endTime);
   }
 
+  @Override
+  public Boolean deleteErrorBudgetBurnDown(String uuid) {
+    return hPersistence.delete(ErrorBudgetBurnDown.class, uuid);
+  }
+
   private List<ErrorBudgetBurnDown> getErrorBudgetBurnDown(
       ProjectParams projectParams, String sloIdentifier, Long startTime, Long endTime) {
     return hPersistence.createQuery(ErrorBudgetBurnDown.class)
@@ -60,10 +82,10 @@ public class ErrorBudgetBurnDownServiceImpl implements ErrorBudgetBurnDownServic
         .filter(ErrorBudgetBurnDownKeys.projectIdentifier, projectParams.getProjectIdentifier())
         .filter(ErrorBudgetBurnDownKeys.sloIdentifier, sloIdentifier)
         .field(ErrorBudgetBurnDownKeys.startTime)
-        .greaterThanOrEq(startTime)
-        .field(ErrorBudgetBurnDownKeys.endTime)
         .lessThanOrEq(endTime)
-        .order(Sort.ascending(ErrorBudgetBurnDownKeys.createdAt))
+        .field(ErrorBudgetBurnDownKeys.endTime)
+        .greaterThanOrEq(startTime)
+        .order(Sort.ascending(ErrorBudgetBurnDownKeys.startTime))
         .asList();
   }
 
@@ -75,6 +97,7 @@ public class ErrorBudgetBurnDownServiceImpl implements ErrorBudgetBurnDownServic
         .startTime(errorBudgetBurnDown.getStartTime())
         .endTime(errorBudgetBurnDown.getEndTime())
         .message(errorBudgetBurnDown.getMessage())
+        .uuid(errorBudgetBurnDown.getUuid())
         .build();
   }
 

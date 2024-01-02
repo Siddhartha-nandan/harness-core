@@ -424,6 +424,7 @@ io.harness.delegate.cdng.execution.K8sStepInstanceInfo
 io.harness.delegate.cdng.execution.TasStepInstanceInfo
 io.harness.ci.config.GitnessConfig
 io.harness.delegate.beans.connector.awsconnector.AwsManualConfigSpecDTO
+io.harness.delegate.beans.connector.awsconnector.AwsOidcSpecDTO
 io.harness.delegate.beans.connector.awsconnector.AwsConnectorDTO
 io.harness.ng.core.dto.secrets.TGTKeyTabFilePathSpecDTO
 io.harness.ng.core.dto.secrets.NTLMConfigDTO
@@ -556,5 +557,11 @@ io.harness.idp.pipeline.steps.beans.stepinfo.IdpCookieCutterStepInfo
 io.harness.idp.pipeline.steps.beans.stepNode.IdpCookieCutterStepNode
 io.harness.idp.pipeline.steps.beans.stepinfo.IdpCreateRepoStepInfo
 io.harness.idp.pipeline.steps.beans.stepNode.IdpCreateRepoStepNode
-io.harness.idp.pipeline.steps.beans.stepinfo.IdpCodePushStepInfo
-io.harness.idp.pipeline.steps.beans.stepNode.IdpCodePushStepNode
+io.harness.idp.pipeline.steps.beans.stepinfo.IdpDirectPushStepInfo
+io.harness.idp.pipeline.steps.beans.stepNode.IdpDirectPushStepNode
+io.harness.idp.pipeline.steps.beans.stepNode.IdpRegisterCatalogStepNode
+io.harness.idp.pipeline.steps.beans.stepinfo.IdpRegisterCatalogStepInfo
+io.harness.idp.pipeline.steps.beans.stepNode.IdpCreateCatalogStepNode
+io.harness.idp.pipeline.steps.beans.stepinfo.IdpCreateCatalogStepInfo
+io.harness.idp.pipeline.steps.beans.stepNode.IdpSlackNotifyStepNode
+io.harness.idp.pipeline.steps.beans.stepinfo.IdpSlackNotifyStepInfo

@@ -14,6 +14,7 @@ import static io.harness.k8s.K8sCommandUnitConstants.FetchFiles;
 import static io.harness.k8s.K8sCommandUnitConstants.Init;
 import static io.harness.k8s.K8sCommandUnitConstants.Prepare;
 import static io.harness.k8s.K8sCommandUnitConstants.Prune;
+import static io.harness.k8s.K8sCommandUnitConstants.TrafficRouting;
 import static io.harness.k8s.K8sCommandUnitConstants.WaitForSteadyState;
 import static io.harness.k8s.K8sCommandUnitConstants.WrapUp;
 import static io.harness.k8s.K8sConstants.MANIFEST_FILES_DIR;
@@ -49,6 +50,8 @@ import io.harness.beans.FileData;
 import io.harness.data.structure.EmptyPredicate;
 import io.harness.delegate.beans.logstreaming.CommandUnitsProgress;
 import io.harness.delegate.beans.logstreaming.ILogStreamingTaskClient;
+import io.harness.delegate.k8s.trafficrouting.TrafficRoutingResourceCreator;
+import io.harness.delegate.k8s.trafficrouting.TrafficRoutingResourceCreatorFactory;
 import io.harness.delegate.task.helm.HelmChartInfo;
 import io.harness.delegate.task.k8s.ContainerDeploymentDelegateBaseHelper;
 import io.harness.delegate.task.k8s.HelmChartManifestDelegateConfig;
@@ -58,7 +61,9 @@ import io.harness.delegate.task.k8s.K8sDeployRequest;
 import io.harness.delegate.task.k8s.K8sDeployResponse;
 import io.harness.delegate.task.k8s.K8sTaskHelperBase;
 import io.harness.delegate.task.k8s.ReleaseMetadata;
+import io.harness.delegate.task.k8s.client.K8sApiClient;
 import io.harness.delegate.task.k8s.client.K8sClient;
+import io.harness.delegate.task.k8s.trafficrouting.K8sTrafficRoutingConfig;
 import io.harness.delegate.task.utils.ServiceHookDTO;
 import io.harness.delegate.utils.ServiceHookHandler;
 import io.harness.exception.InvalidArgumentsException;
@@ -97,6 +102,7 @@ import io.harness.k8s.releasehistory.K8SLegacyReleaseHistory;
 import io.harness.k8s.releasehistory.K8sLegacyRelease;
 import io.harness.k8s.releasehistory.K8sRelease;
 import io.harness.k8s.releasehistory.K8sReleaseSecretHelper;
+import io.harness.k8s.trafficrouting.TrafficRoutingInfoDTO;
 import io.harness.logging.CommandExecutionStatus;
 import io.harness.logging.LogCallback;
 
@@ -112,6 +118,8 @@ import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -128,6 +136,7 @@ public class K8sBGRequestHandler extends K8sRequestHandler {
   @Inject private K8sBGBaseHandler k8sBGBaseHandler;
   @Inject private KubernetesContainerService kubernetesContainerService;
   @Inject private K8sManifestHashGenerator k8sManifestHashGenerator;
+  @Inject private K8sApiClient kubernetesApiClient;
   private KubernetesConfig kubernetesConfig;
   private Kubectl client;
   private IK8sReleaseHistory releaseHistory;
@@ -196,6 +205,8 @@ public class K8sBGRequestHandler extends K8sRequestHandler {
     prepareForBlueGreen(k8sDelegateTaskParams,
         k8sTaskHelperBase.getLogCallback(logStreamingTaskClient, Prepare, true, commandUnitsProgress),
         k8sBGDeployRequest.isSkipResourceVersioning(), k8sBGDeployRequest.isPruningEnabled());
+
+    prepareForTrafficRouting(k8sDelegateTaskParams, logStreamingTaskClient, commandUnitsProgress, k8sBGDeployRequest);
 
     if (k8sBGDeployRequest.getManifestDelegateConfig() instanceof HelmChartManifestDelegateConfig) {
       helmChartInfo =
@@ -560,5 +571,31 @@ public class K8sBGRequestHandler extends K8sRequestHandler {
     }
 
     executionLogCallback.saveExecutionLog("\nDone.", INFO, CommandExecutionStatus.SUCCESS);
+  }
+
+  private void prepareForTrafficRouting(K8sDelegateTaskParams k8sDelegateTaskParams,
+      ILogStreamingTaskClient logStreamingTaskClient, CommandUnitsProgress commandUnitsProgress,
+      K8sBGDeployRequest k8sBGDeployRequest) {
+    K8sTrafficRoutingConfig trafficRoutingConfig = k8sBGDeployRequest.getTrafficRoutingConfig();
+    if (trafficRoutingConfig != null) {
+      LogCallback logCallback =
+          k8sTaskHelperBase.getLogCallback(logStreamingTaskClient, TrafficRouting, true, commandUnitsProgress);
+      Set<String> availableApiVersions =
+          kubernetesApiClient.getApiVersions(k8sBGDeployRequest.getK8sInfraDelegateConfig(),
+              k8sDelegateTaskParams.getWorkingDirectory(), kubernetesConfig, logCallback);
+
+      TrafficRoutingResourceCreator trafficRoutingResourceCreator =
+          TrafficRoutingResourceCreatorFactory.create(trafficRoutingConfig);
+
+      List<KubernetesResource> trafficRoutingResources =
+          trafficRoutingResourceCreator.createTrafficRoutingResources(kubernetesConfig.getNamespace(), releaseName,
+              primaryService, stageService, availableApiVersions, logCallback);
+
+      Optional<TrafficRoutingInfoDTO> trafficRoutingInfo =
+          trafficRoutingResourceCreator.getTrafficRoutingInfo(trafficRoutingResources);
+      trafficRoutingInfo.ifPresent(s -> release.setTrafficRoutingInfo(s));
+
+      resources.addAll(trafficRoutingResources);
+    }
   }
 }

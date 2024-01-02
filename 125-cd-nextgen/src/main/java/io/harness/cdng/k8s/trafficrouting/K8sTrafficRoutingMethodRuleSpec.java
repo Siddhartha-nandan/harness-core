@@ -10,11 +10,10 @@ package io.harness.cdng.k8s.trafficrouting;
 import io.harness.annotations.dev.CodePulse;
 import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.ProductModule;
-import io.harness.validation.OneOfField;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonValue;
-import java.util.List;
+import javax.validation.constraints.NotEmpty;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -28,11 +27,9 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@OneOfField(fields = {"values", "value"})
 @CodePulse(module = ProductModule.CDS, unitCoverageRequired = false, components = {HarnessModuleComponent.CDS_K8S})
 public class K8sTrafficRoutingMethodRuleSpec extends K8sTrafficRoutingRuleSpec {
-  List<Method> values;
-  Method value;
+  @NotEmpty Method value;
   MatchType matchType;
 
   @JsonIgnoreProperties(ignoreUnknown = true)

@@ -7,6 +7,7 @@
 
 package io.harness.idp.scorecard.datasources.providers;
 
+import static io.harness.idp.common.CommonUtils.parseObjectToString;
 import static io.harness.idp.common.Constants.JIRA_IDENTIFIER;
 import static io.harness.idp.scorecard.datasourcelocations.constants.DataSourceLocations.API_BASE_URL;
 import static io.harness.idp.scorecard.datasourcelocations.constants.DataSourceLocations.AUTHORIZATION_HEADER;
@@ -14,7 +15,7 @@ import static io.harness.idp.scorecard.datasourcelocations.constants.DataSourceL
 
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.idp.backstagebeans.BackstageCatalogEntity;
+import io.harness.idp.backstage.entities.BackstageCatalogEntity;
 import io.harness.idp.scorecard.datapoints.parser.factory.DataPointParserFactory;
 import io.harness.idp.scorecard.datapoints.service.DataPointService;
 import io.harness.idp.scorecard.datasourcelocations.locations.DataSourceLocationFactory;
@@ -50,14 +51,16 @@ public class JiraProvider extends HttpDataSourceProvider {
     Map<String, String> replaceableHeaders = new HashMap<>(authHeaders);
     Map<String, String> requestBodyPairs = prepareRequestBodyReplaceablePairs(entity);
     Map<String, String> requestUrlPairs = prepareUrlReplaceablePairs(API_BASE_URL,
-        (String) configReader.getConfigValues(accountIdentifier, configs, JIRA_TARGET_URL_EXPRESSION_KEY));
+        parseObjectToString(configReader.getConfigValues(accountIdentifier, configs, JIRA_TARGET_URL_EXPRESSION_KEY)));
+    requestBodyPairs.putAll(requestUrlPairs);
     return processOut(accountIdentifier, JIRA_IDENTIFIER, entity, replaceableHeaders, requestBodyPairs, requestUrlPairs,
         dataPointsAndInputValues);
   }
 
   @Override
   protected Map<String, String> getAuthHeaders(String accountIdentifier, String configs) {
-    String authToken = (String) configReader.getConfigValues(accountIdentifier, configs, AUTH_TOKEN_EXPRESSION_KEY);
+    String authToken =
+        parseObjectToString(configReader.getConfigValues(accountIdentifier, configs, AUTH_TOKEN_EXPRESSION_KEY));
     return Map.of(AUTHORIZATION_HEADER, authToken);
   }
 

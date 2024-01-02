@@ -12,7 +12,6 @@ import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.delegate.task.k8s.K8sDryRunManifestRequest.K8sDryRunManifestRequestBuilder;
 
 import io.harness.annotations.dev.OwnedBy;
-import io.harness.beans.FeatureName;
 import io.harness.cdng.CDStepHelper;
 import io.harness.cdng.executables.CdTaskChainExecutable;
 import io.harness.cdng.featureFlag.CDFeatureFlagHelper;
@@ -54,6 +53,8 @@ import io.harness.serializer.KryoSerializer;
 import io.harness.steps.StepHelper;
 import io.harness.supplier.ThrowingSupplier;
 import io.harness.tasks.ResponseData;
+import io.harness.telemetry.helpers.DeploymentsInstrumentationHelper;
+import io.harness.telemetry.helpers.StepExecutionTelemetryEventDTO;
 
 import software.wings.beans.TaskType;
 
@@ -77,6 +78,7 @@ public class K8sDryRunManifestStep extends CdTaskChainExecutable implements K8sS
   @Inject protected KryoSerializer kryoSerializer;
   @Inject protected StepHelper stepHelper;
   @Inject private CDFeatureFlagHelper cdFeatureFlagHelper;
+  @Inject private DeploymentsInstrumentationHelper deploymentsInstrumentationHelper;
 
   @Override
   public TaskChainResponse executeK8sTask(ManifestOutcome k8sManifestOutcome, Ambiance ambiance,
@@ -123,9 +125,7 @@ public class K8sDryRunManifestStep extends CdTaskChainExecutable implements K8sS
             .useDeclarativeRollback(k8sStepHelper.isDeclarativeRollbackEnabled(k8sManifestOutcome))
             .disableFabric8(cdStepHelper.shouldDisableFabric8(accountId));
 
-    if (cdFeatureFlagHelper.isEnabled(accountId, FeatureName.CDS_K8S_SERVICE_HOOKS_NG)) {
-      k8sDryRunManifestRequestbuilder.serviceHooks(k8sStepHelper.getServiceHooks(ambiance));
-    }
+    k8sDryRunManifestRequestbuilder.serviceHooks(k8sStepHelper.getServiceHooks(ambiance));
 
     K8sDryRunManifestRequest k8sDryRunManifestRequest = k8sDryRunManifestRequestbuilder.build();
     k8sStepHelper.publishReleaseNameStepDetails(ambiance, releaseName);
@@ -206,6 +206,12 @@ public class K8sDryRunManifestStep extends CdTaskChainExecutable implements K8sS
                          .outcome(k8sDryRunManifestOutcome)
                          .build())
         .build();
+  }
+
+  @Override
+  protected StepExecutionTelemetryEventDTO getStepExecutionTelemetryEventDTO(
+      Ambiance ambiance, StepBaseParameters stepParameters, PassThroughData passThroughData) {
+    return StepExecutionTelemetryEventDTO.builder().stepType(STEP_TYPE.getType()).build();
   }
 
   @Override

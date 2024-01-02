@@ -304,13 +304,15 @@ public class NGSecretResourceV2 {
               + " accessible at the scope. For eg if set as true, at the Project scope we will get"
               + " org and account Secrets also in the response") @QueryParam("includeAllSecretsAccessibleAtScope")
       @DefaultValue("false") boolean includeAllSecretsAccessibleAtScope,
-      @BeanParam PageRequest pageRequest) {
+      @BeanParam PageRequest pageRequest,
+      @Parameter(description = "Specify the secret managers whose secrets should be listed") @QueryParam(
+          "secretManagerIdentifiers") Set<String> secretManagerIdentifiers) {
     if (secretType != null) {
       secretTypes.add(secretType);
     }
     return ResponseDTO.newResponse(getNGPageResponse(ngSecretService.list(accountIdentifier, orgIdentifier,
         projectIdentifier, identifiers, secretTypes, includeSecretsFromEverySubScope, searchTerm, sourceCategory,
-        includeAllSecretsAccessibleAtScope, pageRequest)));
+        includeAllSecretsAccessibleAtScope, pageRequest, secretManagerIdentifiers)));
   }
 
   @POST
@@ -329,12 +331,13 @@ public class NGSecretResourceV2 {
       @Parameter(description = ORG_PARAM_MESSAGE) @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
       @Parameter(description = PROJECT_PARAM_MESSAGE) @QueryParam(
           NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
-      @Body SecretResourceFilterDTO secretResourceFilterDTO, @BeanParam PageRequest pageRequest) {
+      @Body SecretResourceFilterDTO secretResourceFilterDTO, @BeanParam PageRequest pageRequest,
+      @QueryParam("secretManagerIdentifiers") Set<String> secretManagerIdentifiers) {
     return ResponseDTO.newResponse(getNGPageResponse(ngSecretService.list(accountIdentifier, orgIdentifier,
         projectIdentifier, secretResourceFilterDTO.getIdentifiers(), secretResourceFilterDTO.getSecretTypes(),
         secretResourceFilterDTO.isIncludeSecretsFromEverySubScope(), secretResourceFilterDTO.getSearchTerm(),
         secretResourceFilterDTO.getSourceCategory(), secretResourceFilterDTO.isIncludeAllSecretsAccessibleAtScope(),
-        pageRequest)));
+        pageRequest, secretManagerIdentifiers)));
   }
 
   @GET
@@ -548,9 +551,9 @@ public class NGSecretResourceV2 {
 
   @POST
   @Hidden
-  @Path("filesMigration")
-  @ApiOperation(value = "File type secrets migration", nickname = "migrateSecretFiles", hidden = true)
-  @Operation(operationId = "migrateSecretFiles", summary = "migrate secret files",
+  @Path("textMigration")
+  @ApiOperation(value = "Text type secrets migration", nickname = "migrateSecretText", hidden = true)
+  @Operation(operationId = "migrateSecretText", summary = "migrate secret text",
       responses =
       {
         @io.swagger.v3.oas.annotations.responses.
@@ -558,7 +561,7 @@ public class NGSecretResourceV2 {
       })
   @Consumes(MediaType.MULTIPART_FORM_DATA)
   public ResponseDTO<SecretResponseWrapper>
-  createSecretFile(@Parameter(description = ACCOUNT_PARAM_MESSAGE) @QueryParam(
+  createSecretText(@Parameter(description = ACCOUNT_PARAM_MESSAGE) @QueryParam(
                        NGCommonEntityConstants.ACCOUNT_KEY) @NotNull String accountIdentifier,
       @Parameter(description = ORG_PARAM_MESSAGE) @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
       @Parameter(description = PROJECT_PARAM_MESSAGE) @QueryParam(
@@ -587,7 +590,53 @@ public class NGSecretResourceV2 {
     }
 
     return ResponseDTO.newResponse(
-        ngSecretService.createFile(accountIdentifier, dto.getSecret(), encryptionKey, encryptedValue));
+        ngSecretService.create(accountIdentifier, dto.getSecret(), encryptionKey, encryptedValue));
+  }
+
+  @POST
+  @Hidden
+  @Path("filesMigration")
+  @ApiOperation(value = "File type secrets migration", nickname = "migrateSecretFiles", hidden = true)
+  @Operation(operationId = "migrateSecretFiles", summary = "migrate secret files",
+      responses =
+      {
+        @io.swagger.v3.oas.annotations.responses.
+        ApiResponse(responseCode = "default", description = "Returns created Secret file")
+      })
+  @Consumes(MediaType.MULTIPART_FORM_DATA)
+  public ResponseDTO<SecretResponseWrapper>
+  createSecretFile(@Parameter(description = ACCOUNT_PARAM_MESSAGE) @QueryParam(
+                       NGCommonEntityConstants.ACCOUNT_KEY) @NotNull String accountIdentifier,
+      @Parameter(description = ORG_PARAM_MESSAGE) @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
+      @Parameter(description = PROJECT_PARAM_MESSAGE) @QueryParam(
+          NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
+      @Parameter(
+          description = "This is a boolean value to specify if the Secret is Private. The default value is False.")
+      @QueryParam("privateSecret") @DefaultValue("false") boolean privateSecret,
+      @Parameter(description = "encryptionKey of the file secret from cg") @QueryParam(
+          "encryptionKey") @NotNull String encryptionKey,
+      @Parameter(description = "encryptionValue of the file secret from cg") @QueryParam(
+          "encryptedValue") @NotNull String encryptedValue,
+      @Parameter(description = "Encrypted file content of secret from cg. This is required for SMP environments.")
+      @FormDataParam("encryptedFileContent") String encryptedFileContent,
+      @Parameter(description = "Specification of Secret file") @FormDataParam("spec") String spec) {
+    SecretRequestWrapper dto = JsonUtils.asObject(spec, SecretRequestWrapper.class);
+    validateRequestPayload(dto);
+
+    if (!Objects.equals(orgIdentifier, dto.getSecret().getOrgIdentifier())
+        || !Objects.equals(projectIdentifier, dto.getSecret().getProjectIdentifier())) {
+      throw new InvalidRequestException("Invalid request, scope in payload and params do not match.", USER);
+    }
+
+    secretPermissionValidator.checkForAccessOrThrow(
+        ResourceScope.of(accountIdentifier, orgIdentifier, projectIdentifier), Resource.of(SECRET_RESOURCE_TYPE, null),
+        SECRET_EDIT_PERMISSION, privateSecret ? SecurityContextBuilder.getPrincipal() : null);
+    if (privateSecret) {
+      dto.getSecret().setOwner(SecurityContextBuilder.getPrincipal());
+    }
+
+    return ResponseDTO.newResponse(ngSecretService.createFile(
+        accountIdentifier, dto.getSecret(), encryptionKey, encryptedValue, encryptedFileContent));
   }
 
   @POST

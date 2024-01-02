@@ -20,6 +20,8 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import io.harness.NGResourceFilterConstants;
 import io.harness.accesscontrol.AccountIdentifier;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.beans.ScopeInfo;
+import io.harness.beans.ScopeLevel;
 import io.harness.enforcement.client.annotation.FeatureRestrictionCheck;
 import io.harness.exception.DuplicateFieldException;
 import io.harness.exception.InvalidRequestException;
@@ -31,6 +33,7 @@ import io.harness.ng.core.events.VariableDeleteEvent;
 import io.harness.ng.core.events.VariableUpdateEvent;
 import io.harness.ng.core.services.OrganizationService;
 import io.harness.ng.core.services.ProjectService;
+import io.harness.ng.core.services.ScopeInfoService;
 import io.harness.ng.core.variable.dto.VariableConfigDTO;
 import io.harness.ng.core.variable.dto.VariableDTO;
 import io.harness.ng.core.variable.dto.VariableResponseDTO;
@@ -67,17 +70,19 @@ public class VariableServiceImpl implements VariableService {
   private final OutboxService outboxService;
   private final ProjectService projectService;
   private final OrganizationService organizationService;
+  private final ScopeInfoService scopeResolverService;
 
   @Inject
   public VariableServiceImpl(VariableRepository variableRepository, VariableMapper variableMapper,
       @Named(OUTBOX_TRANSACTION_TEMPLATE) TransactionTemplate transactionTemplate, OutboxService outboxService,
-      ProjectService projectService, OrganizationService organizationService) {
+      ProjectService projectService, OrganizationService organizationService, ScopeInfoService scopeResolverService) {
     this.variableRepository = variableRepository;
     this.variableMapper = variableMapper;
     this.transactionTemplate = transactionTemplate;
     this.outboxService = outboxService;
     this.projectService = projectService;
     this.organizationService = organizationService;
+    this.scopeResolverService = scopeResolverService;
   }
 
   @Override
@@ -282,7 +287,13 @@ public class VariableServiceImpl implements VariableService {
 
   private void checkThatTheOrganizationExists(String orgIdentifier, String accountIdentifier) {
     if (isNotEmpty(orgIdentifier)) {
-      final Optional<Organization> organization = organizationService.get(accountIdentifier, orgIdentifier);
+      final Optional<Organization> organization = organizationService.get(accountIdentifier,
+          ScopeInfo.builder()
+              .accountIdentifier(accountIdentifier)
+              .scopeType(ScopeLevel.ACCOUNT)
+              .uniqueId(accountIdentifier)
+              .build(),
+          orgIdentifier);
       if (!organization.isPresent()) {
         throw new NotFoundException(String.format("org [%s] not found.", orgIdentifier));
       }
@@ -291,7 +302,9 @@ public class VariableServiceImpl implements VariableService {
 
   private void checkThatTheProjectExists(String orgIdentifier, String projectIdentifier, String accountIdentifier) {
     if (isNotEmpty(orgIdentifier) && isNotEmpty(projectIdentifier)) {
-      final Optional<Project> project = projectService.get(accountIdentifier, orgIdentifier, projectIdentifier);
+      Optional<ScopeInfo> scopeInfo = scopeResolverService.getScopeInfo(accountIdentifier, orgIdentifier, null);
+      final Optional<Project> project =
+          projectService.get(accountIdentifier, scopeInfo.orElseThrow(), projectIdentifier);
       if (!project.isPresent()) {
         throw new NotFoundException(String.format("project [%s] not found.", projectIdentifier));
       }
