@@ -325,5 +325,7 @@ public class NGKryoRegistrar implements KryoRegistrar {
     kryo.register(K8sBGStageScaleDownStepInfo.class, 12647);
     kryo.register(K8sBGStageScaleDownStepParameters.class, 12648);
     kryo.register(ArtifactBundleFetchResponsePassThroughData.class, 12649);
+
+    kryo.register(CETQualityGateStepInfo.class, 12650);
   }
 }
