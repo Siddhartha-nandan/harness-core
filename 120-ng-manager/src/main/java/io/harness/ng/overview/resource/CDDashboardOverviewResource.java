@@ -43,6 +43,7 @@ import io.harness.ng.core.service.entity.ServiceSequence;
 import io.harness.ng.core.utils.GitXUtils;
 import io.harness.ng.overview.dto.ActiveServiceInstanceSummary;
 import io.harness.ng.overview.dto.ActiveServiceInstanceSummaryV2;
+import io.harness.ng.overview.dto.ActiveServiceInstanceSummaryV3;
 import io.harness.ng.overview.dto.ArtifactInstanceDetails;
 import io.harness.ng.overview.dto.ChartVersionInstanceDetails;
 import io.harness.ng.overview.dto.DashboardWorkloadDeployment;
@@ -401,6 +402,20 @@ public class CDDashboardOverviewResource {
       @NotNull @QueryParam(NGCommonEntityConstants.SERVICE_KEY) String serviceId,
       @NotNull @QueryParam(NGCommonEntityConstants.TIMESTAMP) long timestampInMs) {
     return ResponseDTO.newResponse(cdOverviewDashboardService.getActiveServiceInstanceSummaryV2(
+        accountIdentifier, orgIdentifier, projectIdentifier, serviceId, timestampInMs));
+  }
+
+  @GET
+  @Path("/getActiveServiceInstanceSummaryV3")
+  @ApiOperation(value = "Get active service instance summary v3", nickname = "getActiveServiceInstanceSummaryV3")
+  @Hidden
+  public ResponseDTO<ActiveServiceInstanceSummaryV3> getActiveServiceInstanceSummaryV3(
+      @NotNull @QueryParam(NGCommonEntityConstants.ACCOUNT_KEY) String accountIdentifier,
+      @QueryParam(NGCommonEntityConstants.ORG_KEY) String orgIdentifier,
+      @QueryParam(NGCommonEntityConstants.PROJECT_KEY) String projectIdentifier,
+      @NotNull @QueryParam(NGCommonEntityConstants.SERVICE_KEY) String serviceId,
+      @NotNull @QueryParam(NGCommonEntityConstants.TIMESTAMP) long timestampInMs) {
+    return ResponseDTO.newResponse(cdOverviewDashboardService.getActiveServiceInstanceSummaryV3(
         accountIdentifier, orgIdentifier, projectIdentifier, serviceId, timestampInMs));
   }
 

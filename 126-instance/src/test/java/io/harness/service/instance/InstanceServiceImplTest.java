@@ -17,6 +17,7 @@ package io.harness.service.instance;
 import static io.harness.rule.OwnerRule.ABHISHEK;
 import static io.harness.rule.OwnerRule.BUHA;
 import static io.harness.rule.OwnerRule.PIYUSH_BHUWALKA;
+import static io.harness.rule.OwnerRule.RISHABH;
 import static io.harness.rule.OwnerRule.VIKYATH_HAREKAL;
 
 import static junit.framework.TestCase.assertFalse;
@@ -42,6 +43,7 @@ import io.harness.entities.instanceinfo.GitopsInstanceInfo;
 import io.harness.entities.instanceinfo.InstanceInfo;
 import io.harness.entities.instanceinfo.K8sInstanceInfo;
 import io.harness.models.ActiveServiceInstanceInfoWithEnvType;
+import io.harness.models.CountByServiceIdAndEnvId;
 import io.harness.models.CountByServiceIdAndEnvType;
 import io.harness.models.EnvBuildInstanceCount;
 import io.harness.models.InstancesByBuildId;
@@ -399,6 +401,27 @@ public class InstanceServiceImplTest extends InstancesTestBase {
              accountIdentifier, orgIdentifier, projectIdentifier, serviceIdsList, timestamp))
         .thenReturn(idAggregationResults.getMappedResults());
     assertThat(instanceService.getActiveServiceInstanceCountBreakdown(
+                   accountIdentifier, orgIdentifier, projectIdentifier, serviceIdsList, timestamp))
+        .isEqualTo(idAggregationResults.getMappedResults());
+  }
+
+  @Test
+  @Owner(developers = RISHABH)
+  @Category(UnitTests.class)
+  public void getActiveServiceInstanceCountBreakdownByEnvIdTest() {
+    String accountIdentifier = "Acc";
+    String orgIdentifier = "org";
+    long timestamp = 123L;
+    String projectIdentifier = "pro";
+    String serviceId = "serviceId";
+    List<String> serviceIdsList = List.of(serviceId);
+    CountByServiceIdAndEnvId countByServiceIdAndEnvId = new CountByServiceIdAndEnvId(serviceId, "env1", 1);
+    AggregationResults<CountByServiceIdAndEnvId> idAggregationResults =
+        new AggregationResults<>(List.of(countByServiceIdAndEnvId), new Document());
+    when(instanceRepository.getActiveServiceInstanceCountBreakdownByEnvId(
+             accountIdentifier, orgIdentifier, projectIdentifier, serviceIdsList, timestamp))
+        .thenReturn(idAggregationResults.getMappedResults());
+    assertThat(instanceService.getActiveServiceInstanceCountBreakdownByEnvId(
                    accountIdentifier, orgIdentifier, projectIdentifier, serviceIdsList, timestamp))
         .isEqualTo(idAggregationResults.getMappedResults());
   }

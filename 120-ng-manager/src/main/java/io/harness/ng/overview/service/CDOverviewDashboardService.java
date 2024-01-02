@@ -25,6 +25,7 @@ import io.harness.ng.core.environment.beans.EnvironmentType;
 import io.harness.ng.core.service.entity.ServiceSequence;
 import io.harness.ng.overview.dto.ActiveServiceInstanceSummary;
 import io.harness.ng.overview.dto.ActiveServiceInstanceSummaryV2;
+import io.harness.ng.overview.dto.ActiveServiceInstanceSummaryV3;
 import io.harness.ng.overview.dto.ArtifactInstanceDetails;
 import io.harness.ng.overview.dto.ChartVersionInstanceDetails;
 import io.harness.ng.overview.dto.DashboardWorkloadDeployment;
@@ -168,6 +169,9 @@ public interface CDOverviewDashboardService {
       String orgIdentifier, String projectIdentifier, String serviceIdentifier, String envIdentifier,
       EnvironmentType environmentType, String infraIdentifier, String clusterIdentifier, String displayName,
       String chartVersion);
+
+  ActiveServiceInstanceSummaryV3 getActiveServiceInstanceSummaryV3(
+      String accountIdentifier, String orgIdentifier, String projectIdentifier, String serviceId, long timestampInMs);
 
   io.harness.ng.overview.dto.TimeValuePairListDTO<Integer> getInstanceGrowthTrend(String accountIdentifier,
       String orgIdentifier, String projectIdentifier, String serviceId, long startTimeInMs, long endTimeInMs);

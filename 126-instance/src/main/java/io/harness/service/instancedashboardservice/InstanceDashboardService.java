@@ -20,6 +20,7 @@ import io.harness.models.InstanceDetailGroupedByPipelineExecutionList;
 import io.harness.models.InstanceDetailsByBuildId;
 import io.harness.models.dashboard.InstanceCountDetails;
 import io.harness.models.dashboard.InstanceCountDetailsByEnvTypeAndServiceId;
+import io.harness.models.dashboard.InstanceCountDetailsV2;
 import io.harness.ng.core.environment.beans.EnvironmentType;
 
 import java.util.List;
@@ -61,4 +62,11 @@ public interface InstanceDashboardService {
       boolean filterOnChartVersion);
   InstanceCountDetailsByEnvTypeAndServiceId getActiveServiceInstanceCountBreakdown(String accountIdentifier,
       String orgIdentifier, String projectIdentifier, List<String> serviceId, long timestampInMs);
+
+  /*
+      Returns breakup of active instances by envId and envType at a given timestamp for specified accountIdentifier,
+      projectIdentifier, orgIdentifier and serviceIds
+    */
+  InstanceCountDetailsV2 getActiveServiceInstanceCountBreakdownByEnvId(String accountIdentifier, String orgIdentifier,
+      String projectIdentifier, List<String> serviceIdentifiers, long timestampInMs);
 }

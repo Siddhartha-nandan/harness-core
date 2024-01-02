@@ -32,9 +32,11 @@ import io.harness.models.InstanceGroupedByPipelineExecution;
 import io.harness.models.InstancesByBuildId;
 import io.harness.models.constants.InstanceSyncConstants;
 import io.harness.models.dashboard.InstanceCountDetails;
+import io.harness.models.dashboard.InstanceCountDetailsByEnvId;
 import io.harness.models.dashboard.InstanceCountDetailsByEnvTypeAndServiceId;
 import io.harness.models.dashboard.InstanceCountDetailsByEnvTypeBase;
 import io.harness.models.dashboard.InstanceCountDetailsByService;
+import io.harness.models.dashboard.InstanceCountDetailsV2;
 import io.harness.ng.core.environment.beans.EnvironmentType;
 import io.harness.service.instance.InstanceService;
 import io.harness.utils.IdentifierRefHelper;
@@ -390,6 +392,52 @@ public class InstanceDashboardServiceImpl implements InstanceDashboardService {
     return InstanceCountDetailsByEnvTypeAndServiceId.builder()
         .instanceCountDetailsByEnvTypeBaseMap(instanceCountDetailsByEnvTypeBaseMap)
         .build();
+  }
+
+  /*
+  Returns breakup of active instances by envId and envType at a given timestamp for specified accountIdentifier,
+  projectIdentifier, orgIdentifier and serviceIds
+*/
+  @Override
+  public InstanceCountDetailsV2 getActiveServiceInstanceCountBreakdownByEnvId(String accountIdentifier,
+      String orgIdentifier, String projectIdentifier, List<String> serviceIdentifiers, long timestampInMs) {
+    Map<String, Map<String, Integer>> serviceIdToEnvIdVsInstanceCountMap = new HashMap<>();
+    List<String> serviceRefs = serviceIdentifiers.stream()
+                                   .map(serviceId
+                                       -> IdentifierRefHelper.getRefFromIdentifierOrRef(
+                                           accountIdentifier, orgIdentifier, projectIdentifier, serviceId))
+                                   .collect(Collectors.toList());
+    instanceService
+        .getActiveServiceInstanceCountBreakdownByEnvId(
+            accountIdentifier, orgIdentifier, projectIdentifier, serviceRefs, timestampInMs)
+        .forEach(countByEnvType -> {
+          final String currentServiceId = countByEnvType.getServiceIdentifier();
+          serviceIdToEnvIdVsInstanceCountMap.putIfAbsent(currentServiceId, new HashMap<>());
+          serviceIdToEnvIdVsInstanceCountMap.get(currentServiceId)
+              .put(countByEnvType.getEnvIdentifier(), countByEnvType.getCount());
+        });
+
+    Map<String, Map<EnvironmentType, Integer>> serviceIdToEnvTypeVsInstanceCountMap = new HashMap<>();
+    instanceService
+        .getActiveServiceInstanceCountBreakdown(
+            accountIdentifier, orgIdentifier, projectIdentifier, serviceRefs, timestampInMs)
+        .forEach(countByEnvType -> {
+          final String currentServiceId = countByEnvType.getServiceIdentifier();
+          serviceIdToEnvTypeVsInstanceCountMap.putIfAbsent(currentServiceId, new HashMap<>());
+          serviceIdToEnvTypeVsInstanceCountMap.get(currentServiceId)
+              .put(countByEnvType.getEnvType(), countByEnvType.getCount());
+        });
+
+    Map<String, InstanceCountDetailsByEnvId> instanceCountDetailsByEnvIdMap = new HashMap<>();
+    serviceIdToEnvIdVsInstanceCountMap.forEach(
+        (String currentServiceId, Map<String, Integer> envIdVsInstanceCountMap) -> {
+          Map<EnvironmentType, Integer> envTypeVsInstanceCountMap =
+              serviceIdToEnvTypeVsInstanceCountMap.getOrDefault(currentServiceId, new HashMap<>());
+          final InstanceCountDetailsByEnvId instanceCountDetailsByEnvId =
+              new InstanceCountDetailsByEnvId(envTypeVsInstanceCountMap, envIdVsInstanceCountMap);
+          instanceCountDetailsByEnvIdMap.putIfAbsent(currentServiceId, instanceCountDetailsByEnvId);
+        });
+    return InstanceCountDetailsV2.builder().instanceCountDetailsByEnvIdMap(instanceCountDetailsByEnvIdMap).build();
   }
 
   // ----------------------------- PRIVATE METHODS -----------------------------

@@ -17,6 +17,7 @@ import io.harness.models.ActiveServiceInstanceInfo;
 import io.harness.models.ActiveServiceInstanceInfoV2;
 import io.harness.models.ActiveServiceInstanceInfoWithEnvType;
 import io.harness.models.ArtifactDeploymentDetailModel;
+import io.harness.models.CountByServiceIdAndEnvId;
 import io.harness.models.CountByServiceIdAndEnvType;
 import io.harness.models.EnvBuildInstanceCount;
 import io.harness.models.EnvironmentInstanceCountModel;
@@ -99,6 +100,13 @@ public interface InstanceRepositoryCustom {
       String chartVersion, boolean filterByChartVersion);
 
   List<CountByServiceIdAndEnvType> getActiveServiceInstanceCountBreakdown(String accountIdentifier,
+      String orgIdentifier, String projectIdentifier, List<String> serviceId, long timestampInMs);
+
+  /*
+    Returns breakup of active instances by envId at a given timestamp for specified accountIdentifier,
+    projectIdentifier, orgIdentifier and serviceId
+  */
+  List<CountByServiceIdAndEnvId> getActiveServiceInstanceCountBreakdownByEnvId(String accountIdentifier,
       String orgIdentifier, String projectIdentifier, List<String> serviceId, long timestampInMs);
 
   Instance findFirstInstance(Criteria criteria);

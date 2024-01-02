@@ -47,6 +47,7 @@ import io.harness.models.EnvironmentInstanceCountModel;
 import io.harness.models.InstanceDetailGroupedByPipelineExecutionList;
 import io.harness.models.InstanceDetailsByBuildId;
 import io.harness.models.constants.TimescaleConstants;
+import io.harness.models.dashboard.InstanceCountDetailsByEnvId;
 import io.harness.models.dashboard.InstanceCountDetailsByEnvTypeAndServiceId;
 import io.harness.models.dashboard.InstanceCountDetailsByEnvTypeBase;
 import io.harness.ng.NextGenConfiguration;
@@ -78,6 +79,7 @@ import io.harness.ng.core.template.TemplateResponseDTO;
 import io.harness.ng.overview.dto.ActiveServiceDeploymentsInfo;
 import io.harness.ng.overview.dto.ActiveServiceInstanceSummary;
 import io.harness.ng.overview.dto.ActiveServiceInstanceSummaryV2;
+import io.harness.ng.overview.dto.ActiveServiceInstanceSummaryV3;
 import io.harness.ng.overview.dto.ArtifactDeploymentDetail;
 import io.harness.ng.overview.dto.ArtifactInstanceDetails;
 import io.harness.ng.overview.dto.BuildIdAndInstanceCount;
@@ -3993,6 +3995,25 @@ public class CDOverviewDashboardServiceImpl implements CDOverviewDashboardServic
     return ActiveServiceInstanceSummaryV2.builder().countDetails(currentCountDetails).changeRate(changeRate).build();
   }
 
+  @Override
+  public ActiveServiceInstanceSummaryV3 getActiveServiceInstanceSummaryV3(
+      String accountIdentifier, String orgIdentifier, String projectIdentifier, String serviceId, long timestampInMs) {
+    String serviceRef =
+        IdentifierRefHelper.getRefFromIdentifierOrRef(accountIdentifier, orgIdentifier, projectIdentifier, serviceId);
+
+    Pair<InstanceCountDetailsByEnvId, InstanceCountDetailsByEnvId> countDetailsByEnvIdPair =
+        getActiveServiceInstanceSummaryV3Helper(
+            accountIdentifier, orgIdentifier, projectIdentifier, serviceRef, timestampInMs);
+
+    InstanceCountDetailsByEnvId currentCountDetails = countDetailsByEnvIdPair.getValue();
+    InstanceCountDetailsByEnvId prevCountDetails = countDetailsByEnvIdPair.getKey();
+
+    ChangeRate changeRate =
+        calculateChangeRateV2(prevCountDetails.getTotalInstances(), currentCountDetails.getTotalInstances());
+
+    return ActiveServiceInstanceSummaryV3.builder().countDetails(currentCountDetails).changeRate(changeRate).build();
+  }
+
   public Pair<InstanceCountDetailsByEnvTypeBase, InstanceCountDetailsByEnvTypeBase>
   getActiveServiceInstanceSummaryHelper(
       String accountIdentifier, String orgIdentifier, String projectIdentifier, String serviceId, long timestampInMs) {
@@ -4012,6 +4033,29 @@ public class CDOverviewDashboardServiceImpl implements CDOverviewDashboardServic
             .getActiveServiceInstanceCountBreakdown(
                 accountIdentifier, orgIdentifier, projectIdentifier, Arrays.asList(serviceId), timestampInMs)
             .getInstanceCountDetailsByEnvTypeBaseMap()
+            .getOrDefault(serviceId, defaultInstanceCountDetails);
+
+    return MutablePair.of(prevCountDetails, currentCountDetails);
+  }
+
+  public Pair<InstanceCountDetailsByEnvId, InstanceCountDetailsByEnvId> getActiveServiceInstanceSummaryV3Helper(
+      String accountIdentifier, String orgIdentifier, String projectIdentifier, String serviceId, long timestampInMs) {
+    final long currentTime = getCurrentTime();
+
+    InstanceCountDetailsByEnvId defaultInstanceCountDetails =
+        new InstanceCountDetailsByEnvId(new HashMap<>(), new HashMap<>());
+
+    InstanceCountDetailsByEnvId currentCountDetails =
+        instanceDashboardService
+            .getActiveServiceInstanceCountBreakdownByEnvId(
+                accountIdentifier, orgIdentifier, projectIdentifier, Arrays.asList(serviceId), currentTime)
+            .getInstanceCountDetailsByEnvIdMap()
+            .getOrDefault(serviceId, defaultInstanceCountDetails);
+    InstanceCountDetailsByEnvId prevCountDetails =
+        instanceDashboardService
+            .getActiveServiceInstanceCountBreakdownByEnvId(
+                accountIdentifier, orgIdentifier, projectIdentifier, Arrays.asList(serviceId), timestampInMs)
+            .getInstanceCountDetailsByEnvIdMap()
             .getOrDefault(serviceId, defaultInstanceCountDetails);
 
     return MutablePair.of(prevCountDetails, currentCountDetails);
