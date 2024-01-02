@@ -336,9 +336,7 @@ public class CEViewServiceImplTest extends CategoryTest {
     String searchKey = "sampleSearchKey";
     List<CloudFilter> cloudFilters = Collections.singletonList(CloudFilter.DEFAULT);
     List<CEView> viewList = getAllViewsForAccount();
-    when(ceViewDao.findByAccountIdAndFolderId(
-             ACCOUNT_ID, Collections.singleton(FOLDER_ID), sortCriteria, pageNo, pageSize, searchKey, cloudFilters))
-        .thenReturn(viewList);
+    when(ceViewDao.findByAccountIdAndFolderId(ACCOUNT_ID, FOLDER_ID, sortCriteria)).thenReturn(viewList);
     List<CEViewFolder> folderList = Collections.singletonList(ceViewFolder());
     when(ceViewFolderDao.getFolders(ACCOUNT_ID, Collections.singletonList(FOLDER_ID))).thenReturn(folderList);
     List<QLCEView> result = ceViewService.getAllViews(
