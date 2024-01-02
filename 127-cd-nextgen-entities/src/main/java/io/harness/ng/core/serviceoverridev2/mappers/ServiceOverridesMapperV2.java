@@ -54,18 +54,20 @@ import lombok.extern.slf4j.Slf4j;
 public class ServiceOverridesMapperV2 {
   public NGServiceOverridesEntity toEntity(
       @NotNull String accountId, @NonNull ServiceOverrideRequestDTOV2 requestDTOV2) {
-    return NGServiceOverridesEntity.builder()
-        .accountId(accountId)
-        .orgIdentifier(requestDTOV2.getOrgIdentifier())
-        .projectIdentifier(requestDTOV2.getProjectIdentifier())
-        .environmentRef(requestDTOV2.getEnvironmentRef())
-        .serviceRef(requestDTOV2.getServiceRef())
-        .infraIdentifier(requestDTOV2.getInfraIdentifier())
-        .clusterIdentifier(requestDTOV2.getClusterIdentifier())
-        .spec(requestDTOV2.getSpec())
-        .type(requestDTOV2.getType())
-        .yamlInternal(requestDTOV2.getYamlInternal())
-        .build();
+    NGServiceOverridesEntity entity = NGServiceOverridesEntity.builder()
+                                          .accountId(accountId)
+                                          .orgIdentifier(requestDTOV2.getOrgIdentifier())
+                                          .projectIdentifier(requestDTOV2.getProjectIdentifier())
+                                          .environmentRef(requestDTOV2.getEnvironmentRef())
+                                          .serviceRef(requestDTOV2.getServiceRef())
+                                          .infraIdentifier(requestDTOV2.getInfraIdentifier())
+                                          .clusterIdentifier(requestDTOV2.getClusterIdentifier())
+                                          .spec(requestDTOV2.getSpec())
+                                          .type(requestDTOV2.getType())
+                                          .yamlInternal(requestDTOV2.getYamlInternal())
+                                          .build();
+    setYamlV2IfNotPresent(entity);
+    return entity;
   }
 
   public ServiceOverridesResponseDTOV2 toResponseDTO(@NonNull NGServiceOverridesEntity entity, boolean isNewlyCreated) {
