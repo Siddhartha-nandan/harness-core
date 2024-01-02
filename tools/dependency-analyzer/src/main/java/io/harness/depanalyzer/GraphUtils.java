@@ -24,24 +24,27 @@ public class GraphUtils {
     public static void printGraph(Graph<Path> graph) {
         System.out.println("Printing graph showing dependencies");
         for (Path node : graph.nodes()) {
-            System.out.print("Node " + node.toString() + " depends on: ");
-            for (Path adjacentNode : graph.successors(node)) {
-                System.out.print(adjacentNode.toString() + ", ");
+            System.out.println("Node " + node.toString() + " : ");
+            for (Path successor : graph.successors(node)) {
+                System.out.println("    Successor: " + successor);
+            }
+            for (Path predecessor : graph.predecessors(node)) {
+                System.out.println("    Predecessor: " + predecessor);
             }
             System.out.println();
         }
     }
 
-    public static void printDisconnectedComponents(MutableGraph<Path> graph) {
+    public static void printWeaklyConnectedComponents(MutableGraph<Path> graph) {
         Set<Path> visited = new HashSet<>();
         int componentId = 0;
 
         for (Path node : graph.nodes()) {
             if (!visited.contains(node)) {
                 componentId++;
-                System.out.println("Component " + componentId + ":");
+                System.out.println("Weakly Connected Component " + componentId + ":");
                 exploreComponent(graph, node, visited);
-                System.out.println(); // New line after each component
+                System.out.println();
             }
         }
     }
@@ -55,12 +58,21 @@ public class GraphUtils {
 
             if (!visited.contains(node)) {
                 visited.add(node);
-                System.out.println("  Node: " + node); // Print node in the component
+                System.out.println("  Node: " + node);
 
-                for (Path neighbor : graph.successors(node)) {
-                    System.out.println("    Edge: " + node + " -> " + neighbor); // Print edge
-                    if (!visited.contains(neighbor)) {
-                        stack.push(neighbor);
+                // Print successors of the node
+                for (Path successor : graph.successors(node)) {
+                    System.out.println("    Successor: " + successor);
+                    if (!visited.contains(successor)) {
+                        stack.push(successor);
+                    }
+                }
+
+                // Consider predecessors to simulate undirected edges
+                for (Path predecessor : graph.predecessors(node)) {
+                    System.out.println("    Predecessor: " + predecessor);
+                    if (!visited.contains(predecessor)) {
+                        stack.push(predecessor);
                     }
                 }
             }
@@ -69,12 +81,10 @@ public class GraphUtils {
 
     public static void printNodesByLevel(MutableGraph<String> graph) {
         // Implementation using Guava's graph traversal methods or iterators
-        // (implementation not shown for brevity)
     }
 
     public static void printIndependentPackages(MutableGraph<Path> graph, Path filterDirectory) {
         System.out.println("Independent Packages:");
-        // Step 1: Identify nodes in the specific directory
         Set<Path> nodesInDirectory = new HashSet<>();
         for (Path node : graph.nodes()) {
             if (node.startsWith(filterDirectory)) {
@@ -82,7 +92,6 @@ public class GraphUtils {
             }
         }
 
-        // Step 2: Check for dependencies and print nodes
         List<Path> eligibleNodes = new ArrayList<>();
         for (Path node : graph.nodes()) {
             boolean hasDependencyInDirectory = false;
@@ -99,7 +108,7 @@ public class GraphUtils {
 
         Collections.sort(eligibleNodes);
 
-        // Step 4: Print sorted nodes
+        // Print sorted node
         for (Path node : eligibleNodes) {
             System.out.println(node);
         }

@@ -46,6 +46,7 @@ import com.google.common.graph.MutableGraph;
 @Slf4j
 public class DependecyAnalyzer {
     private static final String BUILD_CLEANER_INDEX_FILE_NAME = ".build-cleaner-path-index";
+    private static final String DEPENDENCY_ANALYZER_GRAPH_FILE_NAME = ".dependency-analyzer-graph";
     private CommandLine options;
     private MavenManifest mavenManifest;
     private MavenManifest mavenManifestOverride;
@@ -79,30 +80,42 @@ public class DependecyAnalyzer {
         log.debug("Total Java classes found: " + harnessSymbolMap.getCacheSize());
 
 //        Path dirPath = Paths.get("950-delegate-tasks-beans/src/main/java/io/harness/connector/helper");
-        printModuleDependencies(module(), harnessSymbolMap);
+//        printModuleDependencies(module(), harnessSymbolMap);
 
         DirectoryGraphBuilder graphBuilder = new DirectoryGraphBuilder();
         MutableGraph<Path> graph = graphBuilder.getGraph();
 
+        if (graphFileExists()) {
+            log.info("Loading the existing graph file {} to init graph", graphFilePath());
+            graph = GraphSerializer.loadGraph(graphFilePath().toString());
+        }else{
+            // Create Graph
+            buildGraph(graph, module(), harnessSymbolMap);
+            GraphSerializer.saveGraph(graph, graphFilePath().toString());
+        }
 
-        // Create Graph
-        buildGraph(graph, module(), harnessSymbolMap);
+//        GraphUtils.printIndependentPackages(graph, module());
 
-        GraphUtils.printIndependentPackages(graph, module());
+//        GraphUtils.printWeaklyConnectedComponents(graph);
+        GraphUtils.printGraph(graph);
 
-//        GraphUtils.printDisconnectedComponents(graph);
-//
 //        GraphUtils.findAllCycles(graph);
-        String dotFilename = "/Users/pankajkumar/Downloads/harness_dependency_graph.dot";
 
-        GraphUtils.exportGraphToDot(graph, dotFilename);
+//        String dotFilename = "/Users/pankajkumar/Downloads/harness_dependency_graph.dot";
+//        GraphUtils.exportGraphToDot(graph, dotFilename);
     }
 
-    public void buildGraph(MutableGraph<Path> graph, Path sourceDirectory, SymbolDependencyMap harnessSymbolMap) throws IOException {
-        buildGraphRecursive(graph, sourceDirectory, harnessSymbolMap);
-    }
+//    private MutableGraph<Path> initGraph() throws IOException, ClassNotFoundException {
+//        if (graphFileExists()) {
+//            log.info("Loading the existing graph file {} to init graph", graphFilePath());
+//            return GraphSerializer.loadGraph(graphFilePath().toString());
+//        } else {
+//            return new MutableGraph<Path>;
+//        }
+//    }
 
-    private void buildGraphRecursive(MutableGraph<Path> graph, Path path, SymbolDependencyMap harnessSymbolMap) throws IOException {
+
+    private void buildGraph(MutableGraph<Path> graph, Path path, SymbolDependencyMap harnessSymbolMap) throws IOException {
         if (!Files.isDirectory(workspace().resolve(path))) {
             return;
         }
@@ -122,7 +135,7 @@ public class DependecyAnalyzer {
             Set<String> dependencies = getModuleDependencies(path, classpathParser, harnessSymbolMap);
             for (String destination : dependencies) {
                 Path destinationPath = Paths.get(destination);
-                if(destinationPath.equals(path)){
+                if(destinationPath.equals(path) || !destinationPath.startsWith(module())){
                     continue;
                 }
                 if (!graph.nodes().contains(destinationPath)) {
@@ -137,7 +150,7 @@ public class DependecyAnalyzer {
             .list(workspace().resolve(path)).filter(Files::isDirectory)
             .forEach(dirPath -> {
                 try {
-                    buildGraphRecursive(graph, workspace().relativize(dirPath), harnessSymbolMap);
+                    buildGraph(graph, workspace().relativize(dirPath), harnessSymbolMap);
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -298,6 +311,15 @@ public class DependecyAnalyzer {
             paths.forEach(path -> sourceFileNames.add(path.getFileName().toString()));
         }
         return sourceFileNames;
+    }
+
+    private boolean graphFileExists(){
+        File f = new File(graphFilePath().toString());
+        return f.exists();
+    }
+
+    private Path graphFilePath(){
+        return workspace().resolve(DEPENDENCY_ANALYZER_GRAPH_FILE_NAME);
     }
 
     private boolean indexFileExists() {
