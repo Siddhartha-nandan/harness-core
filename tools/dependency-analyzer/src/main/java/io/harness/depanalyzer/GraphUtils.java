@@ -33,6 +33,7 @@ public class GraphUtils {
             }
             System.out.println();
         }
+        System.out.println("Number of packages: " + graph.nodes().size());
     }
 
     public static void printWeaklyConnectedComponents(MutableGraph<Path> graph) {
