@@ -313,7 +313,7 @@ public class MultiDeploymentSpawnerStep extends ChildrenExecutableWithRollbackAn
     return stepParameters.getEnvironments() != null
         && stepParameters.getEnvironments().getEnvironmentsMetadata() != null
         && stepParameters.getEnvironments().getEnvironmentsMetadata().getParallel() != null
-        && !stepParameters.getEnvironments().getEnvironmentsMetadata().getParallel()
+        && !stepParameters.getEnvironments().getEnvironmentsMetadata().getParallel().getValue()
         || stepParameters.getEnvironmentGroup() != null
         && stepParameters.getEnvironmentGroup().getEnvironmentGroupMetadata() != null
         && stepParameters.getEnvironmentGroup().getEnvironmentGroupMetadata().getParallel() != null
@@ -363,7 +363,7 @@ public class MultiDeploymentSpawnerStep extends ChildrenExecutableWithRollbackAn
         && ((stepParameters.getEnvironments() != null
                 && stepParameters.getEnvironments().getEnvironmentsMetadata() != null
                 && stepParameters.getEnvironments().getEnvironmentsMetadata().getParallel() != null
-                && !stepParameters.getEnvironments().getEnvironmentsMetadata().getParallel())
+                && !stepParameters.getEnvironments().getEnvironmentsMetadata().getParallel().getValue())
             || (stepParameters.getEnvironmentGroup() != null
                 && stepParameters.getEnvironmentGroup().getEnvironmentGroupMetadata() != null
                 && stepParameters.getEnvironmentGroup().getEnvironmentGroupMetadata().getParallel() != null
@@ -493,7 +493,7 @@ public class MultiDeploymentSpawnerStep extends ChildrenExecutableWithRollbackAn
 
   private boolean shouldDeployInParallel(EnvironmentsMetadata metadata) {
     // If metadata is not provided, we assume parallel by default.
-    return metadata == null || Boolean.TRUE == metadata.getParallel();
+    return metadata == null || Boolean.TRUE == metadata.getParallel().getValue();
   }
 
   private boolean shouldDeployInParallel(ServicesMetadata metadata) {

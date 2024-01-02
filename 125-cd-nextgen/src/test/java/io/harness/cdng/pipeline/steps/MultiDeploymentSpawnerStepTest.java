@@ -280,10 +280,12 @@ public class MultiDeploymentSpawnerStepTest extends CategoryTest {
     MultiDeploymentStepParameters multiDeploymentStepParameters =
         MultiDeploymentStepParameters.builder()
             .childNodeId("test")
-            .environments(EnvironmentsYaml.builder()
-                              .environmentsMetadata(EnvironmentsMetadata.builder().parallel(true).build())
-                              .values(ParameterField.createValueField(environmentYamlV2s))
-                              .build())
+            .environments(
+                EnvironmentsYaml.builder()
+                    .environmentsMetadata(
+                        EnvironmentsMetadata.builder().parallel(ParameterField.createValueField(true)).build())
+                    .values(ParameterField.createValueField(environmentYamlV2s))
+                    .build())
             .services(ServicesYaml.builder()
                           .servicesMetadata(
                               ServicesMetadata.builder().parallel(ParameterField.createValueField(true)).build())
@@ -363,10 +365,12 @@ public class MultiDeploymentSpawnerStepTest extends CategoryTest {
     MultiDeploymentStepParameters multiDeploymentStepParameters =
         MultiDeploymentStepParameters.builder()
             .childNodeId("test")
-            .environments(EnvironmentsYaml.builder()
-                              .environmentsMetadata(EnvironmentsMetadata.builder().parallel(false).build())
-                              .values(ParameterField.createValueField(environmentYamlV2s))
-                              .build())
+            .environments(
+                EnvironmentsYaml.builder()
+                    .environmentsMetadata(
+                        EnvironmentsMetadata.builder().parallel(ParameterField.createValueField(true)).build())
+                    .values(ParameterField.createValueField(environmentYamlV2s))
+                    .build())
             .services(ServicesYaml.builder()
                           .servicesMetadata(
                               ServicesMetadata.builder().parallel(ParameterField.createValueField(false)).build())
@@ -448,10 +452,12 @@ public class MultiDeploymentSpawnerStepTest extends CategoryTest {
     MultiDeploymentStepParameters multiDeploymentStepParameters =
         MultiDeploymentStepParameters.builder()
             .childNodeId("test")
-            .environments(EnvironmentsYaml.builder()
-                              .environmentsMetadata(EnvironmentsMetadata.builder().parallel(false).build())
-                              .values(ParameterField.createValueField(environmentYamlV2s))
-                              .build())
+            .environments(
+                EnvironmentsYaml.builder()
+                    .environmentsMetadata(
+                        EnvironmentsMetadata.builder().parallel(ParameterField.createValueField(true)).build())
+                    .values(ParameterField.createValueField(environmentYamlV2s))
+                    .build())
             .services(ServicesYaml.builder()
                           .servicesMetadata(
                               ServicesMetadata.builder().parallel(ParameterField.createValueField(false)).build())

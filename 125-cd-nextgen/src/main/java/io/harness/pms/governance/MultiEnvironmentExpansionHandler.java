@@ -21,6 +21,7 @@ import io.harness.pms.contracts.governance.ExpansionPlacementStrategy;
 import io.harness.pms.contracts.governance.ExpansionRequestMetadata;
 import io.harness.pms.sdk.core.governance.ExpansionResponse;
 import io.harness.pms.sdk.core.governance.JsonExpansionHandler;
+import io.harness.pms.yaml.ParameterField;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -64,8 +65,8 @@ public class MultiEnvironmentExpansionHandler implements JsonExpansionHandler {
       final Map<String, Object> metaData = new HashMap<>();
       if (metaDataNode != null && metaDataNode.isObject()) {
         EnvironmentsMetadata environmentsMetadata = objectMapper.treeToValue(metaDataNode, EnvironmentsMetadata.class);
-        if (environmentsMetadata != null) {
-          metaData.put(ENVIRONMENTS_PARALLEL_KEY, environmentsMetadata.getParallel());
+        if (environmentsMetadata != null && ParameterField.isNotNull(environmentsMetadata.getParallel())) {
+          metaData.put(ENVIRONMENTS_PARALLEL_KEY, environmentsMetadata.getParallel().getValue());
         }
       }
 

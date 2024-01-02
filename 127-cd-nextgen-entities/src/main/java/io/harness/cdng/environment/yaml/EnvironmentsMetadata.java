@@ -8,6 +8,7 @@
 package io.harness.cdng.environment.yaml;
 
 import io.harness.annotation.RecasterAlias;
+import io.harness.pms.yaml.ParameterField;
 import io.harness.pms.yaml.YamlNode;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -25,5 +26,5 @@ public class EnvironmentsMetadata {
   @ApiModelProperty(hidden = true)
   private String uuid;
 
-  Boolean parallel;
+  ParameterField<Boolean> parallel;
 }
