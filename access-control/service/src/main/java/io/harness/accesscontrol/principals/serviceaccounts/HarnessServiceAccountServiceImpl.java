@@ -52,10 +52,10 @@ public class HarnessServiceAccountServiceImpl implements HarnessServiceAccountSe
       ServiceAccount serviceAccount = ServiceAccount.builder()
                                           .identifier(identifier)
                                           .scopeIdentifier(scope.toString())
-                                          .uniqueId(serviceAccountDTOs.get(0).getUniqueId())
+                                          .uniqueId(existingUniqueId)
                                           .build();
       ServiceAccount savedServiceAccount = serviceAccountService.createIfNotPresent(serviceAccount);
-      if (savedServiceAccount.getUniqueId() == null && existingUniqueId != null) {
+      if (!existingUniqueId.equals(savedServiceAccount.getUniqueId())) {
         savedServiceAccount.setUniqueId(existingUniqueId);
         serviceAccountService.update(savedServiceAccount);
       }

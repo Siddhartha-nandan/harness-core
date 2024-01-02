@@ -30,6 +30,7 @@ import io.harness.serviceaccount.ServiceAccountDTOInternal;
 import io.harness.serviceaccount.remote.ServiceAccountClient;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
@@ -60,17 +61,18 @@ public class HarnessServiceAccountServiceImplTest extends AccessControlTestBase 
         Scope.builder().level(HarnessScopeLevel.ACCOUNT).parentScope(null).instanceId(accountIdentifier).build();
     ServiceAccount serviceAccount =
         ServiceAccount.builder().uniqueId("uniqueId").identifier(identifier).scopeIdentifier(scope.toString()).build();
-    ServiceAccountDTOInternal serviceAccountDTOInternal =
-        (ServiceAccountDTOInternal) ServiceAccountDTOInternal.builder()
-            .uniqueId("uniqueId")
-            .identifier(identifier)
-            .accountIdentifier(accountIdentifier)
-            .build();
-    when(serviceAccountClient.gerServiceAccountInternal(identifier, accountIdentifier, null, null).execute())
+    List<ServiceAccountDTOInternal> serviceAccountDTOInternal =
+        List.of((ServiceAccountDTOInternal) ServiceAccountDTOInternal.builder()
+                    .uniqueId("uniqueId")
+                    .identifier(identifier)
+                    .accountIdentifier(accountIdentifier)
+                    .build());
+    when(serviceAccountClient.listServiceAccountsInternal(accountIdentifier, null, null, List.of(identifier)).execute())
         .thenReturn(Response.success(ResponseDTO.newResponse(serviceAccountDTOInternal)));
     when(serviceAccountService.createIfNotPresent(serviceAccount)).thenReturn(serviceAccount);
     harnessServiceAccountService.sync(identifier, scope, "");
-    verify(serviceAccountClient, atLeast(1)).gerServiceAccountInternal(identifier, accountIdentifier, null, null);
+    verify(serviceAccountClient, atLeast(1))
+        .listServiceAccountsInternal(accountIdentifier, null, null, List.of(identifier));
     verify(serviceAccountService, times(1)).createIfNotPresent(serviceAccount);
   }
 
@@ -84,11 +86,12 @@ public class HarnessServiceAccountServiceImplTest extends AccessControlTestBase 
         Scope.builder().level(HarnessScopeLevel.ACCOUNT).parentScope(null).instanceId(accountIdentifier).build();
     ServiceAccount serviceAccount =
         ServiceAccount.builder().uniqueId("uniqueId").identifier(identifier).scopeIdentifier(scope.toString()).build();
-    when(serviceAccountClient.gerServiceAccountInternal(identifier, accountIdentifier, null, null).execute())
+    when(serviceAccountClient.listServiceAccountsInternal(accountIdentifier, null, null, List.of(identifier)).execute())
         .thenReturn(Response.success(ResponseDTO.newResponse(null)));
     when(serviceAccountService.deleteIfPresent(identifier, scope.toString())).thenReturn(Optional.of(serviceAccount));
     harnessServiceAccountService.sync(identifier, scope, "");
-    verify(serviceAccountClient, atLeast(1)).gerServiceAccountInternal(identifier, accountIdentifier, null, null);
+    verify(serviceAccountClient, atLeast(1))
+        .listServiceAccountsInternal(accountIdentifier, null, null, List.of(identifier));
     verify(serviceAccountService, times(1)).deleteIfPresent(identifier, scope.toString());
   }
 }
