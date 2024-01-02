@@ -35,8 +35,6 @@ public class GithubDeleteSpec implements GithubEventSpec {
   List<TriggerEventDataCondition> headerConditions;
   List<TriggerEventDataCondition> payloadConditions;
   String jexlCondition;
-  boolean autoAbortPreviousExecutions;
-
   @Override
   public String fetchConnectorRef() {
     return connectorRef;
@@ -70,10 +68,5 @@ public class GithubDeleteSpec implements GithubEventSpec {
   @Override
   public String fetchJexlCondition() {
     return jexlCondition;
-  }
-
-  @Override
-  public boolean fetchAutoAbortPreviousExecutions() {
-    return autoAbortPreviousExecutions;
   }
 }
