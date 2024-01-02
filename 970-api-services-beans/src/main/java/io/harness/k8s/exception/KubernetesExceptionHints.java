@@ -79,7 +79,12 @@ public class KubernetesExceptionHints {
   public final String BG_CONFLICTING_SERVICE = "Delete existing service [%s] to proceed";
   public final String BG_SWAP_SERVICES_SERVICE_NOT_FOUND =
       "Swap services requires primary and stage services to be present.";
-
+  public final String PATCHING_TRAFFIC_ROUTING_RESOURCE_FAILED =
+      "Failed to patch traffic routing resource. \nPlease check that resource Version:[%s], Kind:[%s], Name:[%s] exists and can be patched.";
+  public final String FAILED_TO_CREATE_PATCH =
+      "Failed to create patch for traffic routing resource Version:[%s], Kind:[%s], Name:[%s]. Please check Traffic Routing Configuration in step.";
+  public final String GENERATING_TRAFFIC_ROUTING_RESOURCE_FAILED =
+      "Failed to generate traffic routing resource. \nPlease check that resource Version:[%s], Kind:[%s], Name:[%s] exists and can be patched.";
   public final String SCALE_CLI_FAILED_GENERIC =
       "Failed to scale resource. \nPlease check the inputs to the scale step: namespace(if provided), resource type or resource name.";
   public final String ROLLBACK_CLI_FAILED = "Check if resource %s exists";
@@ -126,4 +131,6 @@ public class KubernetesExceptionHints {
       "Check manifest folder/file path in manifest configuration";
   public final String HASH_CALCULATION_FAILED_ERROR =
       "Failed to create manifests file to be used for generating hash. Please check resources";
+  public final String TRAFFIC_ROUTING_MISSING_FIELD =
+      "Please check if %s is/are provided in the Traffic Routing configuration. This field is mandatory for provider type %s";
 }

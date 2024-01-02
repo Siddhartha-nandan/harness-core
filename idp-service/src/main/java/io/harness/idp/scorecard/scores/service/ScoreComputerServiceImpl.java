@@ -7,9 +7,9 @@
 
 package io.harness.idp.scorecard.scores.service;
 
+import static io.harness.data.structure.EmptyPredicate.isEmpty;
 import static io.harness.expression.common.ExpressionMode.RETURN_NULL_IF_UNRESOLVED;
 import static io.harness.idp.common.Constants.DATA_POINT_VALUE_KEY;
-import static io.harness.idp.common.Constants.DOT_SEPARATOR;
 import static io.harness.idp.common.Constants.ERROR_MESSAGE_KEY;
 import static io.harness.idp.common.Constants.SPACE_SEPARATOR;
 import static io.harness.idp.common.JacksonUtils.convert;
@@ -214,7 +214,8 @@ public class ScoreComputerServiceImpl implements ScoreComputerService {
                                       .accountIdentifier(accountIdentifier)
                                       .threadName(Thread.currentThread().getName())
                                       .build(AutoLogContext.OverrideBehavior.OVERRIDE_ERROR)) {
-      log.info("Fetching data from provider for entity: {}", entity.getMetadata().getUid());
+      log.info(
+          "Fetching data from provider for account: {}, entity: {}", accountIdentifier, entity.getMetadata().getUid());
 
       Map<String, Map<String, Object>> aggregatedData = new HashMap<>();
       providerDataPoints.forEach((k, v) -> {
@@ -225,8 +226,8 @@ public class ScoreComputerServiceImpl implements ScoreComputerService {
             aggregatedData.putAll(data);
           }
         } catch (Exception e) {
-          log.warn("Error fetching data from {} provider for entity: {}", provider.getIdentifier(),
-              entity.getMetadata().getUid(), e);
+          log.warn("Error fetching data from {} provider for account: {}, entity: {}", provider.getIdentifier(),
+              accountIdentifier, entity.getMetadata().getUid(), e);
         }
       });
       return aggregatedData;
@@ -245,11 +246,11 @@ public class ScoreComputerServiceImpl implements ScoreComputerService {
                                         .threadName(Thread.currentThread().getName())
                                         .build(AutoLogContext.OverrideBehavior.OVERRIDE_ERROR)) {
         if (!isFilterMatchingWithAnEntity(scorecard.getFilter(), entity)) {
-          log.info("Not computing score as the entity {} does not match the scorecard filters",
-              entity.getMetadata().getUid());
+          log.info("Not computing score as the account: {}, entity {} does not match the scorecard filters",
+              accountIdentifier, entity.getMetadata().getUid());
           continue;
         }
-        log.info("Computing score for entity: {}", entity.getMetadata().getUid());
+        log.info("Computing score for account: {}, entity: {}", accountIdentifier, entity.getMetadata().getUid());
         ScoreEntity.ScoreEntityBuilder scoreBuilder = ScoreEntity.builder()
                                                           .scorecardIdentifier(scorecard.getIdentifier())
                                                           .accountIdentifier(accountIdentifier)
@@ -273,8 +274,8 @@ public class ScoreComputerServiceImpl implements ScoreComputerService {
           if (statusAndMessage.getSecond() != null) {
             checkStatus.setReason(statusAndMessage.getSecond());
           }
-          log.info("Check {}, Status : {}, Reason: {}", check.getIdentifier(), checkStatus.getStatus(),
-              statusAndMessage.getSecond());
+          log.info("Account: {}, Check {}, Status : {}, Reason: {}", accountIdentifier, check.getIdentifier(),
+              checkStatus.getStatus(), statusAndMessage.getSecond());
 
           double weightage = scorecardCheckByIdentifier.get(check.getIdentifier()).getWeightage();
           totalPossibleScore += weightage;
@@ -288,7 +289,8 @@ public class ScoreComputerServiceImpl implements ScoreComputerService {
         scoreBuilder.score(score);
         scoreBuilder.lastComputedTimestamp(System.currentTimeMillis());
         scoreRepository.save(scoreBuilder.build());
-        log.info("Score computed for entity {} with score: {}", entity.getMetadata().getUid(), score);
+        log.info("Score computed for account: {}, entity {} with score: {}", accountIdentifier,
+            entity.getMetadata().getUid(), score);
       } catch (Exception e) {
         log.warn("Error computing score", e);
       }
@@ -349,14 +351,18 @@ public class ScoreComputerServiceImpl implements ScoreComputerService {
             Collections.singletonList(rule), checkEntity.getRuleStrategy(), ERROR_MESSAGE_KEY, true);
         Object errorMessage = evaluator.evaluateExpression(errorMessageExpression, RETURN_NULL_IF_UNRESOLVED);
         if ((errorMessage instanceof String) && !((String) errorMessage).isEmpty()) {
-          reasonBuilder.append(String.format("Reason: %s", errorMessage + DOT_SEPARATOR + SPACE_SEPARATOR));
+          reasonBuilder.append(String.format("Reason: %s", errorMessage));
         } else {
           String lhsExpression = constructExpressionFromRules(
               Collections.singletonList(rule), checkEntity.getRuleStrategy(), DATA_POINT_VALUE_KEY, true);
           Object lhsValue = evaluator.evaluateExpression(lhsExpression, RETURN_NULL_IF_UNRESOLVED);
           reasonBuilder.append(
-              String.format("Expected %s %s. Actual %s; ", rule.getOperator(), rule.getValue(), lhsValue));
+              String.format("Expected %s %s. Actual %s", rule.getOperator(), rule.getValue(), lhsValue));
+          if (!isEmpty(checkEntity.getFailMessage())) {
+            reasonBuilder.append(String.format(". Message: %s", checkEntity.getFailMessage()));
+          }
         }
+        reasonBuilder.append(";").append(SPACE_SEPARATOR);
       } catch (Exception e) {
         log.warn("Reason expression evaluation failed", e);
       }

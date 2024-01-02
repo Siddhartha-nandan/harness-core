@@ -20,6 +20,7 @@ import io.harness.category.element.UnitTests;
 import io.harness.exception.WingsException;
 import io.harness.k8s.model.HarnessLabelValues;
 import io.harness.k8s.model.KubernetesResourceId;
+import io.harness.k8s.trafficrouting.TrafficRoutingInfoDTO;
 import io.harness.rule.Owner;
 
 import com.google.common.collect.ImmutableList;
@@ -158,13 +159,17 @@ public class K8sLegacyReleaseHistoryTest extends CategoryTest {
     K8sLegacyRelease release = releaseHistory.getBlueGreenStageRelease();
     HelmChartInfoDTO helmChartInfoDTO =
         HelmChartInfoDTO.builder().repoUrl("https://test").version("1.2.3").name("helmChartName").build();
+    TrafficRoutingInfoDTO trafficRoutingInfoDTO =
+        TrafficRoutingInfoDTO.builder().name("stable-vs").plural("virtualservies").version("api1").build();
     release.setManifestHash("sampleManifestHash");
     release.setHelmChartInfo(helmChartInfoDTO);
+    release.setTrafficRoutingInfo(trafficRoutingInfoDTO);
     assertThat(release).isNotNull();
     assertThat(release.getStatus()).isEqualTo(IK8sRelease.Status.InProgress);
     assertThat(release.getBgEnvironment()).isEqualTo(HarnessLabelValues.bgStageEnv);
     assertThat(release.getManifestHash()).isEqualTo("sampleManifestHash");
     assertThat(release.getHelmChartInfo()).isEqualTo(helmChartInfoDTO);
+    assertThat(release.getTrafficRoutingInfo()).isEqualTo(trafficRoutingInfoDTO);
     K8sLegacyRelease k8sLegacyRelease = K8sLegacyRelease.builder()
                                             .bgEnvironment(HarnessLabelValues.bgStageEnv)
                                             .manifestHash("differentManifestHash")
