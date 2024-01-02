@@ -32,6 +32,8 @@ public interface SecretCrudService {
 
   SecretResponseWrapper create(String accountIdentifier, ScopeInfo scopeInfo, SecretDTOV2 dto);
 
+  SecretResponseWrapper create(String accountIdentifier, SecretDTOV2 dto, String encryptionKey, String encryptedValue);
+
   SecretResponseWrapper createViaYaml(String accountIdentifier, ScopeInfo scopeInfo, SecretDTOV2 dto);
 
   Optional<SecretResponseWrapper> get(
@@ -51,8 +53,8 @@ public interface SecretCrudService {
   SecretResponseWrapper createFile(
       String accountIdentifier, ScopeInfo scopeInfo, SecretDTOV2 dto, InputStream inputStream);
 
-  SecretResponseWrapper createFile(
-      String accountIdentifier, ScopeInfo scopeInfo, SecretDTOV2 dto, String encryptionKey, String encryptedValue);
+  SecretResponseWrapper createFile(String accountIdentifier, ScopeInfo scopeInfo, SecretDTOV2 dto, String encryptionKey,
+      String encryptedValue, String encryptedFileContent);
 
   SecretResponseWrapper updateFile(
       ScopeInfo scopeInfo, String identifier, SecretDTOV2 updateDTO, InputStream inputStream);

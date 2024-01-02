@@ -9,13 +9,17 @@ package io.harness.k8s.exception;
 
 import static io.harness.annotations.dev.HarnessTeam.CDP;
 
+import io.harness.annotations.dev.CodePulse;
+import io.harness.annotations.dev.HarnessModuleComponent;
 import io.harness.annotations.dev.OwnedBy;
+import io.harness.annotations.dev.ProductModule;
 import io.harness.k8s.model.HarnessLabels;
 
 import lombok.experimental.UtilityClass;
 
 @OwnedBy(CDP)
 @UtilityClass
+@CodePulse(module = ProductModule.CDS, unitCoverageRequired = false, components = {HarnessModuleComponent.CDS_K8S})
 public class KubernetesExceptionExplanation {
   public final String K8S_API_GENERIC_NETWORK_EXCEPTION = "Harness delegate is not able to reach Kubernetes API";
   public final String K8S_API_SOCKET_TIMEOUT_EXCEPTION = "Connection timed out while trying to reach Kubernetes API";
@@ -47,6 +51,9 @@ public class KubernetesExceptionExplanation {
   public final String BG_CONFLICTING_SERVICE =
       "For blue/green deployment, the label [" + HarnessLabels.color + "] is required in service selector";
   public final String BG_SWAP_SERVICES_SERVICE_NOT_FOUND = "Service [%s] not found.";
+  public final String UPDATING_TRAFFIC_ROUTING_RESOURCE_FAILED =
+      "Failed to update traffic routing resource: %s with new destinations";
+  public final String GENERATING_TRAFFIC_ROUTING_RESOURCE_FAILED = "Traffic Routing configuration was not provided";
 
   public final String SCALE_CLI_FAILED = "Failed to scale resource [%s]\n";
 
@@ -92,4 +99,5 @@ public class KubernetesExceptionExplanation {
   public final String OPENSHIFT_RENDER_ERROR = "Failed to render template with error: %n%s %n%nCommand Executed: %n%s";
   public final String FILE_PATH_NOT_PART_OF_MANIFEST_FORMAT = "File path: %s is not part of manifest directory";
   public final String NO_FILES_EXISTS_IN_MANIFEST_DIRECTORY = "No files found in manifest directory";
+  public final String TRAFFIC_ROUTING_MISSING_FIELD = "The %s field is missing in the Traffic Routing configuration";
 }

@@ -23,6 +23,7 @@ import lombok.experimental.UtilityClass;
 @OwnedBy(PL)
 public final class EventsFrameworkConstants {
   public static final String DUMMY_REDIS_URL = "dummyRedisUrl";
+  public static final int DEFAULT_MAX_TOPIC_SIZE = 100_000;
 
   public static final String ENTITY_CRUD = "entity_crud";
   public static final String SETUP_USAGE = "setup_usage";
@@ -69,6 +70,14 @@ public final class EventsFrameworkConstants {
   public static final String PIPELINE_SDK_RESPONSE_EVENT_TOPIC = "pipeline_sdk_response";
   public static final int PIPELINE_SDK_RESPONSE_EVENT_MAX_TOPIC_SIZE = 5000;
   public static final int SDK_RESPONSE_EVENT_BATCH_SIZE = 20;
+
+  public static final String PIPELINE_SDK_RESPONSE_SPAWN_EVENT_TOPIC = "pipeline_sdk_spawn";
+  public static final int PIPELINE_SDK_RESPONSE_SPAWN_EVENT_MAX_TOPIC_SIZE = 5000;
+  public static final int SDK_RESPONSE_SPAWN_EVENT_BATCH_SIZE = 20;
+
+  public static final String PIPELINE_SDK_STEP_RESPONSE_EVENT_TOPIC = "pipeline_sdk_step_response";
+  public static final int PIPELINE_SDK_STEP_RESPONSE_EVENT_MAX_TOPIC_SIZE = 5000;
+  public static final int SDK_STEP_RESPONSE_EVENT_BATCH_SIZE = 20;
 
   public static final String INITIATE_NODE_EVENT_TOPIC = "pipeline_initiate_node";
   public static final int INITIATE_NODE_EVENT_BATCH_SIZE = 10;
@@ -260,4 +269,12 @@ public final class EventsFrameworkConstants {
   public static final int IDP_MODULE_LICENSE_USAGE_CAPTURE_EVENT_MAX_TOPIC_SIZE = 100000;
   public static final Duration IDP_MODULE_LICENSE_USAGE_CAPTURE_EVENT_MAX_PROCESSING_TIME = Duration.ofSeconds(10);
   public static final int IDP_MODULE_LICENSE_USAGE_CAPTURE_EVENT_BATCH_SIZE = 1;
+
+  public static final String IDP_CATALOG_ENTITIES_SYNC_CAPTURE_EVENT = "idp_catalog_entities_sync_capture";
+  public static final int IDP_CATALOG_ENTITIES_SYNC_CAPTURE_EVENT_MAX_TOPIC_SIZE = 100000;
+  public static final Duration IDP_CATALOG_ENTITIES_SYNC_CAPTURE_EVENT_MAX_PROCESSING_TIME = Duration.ofSeconds(20);
+  public static final int IDP_CATALOG_ENTITIES_SYNC_CAPTURE_EVENT_BATCH_SIZE = 1;
+
+  // === Delegate Service Constants ===
+  public static final String TASK_RESPONSE_TOPIC = "task_response_topic";
 }

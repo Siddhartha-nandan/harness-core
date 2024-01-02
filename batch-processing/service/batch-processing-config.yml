@@ -101,7 +101,7 @@ segmentConfig:
 baseUrl: https://localhost:8000
 
 cfClientConfig:
-  apiKey: "2b5bfaef-6dfc-49ac-940a-96ad9e77a4a6"
+  apiKey: "redacted"
   configUrl: "https://config.feature-flags.uat.harness.io/api/1.0"
   eventUrl: "https://event.feature-flags.uat.harness.io/api/1.0"
   analyticsEnabled: true
@@ -140,6 +140,7 @@ scheduler-jobs-config:
   governanceRecommendationJobCronAzure : "0 0 8 * * *"
   dailyBudgetAlertsJobCron: "0 30 14 * * ?"
   dailyBudgetCostUpdateJobCron: "0 0 14 * * ?"
+  billingDataVerificationJobCron: "0 0 10 * * ?"
 
 cePythonService:
   pythonServiceUrl: "http://0.0.0.0:8081"
@@ -177,6 +178,10 @@ delegateHealthUpdateJobConfig:
 
 awsAccountTagsCollectionJobConfig:
   enabled: true
+
+billingDataVerificationJobConfig:
+  awsBillingDataVerificationEnabled: true
+  awsMaximumHistoricalMonthsForVerificationJob: 2
 
 gcpConfig:
   gcpProjectId: "ccm-play"
@@ -243,6 +248,8 @@ governanceConfig:
   awsFaktoryQueueName: aws-governance # This should match with worker
   azureFaktoryJobType: azure-governance # This should match with worker
   azureFaktoryQueueName: azure-governance # This should match with worker
+  gcpFaktoryJobType: gcp-governance # This should match with worker
+  gcpFaktoryQueueName: gcp-governance # This should match with worker
   OOTBAccount: wFHXHD0RRQWoO8tIZT5YVw
   tagsKey: dc
   tagsValue: dc1:1

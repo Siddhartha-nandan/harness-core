@@ -266,18 +266,7 @@ public class SecretCrudServiceImpl implements SecretCrudService {
       return secretResponseWrapper;
     }
     GovernanceMetadata governanceMetadata = secretResponseWrapper.getGovernanceMetadata();
-
-    boolean isHarnessManaged = checkIfSecretManagerUsedIsHarnessManaged(accountIdentifier, dto);
-    Boolean isBuiltInSMDisabled =
-        parseBoolean(NGRestUtils
-                         .getResponse(settingsClient.getSetting(
-                             SettingIdentifiers.DISABLE_HARNESS_BUILT_IN_SECRET_MANAGER, accountIdentifier, null, null))
-                         .getValue());
-
-    if (isBuiltInSMDisabled && isHarnessManaged) {
-      throw new InvalidRequestException(
-          "Built-in Harness Secret Manager cannot be used to create Secret as it has been disabled.");
-    }
+    validateSecretManagerUsed(accountIdentifier, dto);
 
     switch (dto.getType()) {
       case SecretText:
@@ -298,6 +287,40 @@ public class SecretCrudServiceImpl implements SecretCrudService {
     }
 
     throw new SecretManagementException(SECRET_MANAGEMENT_ERROR, "Unable to create secret remotely.", USER);
+  }
+
+  @Override
+  public SecretResponseWrapper create(
+      String accountIdentifier, SecretDTOV2 dto, String encryptionKey, String encryptedValue) {
+    SecretResponseWrapper secretResponseWrapper = SecretResponseWrapper.builder().build();
+    if (!isOpaPoliciesSatisfied(accountIdentifier, getMaskedDTOForOpa(dto), secretResponseWrapper)) {
+      return secretResponseWrapper;
+    }
+    GovernanceMetadata governanceMetadata = secretResponseWrapper.getGovernanceMetadata();
+    validateSecretManagerUsed(accountIdentifier, dto);
+    NGEncryptedData encryptedData =
+        encryptedDataService.createSecretText(accountIdentifier, dto, encryptionKey, encryptedValue);
+
+    if (Optional.ofNullable(encryptedData).isPresent()) {
+      secretResponseWrapper = createSecretInternal(accountIdentifier, dto, false);
+      secretResponseWrapper.setGovernanceMetadata(governanceMetadata);
+      return secretResponseWrapper;
+    }
+    throw new SecretManagementException(SECRET_MANAGEMENT_ERROR, "Unable to create secret file remotely", USER);
+  }
+
+  private void validateSecretManagerUsed(String accountIdentifier, SecretDTOV2 dto) {
+    boolean isHarnessManaged = checkIfSecretManagerUsedIsHarnessManaged(accountIdentifier, dto);
+    Boolean isBuiltInSMDisabled =
+        parseBoolean(NGRestUtils
+                         .getResponse(settingsClient.getSetting(
+                             SettingIdentifiers.DISABLE_HARNESS_BUILT_IN_SECRET_MANAGER, accountIdentifier, null, null))
+                         .getValue());
+
+    if (isBuiltInSMDisabled && isHarnessManaged) {
+      throw new InvalidRequestException(
+          "Built-in Harness Secret Manager cannot be used to create Secret as it has been disabled.");
+    }
   }
 
   @VisibleForTesting
@@ -772,7 +795,8 @@ public class SecretCrudServiceImpl implements SecretCrudService {
   @SneakyThrows
   @Override
   public SecretResponseWrapper createFile(@NotNull String accountIdentifier, ScopeInfo scopeInfo,
-      @NotNull SecretDTOV2 dto, @NotNull String encryptionKey, @NotNull String encryptedValue) {
+      @NotNull SecretDTOV2 dto, @NotNull String encryptionKey, @NotNull String encryptedValue,
+      String encryptedFileContent) {
     SecretResponseWrapper secretResponseWrapper = SecretResponseWrapper.builder().build();
     if (!isOpaPoliciesSatisfied(accountIdentifier, getMaskedDTOForOpa(dto), secretResponseWrapper)) {
       return secretResponseWrapper;
@@ -780,8 +804,8 @@ public class SecretCrudServiceImpl implements SecretCrudService {
     GovernanceMetadata governanceMetadata = secretResponseWrapper.getGovernanceMetadata();
 
     SecretFileSpecDTO specDTO = (SecretFileSpecDTO) dto.getSpec();
-    NGEncryptedData encryptedData =
-        encryptedDataService.createSecretFile(accountIdentifier, dto, encryptionKey, encryptedValue);
+    NGEncryptedData encryptedData = encryptedDataService.createSecretFile(
+        accountIdentifier, dto, encryptionKey, encryptedValue, encryptedFileContent);
 
     if (Optional.ofNullable(encryptedData).isPresent()) {
       secretEntityReferenceHelper.createSetupUsageForSecretManager(accountIdentifier, dto.getOrgIdentifier(),

@@ -76,7 +76,9 @@ import io.harness.exception.InvalidRequestException;
 import io.harness.exception.SecretManagementException;
 import io.harness.exception.WingsException;
 import io.harness.exception.exceptionmanager.exceptionhandler.DocumentLinksConstants;
+import io.harness.file.FileServiceConfiguration;
 import io.harness.mappers.SecretManagerConfigMapper;
+import io.harness.ng.NextGenConfiguration;
 import io.harness.ng.core.AdditionalMetadataValidationHelper;
 import io.harness.ng.core.BaseNGAccess;
 import io.harness.ng.core.NGAccess;
@@ -104,6 +106,7 @@ import io.harness.security.encryption.EncryptionType;
 import io.harness.template.remote.TemplateResourceClient;
 import io.harness.utils.featureflaghelper.NGFeatureFlagHelperService;
 
+import software.wings.DataStorageMode;
 import software.wings.beans.AzureVaultConfig;
 import software.wings.beans.BaseVaultConfig;
 import software.wings.beans.NameValuePairWithDefault;
@@ -152,6 +155,7 @@ public class NGEncryptedDataServiceImplTest extends CategoryTest {
   @Mock private DynamicSecretReferenceHelper dynamicSecretReferenceHelper;
   @Mock private TemplateResourceClient templateResourceClient;
   @Mock private NGSecretServiceV2 ngSecretServiceV2;
+  @Mock private NextGenConfiguration nextGenConfiguration;
 
   public static final String HTTP_VAULT_URL = "http://vault.com";
   private String accountIdentifier = randomAlphabetic(10);
@@ -173,7 +177,7 @@ public class NGEncryptedDataServiceImplTest extends CategoryTest {
         vaultEncryptorsRegistry, secretsFileService, secretManagerClient, globalEncryptDecryptClient,
         ngConnectorSecretManagerService, ngFeatureFlagHelperService, customEncryptorsRegistry,
         customSecretManagerHelper, ngEncryptorService, additionalMetadataValidationHelper, dynamicSecretReferenceHelper,
-        templateResourceClient, ngSecretServiceV2));
+        templateResourceClient, ngSecretServiceV2, nextGenConfiguration));
     when(vaultEncryptorsRegistry.getVaultEncryptor(any())).thenReturn(vaultEncryptor);
     when(kmsEncryptorsRegistry.getKmsEncryptor(any())).thenReturn(localEncryptor);
   }
@@ -1081,7 +1085,9 @@ public class NGEncryptedDataServiceImplTest extends CategoryTest {
         .thenReturn(secretManagerConfigDTO);
     ArgumentCaptor<NGEncryptedData> argumentCaptor = ArgumentCaptor.forClass(NGEncryptedData.class);
     when(encryptedDataDao.save(argumentCaptor.capture())).thenReturn(null);
-    ngEncryptedDataService.createSecretFile(accountIdentifier, secretDTOV2, encryptionKey, encryptedValue);
+    when(nextGenConfiguration.getFileServiceConfiguration())
+        .thenReturn(FileServiceConfiguration.builder().fileStorageMode(DataStorageMode.GOOGLE_CLOUD_STORAGE).build());
+    ngEncryptedDataService.createSecretFile(accountIdentifier, secretDTOV2, encryptionKey, encryptedValue, null);
     NGEncryptedData createdData = argumentCaptor.getValue();
     verify(encryptedDataDao, times(1)).get(accountIdentifier, orgIdentifier, projectIdentifier, identifier);
     assertNotNull(createdData);

@@ -439,18 +439,18 @@ public class SecretCrudServiceImplTest extends CategoryTest {
         SecretDTOV2.builder().spec(SecretFileSpecDTO.builder().build()).type(SecretType.SecretFile).build();
     Secret secret = Secret.builder().build();
     NGEncryptedData encryptedDataDTO = NGEncryptedData.builder().type(SettingVariableTypes.CONFIG_FILE).build();
-    when(encryptedDataService.createSecretFile(any(), any(), any(), any())).thenReturn(encryptedDataDTO);
+    when(encryptedDataService.createSecretFile(any(), any(), any(), any(), any())).thenReturn(encryptedDataDTO);
     when(ngSecretServiceV2.create(any(), eq(scopeInfo), any(), eq(false))).thenReturn(secret);
     doNothing()
         .when(secretEntityReferenceHelper)
         .createSetupUsageForSecretManager(any(), any(), any(), any(), any(), any());
     when(opaSecretService.evaluatePoliciesWithEntity(any(), any(), any(), any(), any(), any())).thenReturn(null);
 
-    SecretResponseWrapper created =
-        secretCrudService.createFile(accountIdentifier, scopeInfo, secretDTOV2, "encryptionKey", "encryptedValue");
+    SecretResponseWrapper created = secretCrudService.createFile(
+        accountIdentifier, scopeInfo, secretDTOV2, "encryptionKey", "encryptedValue", null);
     assertThat(created).isNotNull();
 
-    verify(encryptedDataService, atLeastOnce()).createSecretFile(any(), any(), any(), any());
+    verify(encryptedDataService, atLeastOnce()).createSecretFile(any(), any(), any(), any(), any());
     verify(ngSecretServiceV2).create(any(), eq(scopeInfo), any(), eq(false));
     verify(secretEntityReferenceHelper).createSetupUsageForSecretManager(any(), any(), any(), any(), any(), any());
   }
