@@ -23,7 +23,7 @@ public interface GraphGenerationService {
 
   OrchestrationGraph getCachedOrchestrationGraphFromSecondary(String planExecutionId);
 
-  void cacheOrchestrationGraph(OrchestrationGraph adjacencyListInternal);
+  void cacheOrchestrationGraph(OrchestrationGraph adjacencyListInternal, String accountIdentifier);
 
   OrchestrationGraphDTO generateOrchestrationGraphV2(String planExecutionId);
 

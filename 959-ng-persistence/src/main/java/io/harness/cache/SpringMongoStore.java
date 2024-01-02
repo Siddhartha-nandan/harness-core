@@ -75,17 +75,21 @@ public class SpringMongoStore implements DistributedStore {
   }
 
   public <T extends Distributable> void upsert(T entity, Duration ttl, long entityUpdatedAt) {
-    upsertInternal(entity, ttl, false, entityUpdatedAt);
+    upsertInternal(entity, ttl, false, entityUpdatedAt, null);
   }
 
   @Override
   public <T extends Distributable> void upsert(T entity, Duration ttl) {
-    upsertInternal(entity, ttl, false, System.currentTimeMillis());
+    upsertInternal(entity, ttl, false, System.currentTimeMillis(), null);
+  }
+
+  public <T extends Distributable> void upsert(T entity, Duration ttl, String accountIdentifier) {
+    upsertInternal(entity, ttl, false, System.currentTimeMillis(), accountIdentifier);
   }
 
   @Override
   public <T extends Distributable> void upsert(T entity, Duration ttl, boolean downgrade) {
-    upsertInternal(entity, ttl, downgrade, System.currentTimeMillis());
+    upsertInternal(entity, ttl, downgrade, System.currentTimeMillis(), null);
   }
 
   public <T extends Distributable> void delete(List<T> entities) {
@@ -187,7 +191,7 @@ public class SpringMongoStore implements DistributedStore {
   }
 
   private <T extends Distributable> void upsertInternal(
-      T entity, Duration ttl, boolean downgrade, long entityLastUpdatedAt) {
+      T entity, Duration ttl, boolean downgrade, long entityLastUpdatedAt, String accountIdentifier) {
     final String canonicalKey =
         canonicalKey(entity.algorithmId(), entity.structureHash(), entity.key(), entity.parameters());
     Long contextValue =
@@ -206,6 +210,9 @@ public class SpringMongoStore implements DistributedStore {
                           .set(SpringCacheEntityKeys.entity, referenceFalseKryoSerializer.asDeflatedBytes(entity))
                           .set(SpringCacheEntityKeys.validUntil, Date.from(OffsetDateTime.now().plus(ttl).toInstant()))
                           .set(SpringCacheEntityKeys.entityUpdatedAt, entityLastUpdatedAt);
+      if (accountIdentifier != null) {
+        update.set(SpringCacheEntityKeys.accountIdentifier, accountIdentifier);
+      }
 
       mongoTemplate.findAndModify(query, update, HMongoTemplate.upsertReturnNewOptions, SpringCacheEntity.class);
     } catch (MongoCommandException e) {

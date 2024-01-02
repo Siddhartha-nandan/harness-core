@@ -54,7 +54,7 @@ public class OrchestrationEndGraphHandler implements AsyncInformObserver, Orches
       OrchestrationGraph orchestrationGraph =
           graphGenerationService.getCachedOrchestrationGraph(ambiance.getPlanExecutionId());
       orchestrationGraph = orchestrationGraph.withStatus(planExecution.getStatus()).withEndTs(planExecution.getEndTs());
-      graphGenerationService.cacheOrchestrationGraph(orchestrationGraph);
+      graphGenerationService.cacheOrchestrationGraph(orchestrationGraph, AmbianceUtils.getAccountId(ambiance));
     } catch (Exception e) {
       log.error("[GRAPH_ERROR] Cannot update Orchestration graph for ORCHESTRATION_END", e);
       throw e;

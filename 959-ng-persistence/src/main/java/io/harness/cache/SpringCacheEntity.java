@@ -48,6 +48,7 @@ public class SpringCacheEntity implements PersistentEntity {
 
   byte[] entity;
 
+  String accountIdentifier;
   // audit fields
   @Wither @FdIndex @CreatedDate Long createdAt;
   @Wither @LastModifiedDate Long lastUpdatedAt;

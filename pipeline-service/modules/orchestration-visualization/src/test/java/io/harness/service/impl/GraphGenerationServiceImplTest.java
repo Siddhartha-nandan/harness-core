@@ -179,7 +179,7 @@ public class GraphGenerationServiceImplTest extends OrchestrationVisualizationTe
 
     OrchestrationGraph orchestrationGraph =
         constructOrchestrationGraphForPartialTest(Lists.newArrayList(dummyStart, dummyFinish));
-    graphGenerationService.cacheOrchestrationGraph(orchestrationGraph);
+    graphGenerationService.cacheOrchestrationGraph(orchestrationGraph, "accountIdentifier");
 
     OrchestrationGraphDTO graphResponse =
         graphGenerationService.generatePartialOrchestrationGraphFromSetupNodeIdAndExecutionId(

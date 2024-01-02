@@ -42,6 +42,7 @@ import io.harness.lock.AcquiredLock;
 import io.harness.lock.PersistentLocker;
 import io.harness.pms.contracts.execution.Status;
 import io.harness.pms.contracts.execution.events.OrchestrationEventType;
+import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.pms.execution.utils.StatusUtils;
 import io.harness.pms.plan.execution.beans.PipelineExecutionSummaryEntity;
 import io.harness.pms.plan.execution.beans.PipelineExecutionSummaryEntity.PlanExecutionSummaryKeys;
@@ -248,8 +249,8 @@ public class GraphGenerationServiceImpl implements GraphGenerationService {
   }
 
   @Override
-  public void cacheOrchestrationGraph(OrchestrationGraph orchestrationGraph) {
-    mongoStore.upsert(orchestrationGraph, SpringCacheEntity.TTL);
+  public void cacheOrchestrationGraph(OrchestrationGraph orchestrationGraph, String accountIdentifier) {
+    mongoStore.upsert(orchestrationGraph, SpringCacheEntity.TTL, accountIdentifier);
   }
 
   private void cachePartialOrchestrationGraph(OrchestrationGraph orchestrationGraph, long entityUpdatedAt) {
@@ -371,7 +372,7 @@ public class GraphGenerationServiceImpl implements GraphGenerationService {
 
       List<NodeExecution> stageNodeExecutions =
           nodeExecutions.stream().filter(OrchestrationUtils::isStageOrParallelStageNode).collect(Collectors.toList());
-      cacheOrchestrationGraph(graph);
+      cacheOrchestrationGraph(graph, AmbianceUtils.getAccountId(planExecution.getAmbiance()));
       pmsExecutionSummaryService.regenerateStageLayoutGraph(planExecutionId, stageNodeExecutions);
       return graph;
     } catch (Exception ex) {

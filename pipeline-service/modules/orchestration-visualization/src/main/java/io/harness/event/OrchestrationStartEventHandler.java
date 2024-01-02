@@ -17,6 +17,7 @@ import io.harness.engine.observers.OrchestrationStartObserver;
 import io.harness.engine.observers.beans.OrchestrationStartInfo;
 import io.harness.execution.PlanExecution;
 import io.harness.pms.contracts.ambiance.Ambiance;
+import io.harness.pms.execution.utils.AmbianceUtils;
 import io.harness.service.GraphGenerationService;
 
 import com.google.inject.Inject;
@@ -37,7 +38,7 @@ public class OrchestrationStartEventHandler implements OrchestrationStartObserve
     Ambiance ambiance = orchestrationStartInfo.getAmbiance();
     OrchestrationGraph orchestrationGraph = handleEventFromLog(ambiance);
     if (orchestrationGraph != null) {
-      graphGenerationService.cacheOrchestrationGraph(orchestrationGraph);
+      graphGenerationService.cacheOrchestrationGraph(orchestrationGraph, AmbianceUtils.getAccountId(ambiance));
     }
   }
 
