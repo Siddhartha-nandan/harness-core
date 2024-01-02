@@ -7,6 +7,7 @@
 
 package io.harness.stoserviceclient;
 
+import com.google.api.client.http.HttpStatusCodes;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -39,12 +40,18 @@ import java.util.Map;
 @Singleton
 @OwnedBy(HarnessTeam.STO)
 public class STOServiceUtils {
+  private static final String TOKEN = "token";
+  private static final String API_TOKEN = "ApiKey ";
   private static final int MAX_ATTEMPTS = 3;
   private static final long INITIAL_DELAY_MS = 1000;
   private static final long MAX_DELAY_MS = 5000;
   private static final long DELAY_FACTOR = 2;
-  private static final RetryPolicy<Object> RETRY_POLICY =
-          getSTORetryPolicy("Retrying STO Call Operation. Attempt No. {}", "Operation Failed. Attempt No. {}");
+  private static final String FAILED_ATTEMPT_MESSAGE = "Retrying STO Call Operation. Attempt No. {}";
+  private static final String FAILURE_MESSAGE = "Operation Failed. Attempt No. {}";
+  private static final RetryPolicy<Object> RETRY_POLICY = getSTORetryPolicy(FAILED_ATTEMPT_MESSAGE, FAILURE_MESSAGE);
+  private static final RetryPolicy<Object> TOKEN_RETRY_POLICY = getSTORetryPolicyForToken(FAILED_ATTEMPT_MESSAGE, FAILURE_MESSAGE);
+  private static final String DEFAULT_PAGE = "1";
+  private static final String DEFAULT_NAME = "NodeGoat";
   private static final String DEFAULT_PAGE_SIZE = "100";
   private final STOServiceClient stoServiceClient;
   private final STOServiceConfig stoServiceConfig;
@@ -60,13 +67,13 @@ public class STOServiceUtils {
     log.info("Initiating token request to STO service: {}", this.stoServiceConfig.getInternalUrl());
     JsonObject responseBody;
     if (accountId == null) {
-      responseBody = makeAPICallWithRetry(stoServiceClient.generateTokenAllAccounts(this.stoServiceConfig.getGlobalToken()));
+      responseBody = makeAPICallForTokenWithRetry(stoServiceClient.generateTokenAllAccounts(this.stoServiceConfig.getGlobalToken()));
     } else {
-      responseBody = makeAPICallWithRetry(stoServiceClient.generateToken(accountId, this.stoServiceConfig.getGlobalToken()));
+      responseBody = makeAPICallForTokenWithRetry(stoServiceClient.generateToken(accountId, this.stoServiceConfig.getGlobalToken()));
     }
 
-    if (responseBody.has("token")) {
-      return responseBody.get("token").getAsString();
+    if (responseBody.has(TOKEN)) {
+      return responseBody.get(TOKEN).getAsString();
     }
 
     log.error("Response from STO service doesn't contain token information: {}", responseBody);
@@ -81,7 +88,7 @@ public class STOServiceUtils {
 
     Map<String, String> result = new HashMap<>();
     String token = getSTOServiceToken(accountId);
-    String accessToken = "ApiKey " + token;
+    String accessToken = API_TOKEN + token;
 
     if ("".equals(token)) {
       result.put("ERROR_MESSAGE", "Failed to authenticate with STO");
@@ -165,7 +172,7 @@ public class STOServiceUtils {
   @NotNull
   public String deleteAccountData(String accountId) {
     String token = getSTOServiceToken(null);
-    String accessToken = "ApiKey " + token;
+    String accessToken = API_TOKEN + token;
 
     return makeAPICallWithRetry(stoServiceClient.deleteAccountData(accessToken, accountId)).get("status").toString();
   }
@@ -173,15 +180,29 @@ public class STOServiceUtils {
   @NotNull
   public String getUsageAllAccounts(long timestamp) {
     String token = getSTOServiceToken(null);
-    String accessToken = "ApiKey " + token;
+    String accessToken = API_TOKEN + token;
 
     return makeAPICallWithRetry(stoServiceClient.getUsageAllAccounts(accessToken, String.valueOf(timestamp)))
         .get("usage")
         .toString();
   }
 
+  private JsonObject makeAPICallForTokenWithRetry(Call<JsonObject> apiCall) {
+    JsonObject responseBody = null;
+    responseBody = Failsafe.with(TOKEN_RETRY_POLICY).get(() -> {
+      JsonObject tokenResponseBody = makeAPICall(apiCall);
+      if (tokenResponseBody.has(TOKEN)) {
+        String token = API_TOKEN + tokenResponseBody.get(TOKEN).getAsString();
+        JsonObject productsResponseBody = makeAPICall(stoServiceClient.getAllProducts(token, DEFAULT_PAGE, DEFAULT_PAGE, DEFAULT_NAME));
+        if (productsResponseBody.has("status") && productsResponseBody.get("status").getAsInt() == HttpStatusCodes.STATUS_CODE_UNAUTHORIZED)
+          throw new GeneralException("Invalid Token");
+      }
+      return tokenResponseBody;
+    });
+    return responseBody == null ? makeAPICall(apiCall) : responseBody;
+  }
+
   private JsonObject makeAPICallWithRetry(Call<JsonObject> apiCall) {
-    log.error("STO CALL FROM makeAPICallWithRetry");
     return Failsafe.with(RETRY_POLICY).get(() -> makeAPICall(apiCall));
   }
 
@@ -241,5 +262,14 @@ public class STOServiceUtils {
               log.error(failureMessage, event.getAttemptCount(), event.getFailure());
               throw new GeneralException(event.getFailure().getMessage(), event.getFailure());
             });
+  }
+
+  private static RetryPolicy<Object> getSTORetryPolicyForToken(String failedAttemptMessage, String failureMessage) {
+    return new RetryPolicy<>()
+            .handle(Exception.class)
+            .withBackoff(INITIAL_DELAY_MS, MAX_DELAY_MS, ChronoUnit.MILLIS, DELAY_FACTOR)
+            .withMaxAttempts(MAX_ATTEMPTS)
+            .onFailedAttempt(event -> log.warn(failedAttemptMessage, event.getAttemptCount(), event.getLastFailure()))
+            .onFailure(event -> log.error(failureMessage, event.getAttemptCount(), event.getFailure()));
   }
 }
