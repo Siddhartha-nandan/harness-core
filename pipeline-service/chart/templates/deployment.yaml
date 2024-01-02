@@ -95,10 +95,6 @@ spec:
           {{- include "harnesscommon.dbv3.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "events" "variableNames" ( dict "sslEnabled" "EVENTS_FRAMEWORK_REDIS_SSL_ENABLED" "sslCATrustStorePath" "EVENTS_FRAMEWORK_REDIS_SSL_CA_TRUST_STORE_PATH" "sslCATrustStorePassword" "EVENTS_FRAMEWORK_REDIS_SSL_CA_TRUST_STORE_PASSWORD")) | indent 10 }}
           {{- include "harnesscommon.dbv3.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "lock" "variableNames" ( dict "sslEnabled" "LOCK_CONFIG_REDIS_SSL_ENABLED" "sslCATrustStorePath" "LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PATH" "sslCATrustStorePassword" "LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PASSWORD" )) | indent 10 }}
           {{- include "harnesscommon.dbv3.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "cache" "variableNames" ( dict "sslCATrustStorePath" "CACHE_CONFIG_REDIS_SSL_CA_TRUST_STORE_PATH" "sslCATrustStorePassword" "CACHE_CONFIG_REDIS_SSL_CA_TRUST_STORE_PASSWORD" )) | indent 10 }}
-          - name: MONGO_URI
-            value: {{ include "harnesscommon.dbconnectionv2.mongoConnection" (dict "database" "pms-harness" "ctx" $) }}
-          - name : NOTIFICATION_MONGO_URI
-            value: {{ include "harnesscommon.dbconnectionv2.mongoConnection" (dict "database" "notifications" "ctx" $) }}
           - name: TIMESCALE_URI
             value: {{ include "harnesscommon.dbconnectionv2.timescaleConnection" (dict "protocol" "jdbc:postgresql" "database" "harness" "context" $) }}
           {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "pms-harness") | indent 10 }}

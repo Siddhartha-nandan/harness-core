@@ -94,11 +94,10 @@ global:
                   name: ""
                   property: ""
     redis:
-      installed: false
+      installed: true
       protocol: "redis"
       # --  provide default values if redis.installed is set to false
-      hosts:
-        - anything:6379
+      hosts: []
       secretName: ""
       userKey: ""
       passwordKey: ""
@@ -208,6 +207,7 @@ timescaledb:
             TIMESCALEDB_SSL_ROOT_CERT:
               name: ""
               property: ""
+
 
 database:
   mongo:
