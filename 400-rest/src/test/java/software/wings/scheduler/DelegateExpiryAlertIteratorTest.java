@@ -45,7 +45,7 @@ public class DelegateExpiryAlertIteratorTest extends WingsBaseTest {
   @InjectMocks @Inject private DelegateExpiryAlertIterator delegateExpiryAlertIterator;
   @Mock private NotificationClient notificationClient;
 
-  private static final long TIMESTAMP = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(28);
+  private static final long TIMESTAMP = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30);
   private static final long ABOUT_TO_EXPIRE_TIMESTAMP = TimeUnit.DAYS.toMillis(28) + System.currentTimeMillis();
 
   @Before
@@ -99,7 +99,7 @@ public class DelegateExpiryAlertIteratorTest extends WingsBaseTest {
     assertThat(notificationTriggerRequest.getEvent()).isEqualTo(NotificationEvent.DELEGATE_EXPIRED.name());
     assertThat(notificationTriggerRequest.getEventEntity()).isEqualTo(NotificationEntity.DELEGATE.name());
     assertThat(notificationTriggerRequest.getAccountId()).isEqualTo(ACCOUNT_ID);
-    assertThat(notificationTriggerRequest.getTemplateDataCount()).isEqualTo(ACCOUNT_ID);
+    assertThat(notificationTriggerRequest.getTemplateDataCount()).isEqualTo(4);
     verify(notificationClient, times(1)).sendNotificationTrigger(any(NotificationTriggerRequest.class));
   }
 
@@ -125,7 +125,7 @@ public class DelegateExpiryAlertIteratorTest extends WingsBaseTest {
         .name("grp1")
         .accountId(ACCOUNT_ID)
         .ng(true)
-        .delegatesExpireOn(TIMESTAMP)
+        .delegatesExpireOn(timeStamp)
         .identifier("_localDelegate")
         .delegateType(KUBERNETES)
         .description("description")
