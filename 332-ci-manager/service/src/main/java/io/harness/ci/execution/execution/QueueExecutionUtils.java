@@ -12,7 +12,6 @@ import io.harness.beans.yaml.extended.infrastrucutre.Infrastructure;
 import io.harness.beans.yaml.extended.infrastrucutre.OSType;
 import io.harness.ci.config.CIExecutionServiceConfig;
 import io.harness.ci.execution.integrationstage.IntegrationStageUtils;
-import io.harness.ng.core.infrastructure.InfrastructureType;
 import io.harness.pms.contracts.execution.Status;
 import io.harness.repositories.CIExecutionRepository;
 
