@@ -601,7 +601,7 @@ public class PlanNodeExecutionStrategyTest extends OrchestrationTestBase {
                                                     .status(Status.INTERVENTION_WAITING)
                                                     .mode(ExecutionMode.ASYNC);
     when(planService.fetchNode(eq(planId), eq(planNodeId))).thenReturn(planNode);
-    NodeExecution updated = nodeExecutionBuilder.status(Status.FAILED).endTs(System.currentTimeMillis()).build();
+    NodeExecution updated = nodeExecutionBuilder.status(Status.FAILED).endTs(1234L).build();
     when(nodeExecutionService.updateStatusWithOps(eq(nodeExecutionId), eq(Status.FAILED), any(), any()))
         .thenReturn(updated);
 
@@ -641,7 +641,7 @@ public class PlanNodeExecutionStrategyTest extends OrchestrationTestBase {
                                                     .status(Status.INTERVENTION_WAITING)
                                                     .mode(ExecutionMode.ASYNC);
     when(planService.fetchNode(eq(planId), eq(planNodeId))).thenReturn(planNode);
-    NodeExecution updated = nodeExecutionBuilder.status(Status.FAILED).endTs(System.currentTimeMillis()).build();
+    NodeExecution updated = nodeExecutionBuilder.status(Status.FAILED).endTs(1234L).build();
     when(nodeExecutionService.updateStatusWithOps(eq(nodeExecutionId), eq(Status.FAILED), any(), any()))
         .thenReturn(updated);
     doReturn(SdkResponseEventProto.newBuilder()
@@ -757,7 +757,7 @@ public class PlanNodeExecutionStrategyTest extends OrchestrationTestBase {
   @Owner(developers = SHALINI)
   @Category(UnitTests.class)
   public void testCreateNodeExecution() {
-    long startTs = System.currentTimeMillis();
+    long startTs = 1234L;
     String uuid = generateUuid();
     String nodeId = generateUuid();
     Ambiance ambiance = Ambiance.newBuilder()
@@ -808,7 +808,7 @@ public class PlanNodeExecutionStrategyTest extends OrchestrationTestBase {
   @Owner(developers = SHALINI)
   @Category(UnitTests.class)
   public void testCreateNodeExecutionWithMetadata() {
-    long startTs = System.currentTimeMillis();
+    long startTs = 1234L;
     String uuid = generateUuid();
     String nodeId = generateUuid();
     Ambiance ambiance = Ambiance.newBuilder()
