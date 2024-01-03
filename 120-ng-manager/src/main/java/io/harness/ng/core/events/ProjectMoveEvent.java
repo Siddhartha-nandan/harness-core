@@ -30,7 +30,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProjectMoveEvent implements Event {
-  public static final String PROJECT_MOVED = "ProjectMoved";
   private String accountIdentifier;
   ProjectDTO newProject;
   ProjectDTO oldProject;
@@ -59,6 +58,6 @@ public class ProjectMoveEvent implements Event {
   @Override
   @JsonIgnore
   public String getEventType() {
-    return PROJECT_MOVED;
+    return "ProjectMoved";
   }
 }
