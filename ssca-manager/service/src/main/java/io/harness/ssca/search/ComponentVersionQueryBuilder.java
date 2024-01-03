@@ -61,12 +61,11 @@ public class ComponentVersionQueryBuilder {
   }
 
   public Query buildComponentVersionQuery(ComponentFilter filter) {
-    if (filter.getOperator() == EQUALS) {
-      return ElasticSearchQueryBuilder.matchFieldValue(ComponentKeys.packageVersion, filter.getValue());
-    }
-
     List<Integer> versions = VersionField.getVersion(filter.getValue());
     if (versions.size() != 3 || versions.get(0) == -1) {
+      if (filter.getOperator() == EQUALS) {
+        return ElasticSearchQueryBuilder.matchFieldValue(ComponentKeys.packageVersion, filter.getValue());
+      }
       throw new InvalidArgumentsException("Unsupported Version Format");
     }
     Integer majorVersion = versions.get(0);
@@ -74,6 +73,8 @@ public class ComponentVersionQueryBuilder {
     Integer patchVersion = versions.get(2);
 
     switch (filter.getOperator()) {
+      case EQUALS:
+        return buildEqualsQuery(majorVersion, minorVersion, patchVersion);
       case NOTEQUALS:
         return buildNotEqualsQuery(majorVersion, minorVersion, patchVersion);
       case GREATERTHAN:

@@ -39,6 +39,9 @@ public class VersionFieldTest extends SSCAManagerTestBase {
     versionToListOfIntegersMap.put("", List.of(-1, -1, -1));
     versionToListOfIntegersMap.put("1.2.3-a", List.of(1, 2, -1));
     versionToListOfIntegersMap.put("1.2.3.x", List.of(-1, -1, -1));
+    versionToListOfIntegersMap.put("2.e-xyz", List.of(2, -1, -1));
+    versionToListOfIntegersMap.put("latest", List.of(-1, -1, -1));
+    versionToListOfIntegersMap.put("5.1.8-6.el9_1", List.of(-1, -1, -1));
 
     versionToListOfIntegersMap.forEach((k, v) -> assertThat(versionField.getVersion(k)).isEqualTo(v));
   }

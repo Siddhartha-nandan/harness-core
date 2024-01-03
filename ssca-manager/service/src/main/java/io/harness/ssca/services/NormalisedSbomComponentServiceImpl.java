@@ -153,6 +153,9 @@ public class NormalisedSbomComponentServiceImpl implements NormalisedSbomCompone
   Criteria getComponentVersionFilterCriteria(ComponentFilter filter) {
     List<Integer> versions = VersionField.getVersion(filter.getValue());
     if (versions.size() != 3 || versions.get(0) == -1) {
+      if (filter.getOperator() == Operator.EQUALS) {
+        return new Criteria().where(NormalizedSBOMEntityKeys.packageVersion).is(filter.getValue());
+      }
       throw new InvalidArgumentsException(String.format("Unsupported Version Format"));
     }
     if (filter.getOperator() != Operator.EQUALS) {
@@ -171,7 +174,17 @@ public class NormalisedSbomComponentServiceImpl implements NormalisedSbomCompone
       }
       return new Criteria().orOperator(patchCriteria, minorCriteria, majorCriteria);
     }
-    return new Criteria().where(NormalizedSBOMEntityKeys.packageVersion).is(filter.getValue());
+    return getEqualVersionCriteria(versions);
+  }
+
+  private Criteria getEqualVersionCriteria(List<Integer> versions) {
+    return new Criteria()
+        .where(NormalizedSBOMEntityKeys.majorVersion)
+        .is(versions.get(0))
+        .and(NormalizedSBOMEntityKeys.minorVersion)
+        .is(versions.get(1))
+        .and(NormalizedSBOMEntityKeys.patchVersion)
+        .is(versions.get(2));
   }
 
   private Criteria getPatchVersionCriteria(int majorVersion, int minorVersion, int patchVersion, Operator operator) {

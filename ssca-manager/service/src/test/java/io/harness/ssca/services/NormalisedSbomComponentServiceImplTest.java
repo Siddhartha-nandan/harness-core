@@ -10,6 +10,7 @@ package io.harness.ssca.services;
 import static io.harness.rule.OwnerRule.ARPITJ;
 import static io.harness.rule.OwnerRule.DHRUVX;
 import static io.harness.rule.OwnerRule.REETIKA;
+import static io.harness.rule.OwnerRule.SHASHWAT_SACHAN;
 
 import static junit.framework.TestCase.assertEquals;
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
@@ -196,7 +197,7 @@ public class NormalisedSbomComponentServiceImplTest extends SSCAManagerTestBase 
         new ComponentFilter().fieldName(FieldNameEnum.COMPONENTVERSION).value("1.2.3").operator(Operator.EQUALS);
     Criteria criteria = componentService.getComponentVersionFilterCriteria(filter);
     assertThat(new Query(criteria).toString())
-        .isEqualTo("Query: { \"packageVersion\" : \"1.2.3\"}, Fields: {}, Sort: {}");
+        .isEqualTo("Query: { \"majorVersion\" : 1, \"minorVersion\" : 2, \"patchVersion\" : 3}, Fields: {}, Sort: {}");
     filter.setOperator(Operator.NOTEQUALS);
     criteria = componentService.getComponentVersionFilterCriteria(filter);
     assertThat(new Query(criteria).toString())
@@ -222,6 +223,37 @@ public class NormalisedSbomComponentServiceImplTest extends SSCAManagerTestBase 
     assertThat(new Query(criteria).toString())
         .isEqualTo(
             "Query: { \"$or\" : [{ \"majorVersion\" : 1, \"minorVersion\" : 2, \"$and\" : [{ \"patchVersion\" : { \"$lte\" : 3}}]}, { \"majorVersion\" : 1, \"$and\" : [{ \"minorVersion\" : { \"$lt\" : 2}}]}, { \"majorVersion\" : { \"$lt\" : 1}}]}, Fields: {}, Sort: {}");
+  }
+
+  @Test
+  @Owner(developers = SHASHWAT_SACHAN)
+  @Category(UnitTests.class)
+  public void testGetComponentVersionFilter_EqualsOperator() {
+    NormalisedSbomComponentServiceImpl componentService = new NormalisedSbomComponentServiceImpl();
+    ComponentFilter filter =
+        new ComponentFilter().fieldName(FieldNameEnum.COMPONENTVERSION).value("1.2.3").operator(Operator.EQUALS);
+    Criteria criteria = componentService.getComponentVersionFilterCriteria(filter);
+    assertThat(new Query(criteria).toString())
+        .isEqualTo("Query: { \"majorVersion\" : 1, \"minorVersion\" : 2, \"patchVersion\" : 3}, Fields: {}, Sort: {}");
+    filter =
+        new ComponentFilter().fieldName(FieldNameEnum.COMPONENTVERSION).value("1.2.3-abcd").operator(Operator.EQUALS);
+    criteria = componentService.getComponentVersionFilterCriteria(filter);
+    assertThat(new Query(criteria).toString())
+        .isEqualTo("Query: { \"majorVersion\" : 1, \"minorVersion\" : 2, \"patchVersion\" : -1}, Fields: {}, Sort: {}");
+    filter = new ComponentFilter().fieldName(FieldNameEnum.COMPONENTVERSION).value("latest").operator(Operator.EQUALS);
+    criteria = componentService.getComponentVersionFilterCriteria(filter);
+    assertThat(new Query(criteria).toString())
+        .isEqualTo("Query: { \"packageVersion\" : \"latest\"}, Fields: {}, Sort: {}");
+    filter =
+        new ComponentFilter().fieldName(FieldNameEnum.COMPONENTVERSION).value("1.2.3-3.e").operator(Operator.EQUALS);
+    criteria = componentService.getComponentVersionFilterCriteria(filter);
+    assertThat(new Query(criteria).toString())
+        .isEqualTo("Query: { \"packageVersion\" : \"1.2.3-3.e\"}, Fields: {}, Sort: {}");
+    filter = new ComponentFilter().fieldName(FieldNameEnum.COMPONENTVERSION).value("2.e-xyz").operator(Operator.EQUALS);
+    criteria = componentService.getComponentVersionFilterCriteria(filter);
+    assertThat(new Query(criteria).toString())
+        .isEqualTo(
+            "Query: { \"majorVersion\" : 2, \"minorVersion\" : -1, \"patchVersion\" : -1}, Fields: {}, Sort: {}");
   }
 
   @Test
