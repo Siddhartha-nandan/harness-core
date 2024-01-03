@@ -32,7 +32,7 @@ public class NotFoundExceptionMapper implements ExceptionMapper<NotFoundExceptio
   @Override
   public Response toResponse(NotFoundException exception) {
     log.error("Exception occurred: " + ExceptionUtils.getMessage(exception), exception);
-    ErrorDTO errorBody = ErrorDTO.newError(Status.ERROR, ErrorCode.RESOURCE_NOT_FOUND, exception.toString());
-    return Response.status(Response.Status.NOT_FOUND).entity(errorBody).type(MediaType.APPLICATION_JSON).build();
+    ErrorDTO errorBody = ErrorDTO.newError(Status.ERROR, ErrorCode.RESOURCE_NOT_FOUND_EXCEPTION, exception.toString());
+    return Response.status(Response.Status.BAD_REQUEST).entity(errorBody).type(MediaType.APPLICATION_JSON).build();
   }
 }

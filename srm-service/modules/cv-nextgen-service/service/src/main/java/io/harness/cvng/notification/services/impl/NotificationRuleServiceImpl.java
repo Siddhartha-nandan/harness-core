@@ -28,7 +28,6 @@ import io.harness.cvng.notification.transformer.NotificationRuleConditionTransfo
 import io.harness.cvng.servicelevelobjective.services.api.ServiceLevelObjectiveV2Service;
 import io.harness.exception.DuplicateFieldException;
 import io.harness.exception.InvalidArgumentsException;
-import io.harness.exception.InvalidRequestException;
 import io.harness.ng.beans.PageResponse;
 import io.harness.persistence.HPersistence;
 import io.harness.utils.PageUtils;
@@ -48,6 +47,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import javax.ws.rs.NotFoundException;
 
 public class NotificationRuleServiceImpl implements NotificationRuleService {
   @Inject private HPersistence hPersistence;
@@ -96,7 +96,7 @@ public class NotificationRuleServiceImpl implements NotificationRuleService {
         String.format(
             "Identifier %s does not match with path identifier %s", notificationRuleDTO.getIdentifier(), identifier));
     if (getEntity(projectParams, notificationRuleDTO.getIdentifier()) == null) {
-      throw new InvalidRequestException(String.format("NotificationRule  with identifier %s, %s is not present",
+      throw new NotFoundException(String.format("NotificationRule  with identifier %s, %s is not present",
           notificationRuleDTO.getIdentifier(), ErrorMessageUtils.generateErrorMessageFromProjectParam(projectParams)));
     }
     NotificationRule notificationRule = getEntity(projectParams, identifier);
@@ -115,8 +115,8 @@ public class NotificationRuleServiceImpl implements NotificationRuleService {
   public Boolean delete(ProjectParams projectParams, String identifier) {
     List<NotificationRule> notificationRules = getEntities(projectParams, Arrays.asList(identifier));
     if (isEmpty(notificationRules)) {
-      throw new InvalidRequestException(String.format("NotificationRule  with identifier %s, %s  is not present",
-          identifier, ErrorMessageUtils.generateErrorMessageFromProjectParam(projectParams)));
+      throw new NotFoundException(String.format("NotificationRule  with identifier %s, %s  is not present", identifier,
+          ErrorMessageUtils.generateErrorMessageFromProjectParam(projectParams)));
     }
     serviceLevelObjectiveV2Service.beforeNotificationRuleDelete(projectParams, identifier);
     monitoredServiceService.beforeNotificationRuleDelete(projectParams, identifier);
@@ -180,7 +180,7 @@ public class NotificationRuleServiceImpl implements NotificationRuleService {
             .filter(NotificationRuleKeys.identifier, identifier)
             .get();
     if (Objects.isNull(notificationRule)) {
-      throw new InvalidRequestException(String.format("Notification with identifier %s is not present", identifier));
+      throw new NotFoundException(String.format("Notification with identifier %s is not present", identifier));
     }
     return notificationRuleEntityToResponse(notificationRule);
   }
@@ -266,7 +266,7 @@ public class NotificationRuleServiceImpl implements NotificationRuleService {
             .filter(notificationIdentifier -> !dbNotificationIdentifierSet.contains(notificationIdentifier))
             .collect(Collectors.toList());
     if (!inputNotificationIdentifierList.isEmpty()) {
-      throw new InvalidArgumentsException(String.format(
+      throw new NotFoundException(String.format(
           "NotificationRule does not exist for identifier: %s", String.join(",", inputNotificationIdentifierList)));
     }
   }

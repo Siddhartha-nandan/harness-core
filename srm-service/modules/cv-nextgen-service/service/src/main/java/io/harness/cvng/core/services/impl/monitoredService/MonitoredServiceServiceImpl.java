@@ -444,7 +444,7 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
                                                      .build();
     MonitoredService monitoredService = getMonitoredService(environmentParams, monitoredServiceDTO.getIdentifier());
     if (monitoredService == null) {
-      throw new InvalidRequestException(String.format(
+      throw new NotFoundException(String.format(
           "Monitored Service entity with identifier %s, accountId %s, orgIdentifier %s and projectIdentifier %s is not present",
           monitoredServiceDTO.getIdentifier(), accountId, monitoredServiceDTO.getOrgIdentifier(),
           monitoredServiceDTO.getProjectIdentifier()));
@@ -1003,7 +1003,7 @@ public class MonitoredServiceServiceImpl implements MonitoredServiceService {
   private MonitoredService getAndValidateMonitoredService(ProjectParams projectParams, String identifier) {
     MonitoredService monitoredService = getMonitoredService(projectParams, identifier);
     if (monitoredService == null) {
-      throw new InvalidRequestException(String.format(
+      throw new NotFoundException(String.format(
           "Monitored Service entity with identifier %s, accountId %s, orgIdentifier %s and projectIdentifier %s is not present",
           identifier, projectParams.getAccountIdentifier(), projectParams.getOrgIdentifier(),
           projectParams.getProjectIdentifier()));

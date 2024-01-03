@@ -76,6 +76,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import javax.ws.rs.NotFoundException;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Before;
@@ -557,7 +558,7 @@ public class DowntimeServiceImplTest extends CvNextGenTestBase {
   @Category(UnitTests.class)
   public void testDeleteFailure() {
     assertThatThrownBy(() -> downtimeService.delete(projectParams, "identifier"))
-        .isInstanceOf(InvalidRequestException.class)
+        .isInstanceOf(NotFoundException.class)
         .hasMessage(String.format(
             "Downtime with identifier identifier, accountId %s, orgIdentifier %s, and projectIdentifier %s is not present.",
             projectParams.getAccountIdentifier(), projectParams.getOrgIdentifier(),
@@ -927,7 +928,7 @@ public class DowntimeServiceImplTest extends CvNextGenTestBase {
   public void testUpdateDowntimeFailureForAbsentIdentifier() {
     assertThatThrownBy(
         () -> downtimeService.update(projectParams, recurringDowntimeDTO.getIdentifier(), recurringDowntimeDTO))
-        .isInstanceOf(InvalidRequestException.class)
+        .isInstanceOf(NotFoundException.class)
         .hasMessage(String.format(
             "Downtime with identifier %s, accountId %s, orgIdentifier %s, and projectIdentifier %s is not present.",
             recurringDowntimeDTO.getIdentifier(), projectParams.getAccountIdentifier(),

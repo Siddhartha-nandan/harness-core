@@ -211,6 +211,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import javax.ws.rs.BadRequestException;
+import javax.ws.rs.NotFoundException;
 import lombok.AccessLevel;
 import lombok.SneakyThrows;
 import lombok.experimental.FieldDefaults;
@@ -1555,7 +1556,7 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
   @Category(UnitTests.class)
   public void testGet_IdentifierNotPresent() {
     assertThatThrownBy(() -> monitoredServiceService.get(projectParams, monitoredServiceIdentifier))
-        .isInstanceOf(InvalidRequestException.class)
+        .isInstanceOf(NotFoundException.class)
         .hasMessage(String.format(
             "Monitored Service entity with identifier %s, accountId %s, orgIdentifier %s and projectIdentifier %s is not present",
             monitoredServiceIdentifier, projectParams.getAccountIdentifier(), projectParams.getOrgIdentifier(),
@@ -2160,7 +2161,7 @@ public class MonitoredServiceServiceImplTest extends CvNextGenTestBase {
     MonitoredServiceDTO monitoredServiceDTO = createMonitoredServiceDTO();
     assertThatThrownBy(
         () -> monitoredServiceService.update(builderFactory.getContext().getAccountId(), monitoredServiceDTO, false))
-        .isInstanceOf(InvalidRequestException.class)
+        .isInstanceOf(NotFoundException.class)
         .hasMessage(String.format(
             "Monitored Service entity with identifier %s, accountId %s, orgIdentifier %s and projectIdentifier %s is not present",
             monitoredServiceIdentifier, accountId, orgIdentifier, projectIdentifier));
