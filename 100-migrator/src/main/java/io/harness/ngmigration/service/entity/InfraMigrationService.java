@@ -14,6 +14,7 @@ import static software.wings.api.CloudProviderType.AWS;
 import static software.wings.ngmigration.NGMigrationEntityType.CONNECTOR;
 import static software.wings.ngmigration.NGMigrationEntityType.ELASTIGROUP_CONFIGURATION;
 import static software.wings.ngmigration.NGMigrationEntityType.ENVIRONMENT;
+import static software.wings.ngmigration.NGMigrationEntityType.SERVICE;
 import static software.wings.ngmigration.NGMigrationEntityType.TEMPLATE;
 
 import static java.util.stream.Collectors.counting;
@@ -64,6 +65,7 @@ import io.harness.serializer.JsonUtils;
 
 import software.wings.api.CloudProviderType;
 import software.wings.api.DeploymentType;
+import software.wings.beans.Service;
 import software.wings.infra.AwsAmiInfrastructure;
 import software.wings.infra.InfrastructureDefinition;
 import software.wings.ngmigration.CgBasicInfo;
@@ -82,6 +84,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -288,6 +292,27 @@ public class InfraMigrationService extends NgMigrationService {
 
     boolean allowSimultaneousDeployments = "true".equalsIgnoreCase(value);
 
+    // only supported if migrated through app command
+    List<String> scopedServicesIdentifier = null;
+    if (infra.getScopedToServices() != null) {
+      scopedServicesIdentifier =
+          infra.getScopedToServices()
+              .stream()
+              .map(serviceId -> {
+                if (!entities.containsKey(CgEntityId.builder().id(serviceId).type(SERVICE).build())) {
+                  return null;
+                }
+                Service service =
+                    (Service) entities.get(CgEntityId.builder().id(serviceId).type(SERVICE).build()).getEntity();
+                String serviceName = MigratorUtility.generateName(
+                    migrationContext.getInputDTO().getOverrides(), entityId, service.getName());
+                return MigratorUtility.generateIdentifierDefaultName(migrationContext.getInputDTO().getOverrides(),
+                    entityId, serviceName, migrationContext.getInputDTO().getIdentifierCaseFormat());
+              })
+              .filter(Objects::nonNull)
+              .toList();
+    }
+
     InfrastructureConfig infrastructureConfig =
         InfrastructureConfig.builder()
             .infrastructureDefinitionConfig(
@@ -301,6 +326,7 @@ public class InfraMigrationService extends NgMigrationService {
                     .type(infraDefMapper.getInfrastructureType(infra))
                     .deploymentType(infraDefMapper.getServiceDefinition(infra))
                     .allowSimultaneousDeployments(allowSimultaneousDeployments)
+                    .scopedServices(scopedServicesIdentifier)
                     .build())
             .build();
 
