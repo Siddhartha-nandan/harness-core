@@ -1,5 +1,5 @@
 subject: >-
-  Harness Delegate ${delegateId} is about to expire
+  Harness Delegate ${DELEGATE_ID} is about to expire
 body: >-
   <html xmlns="http://www.w3.org/1999/xhtml">
 

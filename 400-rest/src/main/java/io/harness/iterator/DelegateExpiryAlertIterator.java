@@ -23,7 +23,10 @@ import io.harness.notification.entities.NotificationEvent;
 import io.harness.notification.notificationclient.NotificationClient;
 
 import com.google.inject.Inject;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.time.Duration;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -35,7 +38,6 @@ public class DelegateExpiryAlertIterator
     extends IteratorPumpAndRedisModeHandler implements MongoPersistenceIterator.Handler<DelegateGroup> {
   @Inject private io.harness.iterator.PersistenceIteratorFactory persistenceIteratorFactory;
   @Inject private MorphiaPersistenceProvider<DelegateGroup> persistenceProvider;
-  ;
   @Inject private NotificationClient notificationClient;
 
   @Override
@@ -95,6 +97,8 @@ public class DelegateExpiryAlertIterator
     Map<String, String> templateData = new HashMap<>();
     templateData.put("TEMPLATE_IDENTIFIER", "delegate_expired");
     templateData.put("DELEGATE_NAME", delegateGroup.getIdentifier());
+    templateData.put("DELEGATE_ID", delegateGroup.getName());
+    templateData.put("EXPIRY_TIME", toDateFormat(delegateGroup.getDelegatesExpireOn()));
     NotificationTriggerRequest.Builder notificationTriggerRequestBuilder =
         NotificationTriggerRequest.newBuilder()
             .setId(notificationTriggerRequestId)
@@ -102,9 +106,23 @@ public class DelegateExpiryAlertIterator
             .setOrgId(orgId)
             .setProjectId(projectId)
             .setEventEntity(NotificationEntity.DELEGATE.name())
-            .setEvent(NotificationEvent.DELEGATE_EXPIRED.name())
+            .setEvent(getNotificationEvent(delegateGroup.getDelegatesExpireOn()))
             .putAllTemplateData(templateData);
     log.info("Sending delegate expiry notification for {}", delegateGroup.getUuid());
     notificationClient.sendNotificationTrigger(notificationTriggerRequestBuilder.build());
+  }
+
+  private String toDateFormat(long milliSeconds) {
+    DateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
+    Calendar calendar = Calendar.getInstance();
+    calendar.setTimeInMillis(milliSeconds);
+    return dateFormatter.format(calendar.getTime());
+  }
+
+  private String getNotificationEvent(long delegateExpiry) {
+    if (delegateExpiry > System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30)) {
+      return NotificationEvent.DELEGATE_ABOUT_TO_EXPIRE.name();
+    }
+    return NotificationEvent.DELEGATE_EXPIRED.name();
   }
 }

@@ -99,6 +99,7 @@ import io.harness.grpc.server.GrpcServerConfig;
 import io.harness.health.HealthMonitor;
 import io.harness.health.HealthService;
 import io.harness.iterator.DelegateDisconnectDetectorIterator;
+import io.harness.iterator.DelegateExpiryAlertIterator;
 import io.harness.iterator.FailDelegateTaskIterator;
 import io.harness.iterator.FailDelegateTaskIteratorOnDMS;
 import io.harness.iterator.IteratorExecutionHandler;
@@ -1583,6 +1584,7 @@ public class WingsApplication extends Application<MainConfiguration> {
     injector.getInstance(FailDelegateTaskIterator.class).registerIterator(iteratorExecutionHandler);
     injector.getInstance(FailDelegateTaskIteratorOnDMS.class).registerIterator(iteratorExecutionHandler);
     injector.getInstance(DelegateTelemetryPublisher.class).registerIterator(iteratorExecutionHandler);
+    injector.getInstance(DelegateExpiryAlertIterator.class).registerIterator(iteratorExecutionHandler);
   }
 
   public static void registerIteratorsManager(
