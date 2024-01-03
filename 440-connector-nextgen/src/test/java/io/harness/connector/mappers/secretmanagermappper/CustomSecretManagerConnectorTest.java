@@ -32,6 +32,7 @@ public class CustomSecretManagerConnectorTest extends CategoryTest {
     defaultFieldNamesToValue = new HashMap<>();
     defaultFieldNamesToValue.put("isDefault", false);
     defaultFieldNamesToValue.put("onDelegate", false);
+    defaultFieldNamesToValue.put("timeout", 20L);
   }
 
   @Test
