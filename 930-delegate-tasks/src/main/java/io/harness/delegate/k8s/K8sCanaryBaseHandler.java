@@ -64,7 +64,7 @@ import io.harness.k8s.releasehistory.K8sRelease;
 import io.harness.k8s.releasehistory.K8sReleaseHistory;
 import io.harness.k8s.releasehistory.K8sReleaseHistoryCleanupDTO;
 import io.harness.k8s.releasehistory.K8sReleasePersistDTO;
-import io.harness.k8s.releasehistory.TrafficRoutingInfoDTO;
+import io.harness.k8s.trafficrouting.TrafficRoutingInfoDTO;
 import io.harness.logging.LogCallback;
 
 import software.wings.beans.LogColor;
