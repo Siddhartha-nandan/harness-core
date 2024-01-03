@@ -67,13 +67,13 @@ public class GcpListClustersTaskHandlerTest extends CategoryTest {
         GcpListClustersRequest.builder().delegateSelectors(ImmutableSet.of("delegate1")).build();
     doReturn(Arrays.asList("cluster1", "cluster2"))
         .when(gkeClusterHelper)
-        .listClusters(eq(null), eq(true), null, false, null);
+        .listClusters(eq(null), eq(true), eq(null), eq(null));
 
     final GcpClusterListTaskResponse response = (GcpClusterListTaskResponse) taskHandler.executeRequest(request);
     assertThat(response.getCommandExecutionStatus()).isEqualTo(SUCCESS);
     assertThat(response.getClusterNames()).containsExactly("cluster1", "cluster2");
 
-    verify(gkeClusterHelper, times(1)).listClusters(eq(null), eq(true), null, false, null);
+    verify(gkeClusterHelper, times(1)).listClusters(eq(null), eq(true), eq(null), eq(null));
     verify(secretDecryptionService, times(0)).decrypt(any(), anyList());
   }
 
@@ -91,13 +91,13 @@ public class GcpListClustersTaskHandlerTest extends CategoryTest {
             .build();
     doReturn(Arrays.asList("cluster1", "cluster2"))
         .when(gkeClusterHelper)
-        .listClusters(eq(secret), eq(false), null, false, null);
+        .listClusters(eq(secret), eq(false), eq(null), eq(null));
 
     final GcpClusterListTaskResponse response = (GcpClusterListTaskResponse) taskHandler.executeRequest(request);
     assertThat(response.getCommandExecutionStatus()).isEqualTo(SUCCESS);
     assertThat(response.getClusterNames()).containsExactly("cluster1", "cluster2");
 
-    verify(gkeClusterHelper, times(1)).listClusters(eq(secret), eq(false), null, false, null);
+    verify(gkeClusterHelper, times(1)).listClusters(eq(secret), eq(false), eq(null), eq(null));
     verify(secretDecryptionService, times(1)).decrypt(any(), anyList());
   }
 
@@ -115,7 +115,7 @@ public class GcpListClustersTaskHandlerTest extends CategoryTest {
             .build();
     doThrow(new RuntimeException("No credentials found"))
         .when(gkeClusterHelper)
-        .listClusters(eq(secret), eq(false), null, false, null);
+        .listClusters(eq(secret), eq(false), eq(null), eq(null));
     doReturn("No credentials found").when(ngErrorHelper).getErrorSummary(anyString());
 
     final GcpClusterListTaskResponse response = (GcpClusterListTaskResponse) taskHandler.executeRequest(request);
@@ -123,7 +123,7 @@ public class GcpListClustersTaskHandlerTest extends CategoryTest {
     assertThat(response.getClusterNames()).isNull();
     assertThat(response.getErrorMessage()).isEqualTo("No credentials found");
 
-    verify(gkeClusterHelper, times(1)).listClusters(eq(secret), eq(false), null, false, null);
+    verify(gkeClusterHelper, times(1)).listClusters(eq(secret), eq(false), eq(null), eq(null));
     verify(secretDecryptionService, times(1)).decrypt(any(), anyList());
   }
 
@@ -141,7 +141,7 @@ public class GcpListClustersTaskHandlerTest extends CategoryTest {
     assertThat(response.getClusterNames()).isNull();
     assertThat(response.getErrorMessage()).isEqualTo(errorMessage);
 
-    verify(gkeClusterHelper, times(0)).listClusters(any(), anyBoolean(), null, false, null);
+    verify(gkeClusterHelper, times(0)).listClusters(any(), anyBoolean(), eq(null), eq(null));
     verify(secretDecryptionService, times(0)).decrypt(any(), anyList());
   }
 }

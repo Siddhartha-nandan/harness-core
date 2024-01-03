@@ -80,9 +80,7 @@ public class GcrArtifactTaskHandlerTest extends CategoryTest {
     doReturn(buildDetailsInternal)
         .when(gcrApiService)
         .getLastSuccessfulBuildFromRegex(garInternalConfig, IMAGE_PATH, "v.*");
-    doReturn(googleCredential)
-        .when(gcpHelperService)
-        .getGoogleCredential(serviceAccountKeyFileContent, false, null, false);
+    doReturn(googleCredential).when(gcpHelperService).getGoogleCredential(serviceAccountKeyFileContent, false, null);
     doReturn("Bearer Auth").when(gcpHelperService).getBasicAuthHeader(serviceAccountKeyFileContent, false);
     GcrArtifactDelegateRequest gcrDelegateRequest =
         GcrArtifactDelegateRequest.builder()
@@ -128,9 +126,7 @@ public class GcrArtifactTaskHandlerTest extends CategoryTest {
     garInternalConfig =
         GcrInternalConfig.builder().basicAuthHeader("Bearer Auth").registryHostname("registryHostname").build();
     doReturn(buildDetailsInternal).when(gcrApiService).verifyBuildNumber(garInternalConfig, IMAGE_PATH, VERSION);
-    doReturn(googleCredential)
-        .when(gcpHelperService)
-        .getGoogleCredential(serviceAccountKeyFileContent, false, null, false);
+    doReturn(googleCredential).when(gcpHelperService).getGoogleCredential(serviceAccountKeyFileContent, false, null);
     doReturn("Bearer Auth").when(gcpHelperService).getBasicAuthHeader(serviceAccountKeyFileContent, false);
     GcrArtifactDelegateRequest gcrDelegateRequest =
         GcrArtifactDelegateRequest.builder()
@@ -179,9 +175,7 @@ public class GcrArtifactTaskHandlerTest extends CategoryTest {
         GcrInternalConfig.builder().basicAuthHeader("Bearer Auth").registryHostname("registryHostname").build();
     doReturn(ls).when(gcrApiService).getBuilds(garInternalConfig, IMAGE_PATH, 10000);
 
-    doReturn(googleCredential)
-        .when(gcpHelperService)
-        .getGoogleCredential(serviceAccountKeyFileContent, false, null, false);
+    doReturn(googleCredential).when(gcpHelperService).getGoogleCredential(serviceAccountKeyFileContent, false, null);
 
     doReturn("Bearer Auth").when(gcpHelperService).getBasicAuthHeader(serviceAccountKeyFileContent, false);
 
@@ -224,9 +218,7 @@ public class GcrArtifactTaskHandlerTest extends CategoryTest {
         GcrInternalConfig.builder().basicAuthHeader("Bearer Auth").registryHostname("registryHostname").build();
     doReturn(true).when(gcrApiService).validateCredentials(garInternalConfig, IMAGE_PATH);
 
-    doReturn(googleCredential)
-        .when(gcpHelperService)
-        .getGoogleCredential(serviceAccountKeyFileContent, false, null, false);
+    doReturn(googleCredential).when(gcpHelperService).getGoogleCredential(serviceAccountKeyFileContent, false, null);
 
     doReturn("Bearer Auth").when(gcpHelperService).getBasicAuthHeader(serviceAccountKeyFileContent, false);
 
@@ -265,9 +257,7 @@ public class GcrArtifactTaskHandlerTest extends CategoryTest {
         GcrInternalConfig.builder().basicAuthHeader("Bearer Auth").registryHostname("registryHostname").build();
     doReturn(true).when(gcrApiService).verifyImageName(garInternalConfig, IMAGE_PATH);
 
-    doReturn(googleCredential)
-        .when(gcpHelperService)
-        .getGoogleCredential(serviceAccountKeyFileContent, false, null, false);
+    doReturn(googleCredential).when(gcpHelperService).getGoogleCredential(serviceAccountKeyFileContent, false, null);
 
     doReturn("Bearer Auth").when(gcpHelperService).getBasicAuthHeader(serviceAccountKeyFileContent, false);
 

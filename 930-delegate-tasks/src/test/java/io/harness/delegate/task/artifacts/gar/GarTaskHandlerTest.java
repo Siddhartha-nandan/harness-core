@@ -80,9 +80,7 @@ public class GarTaskHandlerTest extends CategoryTest {
                             .maxBuilds(Integer.MAX_VALUE)
                             .build();
     doReturn(buildDetailsInternal).when(garApiService).getLastSuccessfulBuildFromRegex(garInternalConfig, "v");
-    doReturn(googleCredential)
-        .when(gcpHelperService)
-        .getGoogleCredential(serviceAccountKeyFileContent, false, null, false);
+    doReturn(googleCredential).when(gcpHelperService).getGoogleCredential(serviceAccountKeyFileContent, false, null);
     GarDelegateRequest garDelegateRequest =
         GarDelegateRequest.builder()
             .region("us")
@@ -129,9 +127,7 @@ public class GarTaskHandlerTest extends CategoryTest {
                             .maxBuilds(Integer.MAX_VALUE)
                             .build();
     doReturn(buildDetailsInternal).when(garApiService).verifyBuildNumber(garInternalConfig, "version");
-    doReturn(googleCredential)
-        .when(gcpHelperService)
-        .getGoogleCredential(serviceAccountKeyFileContent, false, null, false);
+    doReturn(googleCredential).when(gcpHelperService).getGoogleCredential(serviceAccountKeyFileContent, false, null);
     GarDelegateRequest garDelegateRequest =
         GarDelegateRequest.builder()
             .region("us")
@@ -180,9 +176,7 @@ public class GarTaskHandlerTest extends CategoryTest {
                             .maxBuilds(Integer.MAX_VALUE)
                             .build();
     doReturn(buildDetailsInternals).when(garApiService).getBuilds(garInternalConfig, "v", Integer.MAX_VALUE);
-    doReturn(googleCredential)
-        .when(gcpHelperService)
-        .getGoogleCredential(serviceAccountKeyFileContent, false, null, false);
+    doReturn(googleCredential).when(gcpHelperService).getGoogleCredential(serviceAccountKeyFileContent, false, null);
     GarDelegateRequest garDelegateRequest =
         GarDelegateRequest.builder()
             .region("us")
@@ -261,7 +255,7 @@ public class GarTaskHandlerTest extends CategoryTest {
 
     doThrow(new IOException("hello-world"))
         .when(gcpHelperService)
-        .getGoogleCredential(serviceAccountKeyFileContent, false, null, false);
+        .getGoogleCredential(serviceAccountKeyFileContent, false, null);
     GarDelegateRequest garDelegateRequest =
         GarDelegateRequest.builder()
             .region("us")
@@ -304,7 +298,7 @@ public class GarTaskHandlerTest extends CategoryTest {
                             .build();
     doThrow(new IOException("hello-world"))
         .when(gcpHelperService)
-        .getGoogleCredential(serviceAccountKeyFileContent, false, null, false);
+        .getGoogleCredential(serviceAccountKeyFileContent, false, null);
     GarDelegateRequest garDelegateRequest =
         GarDelegateRequest.builder()
             .region("us")

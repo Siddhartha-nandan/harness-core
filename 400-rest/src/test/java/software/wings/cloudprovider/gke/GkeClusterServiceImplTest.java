@@ -142,7 +142,7 @@ public class GkeClusterServiceImplTest extends WingsBaseTest {
 
     List<String> result = gkeClusterService.listClusters(COMPUTE_PROVIDER_SETTING.toDTO(), Collections.emptyList());
 
-    verify(gkeClusterHelper, times(1)).listClusters(eq(serviceAccountKey), eq(false), null, false, null);
+    verify(gkeClusterHelper, times(1)).listClusters(eq(serviceAccountKey), eq(false), eq(null), eq(null));
     assertThat(result).containsExactlyInAnyOrder("zone-a/cluster-1", "zone-a/cluster-2");
   }
 
@@ -154,7 +154,7 @@ public class GkeClusterServiceImplTest extends WingsBaseTest {
 
     List<String> result = gkeClusterService.listClusters(COMPUTE_PROVIDER_SETTING.toDTO(), Collections.emptyList());
 
-    verify(gkeClusterHelper, times(1)).listClusters(eq(serviceAccountKey), eq(false), null, false, null);
+    verify(gkeClusterHelper, times(1)).listClusters(eq(serviceAccountKey), eq(false), eq(null), eq(null));
     assertThat(result).isNull();
   }
 }
