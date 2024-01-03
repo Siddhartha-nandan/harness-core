@@ -274,7 +274,7 @@ A Helm chart for Kubernetes
 | resources.requests.cpu | int | `2` |  |
 | resources.requests.memory | string | `"3000Mi"` |  |
 | secrets.default.LOG_STREAMING_SERVICE_TOKEN | string | `"c76e567a-b341-404d-a8dd-d9738714eb82"` |  |
-| secrets.default.VERIFICATION_SERVICE_SECRET | string | `"59MR5RlVARcdH7zb7pNx6GzqiglBmXR8"` |  |
+| secrets.default.VERIFICATION_SERVICE_SECRET | string | `"verification-svc-secret"` |  |
 | secrets.kubernetesSecrets[0].keys.LOG_STREAMING_SERVICE_TOKEN | string | `""` |  |
 | secrets.kubernetesSecrets[0].keys.VERIFICATION_SERVICE_SECRET | string | `""` |  |
 | secrets.kubernetesSecrets[0].secretName | string | `""` |  |

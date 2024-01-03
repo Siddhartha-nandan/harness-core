@@ -545,7 +545,7 @@ ingress:
 secrets:
   default:
     LOG_STREAMING_SERVICE_TOKEN: "c76e567a-b341-404d-a8dd-d9738714eb82"
-    VERIFICATION_SERVICE_SECRET: "59MR5RlVARcdH7zb7pNx6GzqiglBmXR8"
+    VERIFICATION_SERVICE_SECRET: "verification-svc-secret"
   kubernetesSecrets:
     - secretName: ""
       keys:
