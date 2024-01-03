@@ -37,7 +37,9 @@ import io.harness.spec.server.ssca.v1.model.ArtifactListingResponse.ActivityEnum
 import io.harness.spec.server.ssca.v1.model.ArtifactListingResponseScorecard;
 import io.harness.spec.server.ssca.v1.model.ComponentFilter;
 import io.harness.spec.server.ssca.v1.model.LicenseFilter;
+import io.harness.spec.server.ssca.v1.model.OneOfArtifactMetadata;
 import io.harness.spec.server.ssca.v1.model.PipelineInfo;
+import io.harness.spec.server.ssca.v1.model.RepositoryArtifactMetadata;
 import io.harness.spec.server.ssca.v1.model.SbomProcessRequestBody;
 import io.harness.spec.server.ssca.v1.model.Slsa;
 import io.harness.ssca.beans.EnforcementSummaryDBO.EnforcementSummaryDBOKeys;
@@ -50,6 +52,9 @@ import io.harness.ssca.entities.EnforcementSummaryEntity;
 import io.harness.ssca.entities.EnforcementSummaryEntity.EnforcementSummaryEntityKeys;
 import io.harness.ssca.entities.artifact.ArtifactEntity;
 import io.harness.ssca.entities.artifact.ArtifactEntity.ArtifactEntityKeys;
+import io.harness.ssca.entities.artifact.ArtifactSpec;
+import io.harness.ssca.entities.artifact.ArtifactType;
+import io.harness.ssca.entities.artifact.RepositoryArtifactSpec;
 import io.harness.ssca.events.SSCAArtifactUpdatedEvent;
 import io.harness.ssca.search.SearchService;
 import io.harness.ssca.search.beans.ArtifactFilter;
@@ -142,7 +147,7 @@ public class ArtifactServiceImpl implements ArtifactService {
         .projectId(projectIdentifier)
         .accountId(accountId)
         .sbomName(body.getSbomProcess().getName())
-        .type(body.getArtifact().getType())
+        .type(ArtifactType.getArtifactType(body.getArtifact().getType().toString()))
         .url(body.getArtifact().getRegistryUrl())
         .pipelineId(body.getSbomMetadata().getPipelineIdentifier())
         .stageId(body.getSbomMetadata().getStageIdentifier())
@@ -161,7 +166,23 @@ public class ArtifactServiceImpl implements ArtifactService {
         .prodEnvCount(0l)
         .nonProdEnvCount(0l)
         .invalid(false)
+        .spec(getArtifactSpec(
+            ArtifactType.getArtifactType(body.getArtifact().getType().toString()), body.getArtifact().getMetadata()))
         .build();
+  }
+
+  private ArtifactSpec getArtifactSpec(ArtifactType type, OneOfArtifactMetadata metadata) {
+    switch (type) {
+      case REPOSITORY:
+        RepositoryArtifactMetadata repositoryArtifactMetadata = (RepositoryArtifactMetadata) metadata;
+        return RepositoryArtifactSpec.builder()
+            .branch(repositoryArtifactMetadata.getBranch())
+            .gitTag(repositoryArtifactMetadata.getGitTag())
+            .commitSha(repositoryArtifactMetadata.getCommitSha())
+            .build();
+      default:
+        return null;
+    }
   }
 
   @Override

@@ -47,7 +47,7 @@ public class EnforcementSummaryServiceImpl implements EnforcementSummaryService 
                                                          .artifactId(artifact.getArtifactId())
                                                          .name(artifact.getName())
                                                          .tag(artifact.getTag())
-                                                         .type(artifact.getType())
+                                                         .type(artifact.getType().getName())
                                                          .url(artifact.getUrl())
                                                          .build())
                                            .orchestrationId(artifact.getOrchestrationId())

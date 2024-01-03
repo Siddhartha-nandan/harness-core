@@ -61,6 +61,7 @@ public class SSCAArtifactMapper {
                                                                .maxScore(artifactEntity.getScorecard().getMaxScore())
                                                                .build()
                                                          : null)
+        .spec(artifactEntity.getSpec())
         .relation_type(RelationshipType.builder().name(ARTIFACT_ENTITY).build())
         .build();
   }

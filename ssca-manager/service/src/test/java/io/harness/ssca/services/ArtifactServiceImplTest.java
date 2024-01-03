@@ -44,6 +44,7 @@ import io.harness.ssca.entities.NormalizedSBOMComponentEntity;
 import io.harness.ssca.entities.NormalizedSBOMComponentEntity.NormalizedSBOMComponentEntityBuilder;
 import io.harness.ssca.entities.artifact.ArtifactEntity;
 import io.harness.ssca.entities.artifact.ArtifactEntity.ArtifactEntityKeys;
+import io.harness.ssca.entities.artifact.ArtifactType;
 import io.harness.ssca.utils.PageResponseUtils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -117,7 +118,7 @@ public class ArtifactServiceImplTest extends SSCAManagerTestBase {
     assertThat(artifact.getArtifactCorrelationId()).isEqualTo("index.docker.com/test/image:tag");
     assertThat(artifact.getUrl()).isEqualTo("https://index.docker.com");
     assertThat(artifact.getName()).isEqualTo("test/image");
-    assertThat(artifact.getType()).isEqualTo("image/repo");
+    assertThat(artifact.getType()).isEqualTo(ArtifactType.CONTAINER);
     assertThat(artifact.getTag()).isEqualTo("tag");
     assertThat(artifact.getAccountId()).isEqualTo(builderFactory.getContext().getAccountId());
     assertThat(artifact.getOrgId()).isEqualTo(builderFactory.getContext().getOrgIdentifier());

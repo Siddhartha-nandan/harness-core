@@ -53,6 +53,7 @@ import io.harness.ssca.entities.NormalizedSBOMComponentEntity;
 import io.harness.ssca.entities.NormalizedSBOMComponentEntity.NormalizedSBOMComponentEntityBuilder;
 import io.harness.ssca.entities.artifact.ArtifactEntity;
 import io.harness.ssca.entities.artifact.ArtifactEntity.ArtifactEntityBuilder;
+import io.harness.ssca.entities.artifact.ArtifactType;
 import io.harness.ssca.entities.remediation_tracker.DefaultVulnerability;
 import io.harness.ssca.entities.remediation_tracker.RemediationCondition;
 import io.harness.ssca.entities.remediation_tracker.RemediationTrackerEntity;
@@ -192,7 +193,7 @@ public class BuilderFactory {
         .artifactCorrelationId("artifactCorrelationId")
         .url("testUrl")
         .name("test/image")
-        .type("imgae/repo")
+        .type(ArtifactType.CONTAINER)
         .tag("tag")
         .pipelineExecutionId("pipelineExecutionId")
         .pipelineId("pipelineId")

@@ -10,6 +10,8 @@ package io.harness.ssca.search.entities;
 import io.harness.annotations.dev.HarnessTeam;
 import io.harness.annotations.dev.OwnedBy;
 import io.harness.ssca.beans.Scorecard;
+import io.harness.ssca.entities.artifact.ArtifactSpec;
+import io.harness.ssca.entities.artifact.ArtifactType;
 import io.harness.ssca.search.beans.RelationshipType;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -31,7 +33,7 @@ public class SSCAArtifact {
   String artifactCorrelationId;
   @NotEmpty String url;
   String name;
-  String type;
+  ArtifactType type;
   String tag;
   String accountId;
   String orgIdentifier;
@@ -53,6 +55,8 @@ public class SSCAArtifact {
   Long nonProdEnvCount;
 
   Scorecard scorecard;
+
+  ArtifactSpec spec;
 
   @Value
   @Builder
