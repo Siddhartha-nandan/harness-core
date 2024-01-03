@@ -14,5 +14,5 @@ message OrganizationEntityChangeDTO {
   string accountIdentifier = 1;
   string identifier = 2;
   string uniqueId = 3;
-  io.harness.eventsframework.schemas.entity.ScopeInfo scopeinfp = 4;
+  io.harness.eventsframework.schemas.entity.ScopeInfo scopeInfo = 4;
 }

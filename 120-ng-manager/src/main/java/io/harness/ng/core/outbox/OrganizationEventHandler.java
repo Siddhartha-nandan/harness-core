@@ -32,6 +32,7 @@ import io.harness.eventsframework.api.Producer;
 import io.harness.eventsframework.entity_crud.organization.OrganizationEntityChangeDTO;
 import io.harness.eventsframework.producer.Message;
 import io.harness.eventsframework.schemas.entity.ScopeInfo;
+import io.harness.eventsframework.schemas.entity.ScopeProtoEnum;
 import io.harness.exception.InvalidArgumentsException;
 import io.harness.ng.core.OrgScope;
 import io.harness.ng.core.dto.OrganizationRequest;
@@ -50,6 +51,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.google.protobuf.ByteString;
+import com.google.protobuf.StringValue;
 import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 
@@ -210,10 +212,10 @@ public class OrganizationEventHandler implements OutboxEventHandler {
     return OrganizationEntityChangeDTO.newBuilder()
         .setIdentifier(identifier)
         .setAccountIdentifier(accountIdentifier)
-        .setScopeinfp(ScopeInfo.newBuilder()
-                          .setParentUniqueId(accountIdentifier)
-                          .setUniqueId(uniqueId)
-                          .setScopeLevel("ACCOUNT")
+        .setUniqueId(uniqueId)
+        .setScopeInfo(ScopeInfo.newBuilder()
+                          .setUniqueId(StringValue.of(accountIdentifier))
+                          .setScope(ScopeProtoEnum.ACCOUNT)
                           .build())
         .build()
         .toByteString();
