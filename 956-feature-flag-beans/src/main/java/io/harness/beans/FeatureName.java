@@ -720,6 +720,8 @@ public enum FeatureName {
   STO_STEP_PALETTE_AQUASEC("Enable Aquasec step for STO", HarnessTeam.STO),
   STO_STEP_PALETTE_COVERITY("Enable Coverity step for STO", HarnessTeam.STO),
   STO_TIMEBOUND_EXEMPTIONS("Enable timebound exemptions for STO", HarnessTeam.STO),
+  STO_STEP_PALETTE_OSV("OSV scanner step for STO", HarnessTeam.STO),
+
   SUPERVISED_TS_THRESHOLD,
   SYNC_GIT_CLONE_AND_COPY_TO_DEST_DIR(
       "This feature flag helps in synchronizing the git clone of repo and copying the files then to destination directory",
@@ -908,7 +910,9 @@ public enum FeatureName {
       "FF to suppport selecting different infrastructure during environment propagation", CDC),
   SSCA_ENFORCEMENT_EXEMPTIONS_ENABLED("FF to enable exemption workflow in the SSCA enforcement step", SSCA),
   SSCA_MATCH_INSTANCE_IMAGE_NAME(
-      "Enable matching K8s instance image name with SSCA artifact to determine artifacts deployed", SSCA);
+      "Enable matching K8s instance image name with SSCA artifact to determine artifacts deployed", SSCA),
+  CDS_INPUT_YAML_IN_WEBHOOK_NOTIFICATION(
+      "FF to enable sending input set yaml as part of pipeline webhook notification", PIPELINE);
 
   // keep-sorted end
 

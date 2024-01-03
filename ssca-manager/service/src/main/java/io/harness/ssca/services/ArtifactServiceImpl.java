@@ -44,12 +44,12 @@ import io.harness.ssca.beans.EnforcementSummaryDBO.EnforcementSummaryDBOKeys;
 import io.harness.ssca.beans.EnvType;
 import io.harness.ssca.beans.SbomDTO;
 import io.harness.ssca.beans.remediation_tracker.PatchedPendingArtifactEntitiesResult;
-import io.harness.ssca.entities.ArtifactEntity;
-import io.harness.ssca.entities.ArtifactEntity.ArtifactEntityKeys;
 import io.harness.ssca.entities.BaselineEntity;
 import io.harness.ssca.entities.CdInstanceSummary;
 import io.harness.ssca.entities.EnforcementSummaryEntity;
 import io.harness.ssca.entities.EnforcementSummaryEntity.EnforcementSummaryEntityKeys;
+import io.harness.ssca.entities.artifact.ArtifactEntity;
+import io.harness.ssca.entities.artifact.ArtifactEntity.ArtifactEntityKeys;
 import io.harness.ssca.events.SSCAArtifactUpdatedEvent;
 import io.harness.ssca.search.SearchService;
 import io.harness.ssca.search.beans.ArtifactFilter;
@@ -589,7 +589,8 @@ public class ArtifactServiceImpl implements ArtifactService {
                             .is(artifactId)
                             .and(ArtifactEntityKeys.createdOn)
                             .lt(time);
-    return artifactRepository.findOne(criteria);
+    return artifactRepository.findOne(
+        criteria, Sort.by(Direction.DESC, ArtifactEntityKeys.createdOn), new ArrayList<>());
   }
 
   private List<ArtifactListingResponse> getArtifactListingResponses(

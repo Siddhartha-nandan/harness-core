@@ -15,6 +15,7 @@ import io.harness.spec.server.ssca.v1.model.Artifact;
 import io.harness.spec.server.ssca.v1.model.Attestation;
 import io.harness.spec.server.ssca.v1.model.CategoryScorecard;
 import io.harness.spec.server.ssca.v1.model.CategoryScorecardChecks;
+import io.harness.spec.server.ssca.v1.model.CreateTicketRequest;
 import io.harness.spec.server.ssca.v1.model.EnforcementResultDTO;
 import io.harness.spec.server.ssca.v1.model.EnforcementSummaryDTO;
 import io.harness.spec.server.ssca.v1.model.NormalizedSbomComponentDTO;
@@ -36,8 +37,7 @@ import io.harness.ssca.beans.instance.InstanceDTO;
 import io.harness.ssca.beans.instance.InstanceDTO.InstanceDTOBuilder;
 import io.harness.ssca.beans.instance.K8sInstanceInfoDTO;
 import io.harness.ssca.beans.remediation_tracker.PatchedPendingArtifactEntitiesResult;
-import io.harness.ssca.entities.ArtifactEntity;
-import io.harness.ssca.entities.ArtifactEntity.ArtifactEntityBuilder;
+import io.harness.ssca.beans.ticket.TicketResponseDto;
 import io.harness.ssca.entities.BaselineEntity;
 import io.harness.ssca.entities.BaselineEntity.BaselineEntityBuilder;
 import io.harness.ssca.entities.CdInstanceSummary;
@@ -51,6 +51,8 @@ import io.harness.ssca.entities.EnforcementSummaryEntity;
 import io.harness.ssca.entities.EnforcementSummaryEntity.EnforcementSummaryEntityBuilder;
 import io.harness.ssca.entities.NormalizedSBOMComponentEntity;
 import io.harness.ssca.entities.NormalizedSBOMComponentEntity.NormalizedSBOMComponentEntityBuilder;
+import io.harness.ssca.entities.artifact.ArtifactEntity;
+import io.harness.ssca.entities.artifact.ArtifactEntity.ArtifactEntityBuilder;
 import io.harness.ssca.entities.remediation_tracker.DefaultVulnerability;
 import io.harness.ssca.entities.remediation_tracker.RemediationCondition;
 import io.harness.ssca.entities.remediation_tracker.RemediationTrackerEntity;
@@ -248,6 +250,31 @@ public class BuilderFactory {
             Collections.singletonList(getArtifactEntityBuilder().artifactCorrelationId("pending").build()))
         .build();
   }
+
+  public CreateTicketRequest getCreateTicketRequest() {
+    Map<String, String> customFields = new HashMap<>();
+    customFields.put("customField1", "value1");
+    customFields.put("customField2", "value2");
+    Map<String, String> identifiers = new HashMap<>();
+    identifiers.put("identifier1", "value1");
+    identifiers.put("identifier2", "value2");
+    return new CreateTicketRequest()
+        .customFields(customFields)
+        .description("test")
+        .identifiers(identifiers)
+        .priority("P1")
+        .issueType("Story")
+        .artifactId("artifactId")
+        .projectKey("projectKey")
+        .externalId("externalId")
+        .title("title")
+        .exists(true);
+  }
+
+  public TicketResponseDto getTicketResponseDto() {
+    return TicketResponseDto.builder().externalId("external").build();
+  }
+
   public EnforcementSummaryEntityBuilder getEnforcementSummaryBuilder() {
     return EnforcementSummaryEntity.builder()
         .accountId(context.accountId)
