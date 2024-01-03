@@ -9,6 +9,7 @@ package io.harness.idp.app;
 
 import static io.harness.audit.ResourceTypeConstants.IDP_ALLOW_LIST;
 import static io.harness.audit.ResourceTypeConstants.IDP_APP_CONFIGS;
+import static io.harness.audit.ResourceTypeConstants.IDP_BACKSTAGE_CATALOG_ENTITY;
 import static io.harness.audit.ResourceTypeConstants.IDP_CATALOG_CONNECTOR;
 import static io.harness.audit.ResourceTypeConstants.IDP_CHECKS;
 import static io.harness.audit.ResourceTypeConstants.IDP_CONFIG_ENV_VARIABLES;
@@ -88,6 +89,7 @@ import io.harness.idp.allowlist.services.AllowListService;
 import io.harness.idp.allowlist.services.AllowListServiceImpl;
 import io.harness.idp.audittrails.eventhandlers.AllowListEventHandler;
 import io.harness.idp.audittrails.eventhandlers.AppConfigEventHandler;
+import io.harness.idp.audittrails.eventhandlers.BackstageCatalogEntityEventHandler;
 import io.harness.idp.audittrails.eventhandlers.BackstageSecretEnvEventHandler;
 import io.harness.idp.audittrails.eventhandlers.CatalogConnectorEventHandler;
 import io.harness.idp.audittrails.eventhandlers.CheckEventHandler;
@@ -465,7 +467,7 @@ public class IdpModule extends AbstractModule {
     install(
         new CIExecutionServiceModule(appConfig.getCiExecutionServiceConfig(), appConfig.getShouldConfigureWithPMS()));
     install(new IACMServiceClientModule(appConfig.getIacmServiceConfig()));
-    install(EnforcementClientModule.getInstance(appConfig.getManagerClientConfig(), // Licencing
+    install(EnforcementClientModule.getInstance(appConfig.getNgManagerServiceHttpClientConfig(), // Licencing
         appConfig.getNgManagerServiceSecret(), IDP_SERVICE.getServiceId(),
         appConfig.getEnforcementClientConfiguration()));
     install(new CDStageConfigResourceClientModule(appConfig.getNgManagerServiceHttpClientConfig(),
@@ -605,6 +607,9 @@ public class IdpModule extends AbstractModule {
     bind(ScheduledExecutorService.class)
         .annotatedWith(Names.named("statsComputeDailyRunJob"))
         .toInstance(new ManagedScheduledExecutorService("statsComputeDailyRunJob"));
+    bind(ScheduledExecutorService.class)
+        .annotatedWith(Names.named("scaffolderTasksSyncJob"))
+        .toInstance(new ManagedScheduledExecutorService("scaffolderTasksSyncJob"));
     install(new AbstractTelemetryModule() {
       @Override
       public TelemetryConfiguration telemetryConfiguration() {
@@ -649,6 +654,7 @@ public class IdpModule extends AbstractModule {
     outboxEventHandlerMapBinder.addBinding(IDP_ALLOW_LIST).to(AllowListEventHandler.class);
     outboxEventHandlerMapBinder.addBinding(IDP_OAUTH_CONFIG).to(OAuthConfigEventHandler.class);
     outboxEventHandlerMapBinder.addBinding(IDP_LAYOUT).to(LayoutEventHandler.class);
+    outboxEventHandlerMapBinder.addBinding(IDP_BACKSTAGE_CATALOG_ENTITY).to(BackstageCatalogEntityEventHandler.class);
   }
 
   @Provides
@@ -873,7 +879,7 @@ public class IdpModule extends AbstractModule {
   @Provides
   @Singleton
   List<YamlSchemaRootClass> yamlSchemaRootClasses() {
-    return ImmutableList.<YamlSchemaRootClass>builder().addAll(IdpServiceRegistrars.yamlSchemaRegistrars).build();
+    return ImmutableList.<YamlSchemaRootClass>builder().build();
   }
 
   @Provides

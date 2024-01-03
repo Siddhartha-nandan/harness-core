@@ -33,7 +33,6 @@ import io.harness.utils.YamlPipelineUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.common.base.Preconditions;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.io.IOException;
@@ -76,8 +75,12 @@ public class YamlExpressionResolveHelper {
       YamlField yamlField = YamlUtils.readTree(YamlUtils.injectUuid(yamlString));
       YamlField pipelineYamlField = yamlField.getNode().getField("pipeline");
 
-      resolveExpressions(Preconditions.checkNotNull(pipelineYamlField, "YAML does not have pipeline object"),
-          engineExpressionEvaluator);
+      if (pipelineYamlField == null) {
+        throw new InvalidRequestException(
+            "YAML does not have pipeline object. No Input set was provided part of pipeline execution");
+      }
+
+      resolveExpressions(pipelineYamlField, engineExpressionEvaluator);
 
       JsonNode resolvedYamlNode = yamlField.getNode().getCurrJsonNode();
       YamlUtils.removeUuid(resolvedYamlNode);

@@ -16,6 +16,7 @@ import io.harness.annotations.dev.ProductModule;
 import io.harness.delegate.task.k8s.ReleaseMetadata;
 import io.harness.k8s.model.KubernetesResource;
 import io.harness.k8s.model.KubernetesResourceId;
+import io.harness.k8s.trafficrouting.TrafficRoutingInfoDTO;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,6 +44,7 @@ public class K8sLegacyRelease implements IK8sRelease {
   private String helmChartVersion;
   private String helmChartRepoUrl;
   private String helmChartSubChartPath;
+  private TrafficRoutingInfoDTO trafficRoutingInfoDTO;
 
   @Builder.Default private List<KubernetesResourceIdRevision> managedWorkloads = new ArrayList();
   @Builder.Default private List<KubernetesResource> customWorkloads = new ArrayList<>();
@@ -122,6 +124,16 @@ public class K8sLegacyRelease implements IK8sRelease {
           .build();
     }
     return null;
+  }
+
+  @Override
+  public void setTrafficRoutingInfo(TrafficRoutingInfoDTO trafficRoutingInfo) {
+    this.trafficRoutingInfoDTO = trafficRoutingInfo;
+  }
+
+  @Override
+  public TrafficRoutingInfoDTO getTrafficRoutingInfo() {
+    return this.trafficRoutingInfoDTO;
   }
 
   @Override
